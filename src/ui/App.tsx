@@ -98,7 +98,6 @@ export default function App() {
         {/* AI seats */}
         {dealResult && AI_SEATS.map(({ seat, pos, dir }) => (
           <div key={seat} className={`seat ${pos}`}>
-            <div className="seat-avatar">🃏</div>
             <div className="seat-label">{playerNames[seat]}</div>
             {phase !== 'idle' && phase !== 'setup' && phase !== 'scoring' && (
               <Hand cards={(phase === 'playing' && playState ? playState.hands[seat] : dealResult.hands[seat])} faceUp={false} vertical={dir === 'v'} />

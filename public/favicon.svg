@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Card body -->
+  <rect x="2" y="1" width="28" height="30" rx="3" fill="#fffef0" stroke="#1a1008" stroke-width="1.5"/>
+
+  <!-- Sky -->
+  <clipPath id="card">
+    <rect x="2.75" y="1.75" width="26.5" height="28.5" rx="2.5"/>
+  </clipPath>
+  <rect x="2.75" y="1.75" width="26.5" height="28.5" rx="2.5" fill="#7ab8e8"/>
+
+  <!-- Mountain range -->
+  <polygon clip-path="url(#card)"
+    points="2,24 7,14 11,18 15,11 19,16 24,10 29,17 30,24"
+    fill="#3a5c35"/>
+
+  <!-- Lake -->
+  <rect clip-path="url(#card)" x="2" y="22" width="28" height="9" fill="#4a96d4"/>
+
+  <!-- Island mound -->
+  <ellipse clip-path="url(#card)" cx="16" cy="23.5" rx="5.5" ry="2.2" fill="#4aaa3a"/>
+
+  <!-- Church wall -->
+  <rect clip-path="url(#card)" x="14.3" y="17" width="3.4" height="7.5" fill="#f5f0e0"/>
+
+  <!-- Steeple -->
+  <polygon clip-path="url(#card)" points="13.5,17.5 16,12 18.5,17.5" fill="#f5f0e0"/>
+
+  <!-- Card border on top -->
+  <rect x="2" y="1" width="28" height="30" rx="3" fill="none" stroke="#1a1008" stroke-width="1.5"/>
+</svg>
