@@ -1,0 +1,396 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-size: 14px;
+  background: #1a5c2a;
+  color: #f0f0f0;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Menu bar ─────────────────────────────────────────────────────────── */
+.menu-bar {
+  background: #111;
+  display: flex;
+  gap: 0;
+  padding: 0;
+  flex-shrink: 0;
+  height: 24px;
+}
+
+.menu-item {
+  position: relative;
+}
+
+.menu-item > button {
+  background: none;
+  border: none;
+  color: #f0f0f0;
+  padding: 3px 10px;
+  cursor: pointer;
+  height: 24px;
+  font-size: 13px;
+}
+.menu-item > button:hover, .menu-item.open > button {
+  background: #0078d4;
+}
+
+.menu-dropdown {
+  position: absolute;
+  top: 24px;
+  left: 0;
+  background: #222;
+  border: 1px solid #555;
+  min-width: 150px;
+  z-index: 100;
+  display: none;
+}
+.menu-item.open .menu-dropdown {
+  display: block;
+}
+.menu-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: #f0f0f0;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.menu-dropdown button:hover {
+  background: #0078d4;
+}
+.menu-dropdown hr {
+  border: none;
+  border-top: 1px solid #444;
+  margin: 3px 0;
+}
+
+/* ── Table ────────────────────────────────────────────────────────────── */
+.game-table {
+  flex: 1;
+  position: relative;
+  background: radial-gradient(ellipse at center, #2d7a42 0%, #1a5c2a 100%);
+  overflow: hidden;
+}
+
+/* ── Seats ────────────────────────────────────────────────────────────── */
+.seat {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.seat-label {
+  font-size: 12px;
+  background: rgba(0,0,0,0.4);
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+.seat-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.seat-top    { top: 8px;   left: 50%; transform: translateX(-50%); }
+.seat-left   { top: 50%;   left: 8px; transform: translateY(-50%); }
+.seat-right  { top: 50%;   right: 8px; transform: translateY(-50%); }
+.seat-bottom { bottom: 60px; left: 50%; transform: translateX(-50%); }
+
+/* ── Hand ─────────────────────────────────────────────────────────────── */
+.hand {
+  position: relative;
+  height: 120px;
+  min-width: 300px;
+}
+.hand-card {
+  position: absolute;
+  cursor: pointer;
+  transition: top 0.15s;
+  top: 0;
+}
+.hand-card:hover { top: -12px; }
+.hand-card.dimmed { opacity: 0.45; cursor: default; }
+
+.ai-cards {
+  display: flex;
+  gap: 2px;
+}
+
+/* ── Trick area ───────────────────────────────────────────────────────── */
+.trick-area {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  height: 200px;
+}
+.trick-slot {
+  position: absolute;
+}
+.trick-slot-top    { top: 0;   left: 50%; transform: translateX(-50%); }
+.trick-slot-left   { top: 50%; left: 0;  transform: translateY(-50%); }
+.trick-slot-right  { top: 50%; right: 0; transform: translateY(-50%); }
+.trick-slot-bottom { bottom: 0; left: 50%; transform: translateX(-50%); }
+
+.trick-winner-card .card { outline: 3px solid #facc15; box-shadow: 0 0 12px #facc15; }
+.trick-winner-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.75);
+  color: #facc15;
+  font-weight: bold;
+  font-size: 14px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: fadeInOut 1.2s ease forwards;
+}
+@keyframes fadeInOut {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Talon ────────────────────────────────────────────────────────────── */
+.talon-area {
+  position: absolute;
+  top: 50%;
+  right: 12%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 4px;
+}
+
+/* ── Card sprite ──────────────────────────────────────────────────────── */
+.card {
+  position: relative;
+  width: 60px;
+  height: 90px;
+  border-radius: 5px;
+  border: 1px solid #333;
+  background: white;
+  font-weight: bold;
+  font-size: 13px;
+  box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.card.face-down {
+  background: none;
+  border-color: #c8a060;
+}
+.card.red { color: #c00; }
+.card.black { color: #111; }
+.card.trump { color: #7700cc; }
+.card-corner-top {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  line-height: 1.15;
+  text-align: left;
+}
+.card-corner-bot {
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
+  line-height: 1.15;
+  text-align: right;
+  transform: rotate(180deg);
+}
+.card-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+}
+
+/* ── Status bar ───────────────────────────────────────────────────────── */
+.status-bar {
+  background: #111;
+  padding: 3px 12px;
+  font-size: 12px;
+  flex-shrink: 0;
+  display: flex;
+  gap: 20px;
+  height: 22px;
+  align-items: center;
+}
+.status-item { color: #ccc; }
+.status-item span { color: #fff; font-weight: bold; }
+
+/* ── Modal overlay ────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal {
+  background: #1e1e1e;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 20px 28px;
+  min-width: 260px;
+  max-width: 500px;
+}
+
+/* ── Bid panel (non-blocking, lets hand stay visible) ─────────────────── */
+.bid-panel {
+  position: fixed;
+  top: 32px;
+  right: 16px;
+  background: #1e1e1e;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 16px 20px;
+  min-width: 260px;
+  max-width: 340px;
+  z-index: 200;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+}
+.modal h2 {
+  margin-bottom: 14px;
+  font-size: 16px;
+  border-bottom: 1px solid #444;
+  padding-bottom: 8px;
+}
+.modal-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.btn {
+  background: #0078d4;
+  border: none;
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.btn:hover { background: #005fa3; }
+.btn.btn-ghost { background: #444; }
+.btn.btn-ghost:hover { background: #555; }
+.btn.btn-danger { background: #b00; }
+.btn.btn-danger:hover { background: #900; }
+
+/* ── Radio / Checkbox ─────────────────────────────────────────────────── */
+.radio-list { display: flex; flex-direction: column; gap: 8px; }
+.radio-list label {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+}
+
+/* ── Bid list ─────────────────────────────────────────────────────────── */
+.bid-list { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; }
+.bid-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 2px;
+}
+.bid-option label { flex: 1; cursor: pointer; }
+.info-btn {
+  margin-left: auto;
+  background: #444;
+  border: 1px solid #666;
+  color: #aaa;
+  border-radius: 50%;
+  width: 18px; height: 18px;
+  font-size: 11px; font-weight: bold;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0;
+}
+.info-btn:hover { background: #0078d4; color: #fff; border-color: #0078d4; }
+.contract-desc {
+  background: #1a1a2e;
+  border-left: 3px solid #0078d4;
+  color: #ccc;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px 12px;
+  margin: 2px 0 6px 28px;
+  border-radius: 0 4px 4px 0;
+}
+
+/* ── Score table ──────────────────────────────────────────────────────── */
+.score-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.score-table th, .score-table td {
+  padding: 5px 10px; text-align: center; border: 1px solid #444;
+}
+.score-table th { background: #333; }
+.score-table tr:nth-child(even) { background: #2a2a2a; }
+
+/* ── Idle screen ──────────────────────────────────────────────────────── */
+.idle-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.idle-screen h1 { font-size: 32px; color: #fff; }
+.idle-screen p { color: #aaa; }
+
+/* ── Talon group selector ─────────────────────────────────────────────── */
+.talon-groups { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+.talon-group {
+  display: flex; gap: 4px; cursor: pointer; padding: 6px;
+  border: 2px solid transparent; border-radius: 5px;
+}
+.talon-group:hover { border-color: #0078d4; }
+.talon-group.selected { border-color: #0078d4; background: rgba(0,120,212,0.2); }
+
+/* ── Discard selection ────────────────────────────────────────────────── */
+.discard-hand { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.discard-card { position: relative; cursor: pointer; }
+.discard-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 2px; right: 4px;
+  color: #0f0;
+  font-size: 18px;
+}
+
+/* ── Suit buttons ─────────────────────────────────────────────────────── */
+.suit-buttons { display: flex; gap: 10px; margin-top: 10px; }
+.suit-btn {
+  width: 50px; height: 50px;
+  border: none; border-radius: 5px;
+  font-size: 24px; cursor: pointer;
+  background: #333;
+}
+.suit-btn:hover { background: #555; }
+.suit-btn.clubs, .suit-btn.spades { color: #111; background: #eee; }
+.suit-btn.hearts, .suit-btn.diamonds { color: #c00; background: #eee; }
