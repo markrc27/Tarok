@@ -415,6 +415,100 @@ and no React component contains an `if` about suits or trumps.
   plus a trivial bot, for use in tests.
 - `npm run test:ci` and `npm run build` both pass with no warnings.
 
+## Required invariants and test gates
+
+These invariants were derived from bugs found during gameplay that were not
+caught by the engine unit tests. Every item here must be an **automated
+test** before the feature it covers is considered done.
+
+### Card conservation (highest priority)
+
+After every complete hand — regardless of contract, exchange, or king-call
+outcome — the following must hold:
+
+```
+countPoints(all capturedCards across all seats) + countPoints(talonRemainder) === 70
+```
+
+This single assertion catches two classes of bug simultaneously: discard
+cards lost during talon exchange, and talon remainder cards not attributed
+to any pile. It must appear in **`tests/integration.test.ts`** for every
+hand variation tested (klop, partner contract, solo, talon exchange present,
+no talon exchange). If this assertion ever fails, do not look at the UI —
+find where the cards leaked out of the pipeline.
+
+A secondary conservation check:
+```
+sum(hand sizes after play) === 0   // every card was played
+```
+
+### Talon exchange → initPlay pipeline
+
+`initPlay` receives a `TalonExchange` result. The discarded cards must land
+in `capturedCards[declarer]` at t=0 — before any trick is played. Write a
+test that:
+
+1. Creates a deal and runs a talon exchange.
+2. Calls `initPlay` with the exchange result.
+3. Asserts `countPoints(playState.capturedCards[declarer]) === countPoints(exchange.discard)`.
+
+Absence of this test is what allowed the discard-vanishes bug to ship.
+
+### Talon remainder routing
+
+`adjustCapturedForTalon` has two branches. Both must have dedicated tests:
+
+- **Normal branch**: talonRemainder is credited to an opponent seat (not
+  declarer, not partner). Verify the opponent's pile grows.
+- **King-in-talon branch** (`kingInTalonCaptured === true`): talonRemainder
+  is credited to the declarer seat instead. Verify the declarer's pile grows.
+
+### Scoring zero-sum check (before mond penalty)
+
+For normal contracts, before individual mond penalties are applied:
+```
+declarerPts + sum(opponentPts) === 70
+```
+
+This is a weaker version of card conservation at the scoring layer. It
+catches bugs where `effectiveCaptured` wasn't built correctly before calling
+`countDeclarerPoints`.
+
+### Partner reveal in currentTrick
+
+The partner-visibility logic in `StatusBar` checks both `completedTricks`
+and `currentTrick.cards`. This matters because the human's card sits in
+`currentTrick` for the duration of the render cycle before the trick
+resolves — bots resolve fast enough that their cards often skip straight to
+`completedTricks` by the time the UI re-renders. The test in
+`tests/partner-visibility.test.ts` covers this case. Do not simplify the
+check to only `completedTricks`.
+
+### Scoring display must use effectiveCaptured
+
+Every call to `countDeclarerPoints` and `computeHandScore` in both
+`store.ts` and `ScoreDialog.tsx` must use `effectiveCaptured` (the output
+of `adjustCapturedForTalon`), never the raw `capturedCards`. If you add a
+new scoring call site, add it to both places simultaneously and add the card
+conservation test to cover the new code path.
+
+### Worked scoring example as a regression test
+
+The game log reviewed in this session (Solo Two, human declarer) produced a
+verified final score. Encode it as a literal test in `tests/scoring.test.ts`
+with hardcoded card lists and an expected declarer net. This is the ground
+truth that prevents the grouping-method (per-trick vs. all-together) from
+regressing silently.
+
+### UI logic extraction rule
+
+Any logic in a React component that touches card suits, ranks, or trumps
+should be extracted to a pure function and tested there before wiring into
+the component. The partner-reveal check is the canonical example: it was
+inline in `StatusBar` and the bug (`currentTrick` not checked) wasn't caught
+until a human noticed it during a real game. Extract → test → wire is the
+correct order.
+
 ## Open decisions
 
 These are flagged so an agent can ask before deciding, rather than

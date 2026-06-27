@@ -1,4 +1,4 @@
-import type { Seat, SessionState, RadliState, HandScore, PlayState } from './types'
+import type { Seat, SessionState, PlayState } from './types'
 import { isSkis } from './deck'
 import { initRadli, missdealPenalty } from './scoring'
 
@@ -41,30 +41,6 @@ export function applyMisdeal(state: SessionState, dealer: Seat): SessionState {
   }
 }
 
-export function applyHandScore(state: SessionState, score: HandScore): SessionState {
-  const newScores = { ...state.scores }
-  newScores[score.declarer] += score.declarerScore
-  if (score.partnerScore !== null) {
-    for (const seat of [0, 1, 2, 3] as Seat[]) {
-      if (seat !== score.declarer) {
-        // The partner
-      }
-    }
-  }
-  // Opponent scores
-  for (const [seat, s] of Object.entries(score.opponentScores)) {
-    newScores[Number(seat) as Seat] += s
-  }
-  // Mond penalties
-  for (const [seat, p] of Object.entries(score.mondPenalties)) {
-    newScores[Number(seat) as Seat] += p
-  }
-  return {
-    ...state,
-    scores: newScores,
-    handHistory: [...state.handHistory, score],
-  }
-}
 
 export function nextDealer(current: Seat): Seat {
   return ((current + 3) % 4) as Seat // anticlockwise

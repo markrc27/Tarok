@@ -289,7 +289,12 @@ export function initPlay(
       cards: [],
       ledSuit: null,
     },
-    capturedCards: { 0: [], 1: [], 2: [], 3: [] },
+    capturedCards: {
+      0: declarer === 0 ? [...(exchange?.discard ?? [])] : [],
+      1: declarer === 1 ? [...(exchange?.discard ?? [])] : [],
+      2: declarer === 2 ? [...(exchange?.discard ?? [])] : [],
+      3: declarer === 3 ? [...(exchange?.discard ?? [])] : [],
+    },
     mondCapturedBy: null,
     mondCapturedWithSkis: false,
     contract,

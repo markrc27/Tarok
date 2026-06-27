@@ -194,6 +194,7 @@ export interface HandScore {
   radliApplied: boolean
   contract: Contract
   declarer: Seat
+  partner: Seat | null
 }
 
 export interface RadliState {

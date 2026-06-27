@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { deal, dealHands, hasZeroTrumps } from '../src/engine/deal'
 import { initBidding, applyBid, resolveBidding, legalBids, biddingOrder } from '../src/engine/bidding'
-import { initTalonExchange, selectTalonGroup, resolveKingCall, discardHand, canDiscard } from '../src/engine/talon'
+import { initTalonExchange, selectTalonGroup, applyDiscard, resolveKingCall, discardHand, canDiscard } from '../src/engine/talon'
 import { initPlay, playCard, isHandComplete, resolveTrick, checkMondCapture } from '../src/engine/play'
 import { initAnnouncements } from '../src/engine/announce'
 import { countDeclarerPoints, initRadli } from '../src/engine/scoring'
@@ -77,20 +77,21 @@ describe('full hand integration', () => {
     let partner: Seat | null = null
     const needsTalon = ['three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one'].includes(contract)
 
-    let talonDiscardCards: Card[] = []
-    let talonRemainder: Card[] = []
+    let exchangeForPlay = null as import('../src/engine/types').TalonExchange | null
 
     if (needsTalon) {
       const exchange = initTalonExchange(dealResult.talon, contract)
       const { updatedHand, exchange: updated } = selectTalonGroup(exchange, 0, hands[declarer])
-      hands = { ...hands, [declarer]: updatedHand }
-      talonRemainder = updated.talonRemainder
 
       const groupSize = updated.groups[0].length
       const discardable = updatedHand.filter(c => canDiscard(c, updatedHand))
       const toDiscard = discardable.slice(0, groupSize)
-      talonDiscardCards = toDiscard
-      hands = { ...hands, [declarer]: discardHand(updatedHand, toDiscard) }
+      const finalHand = discardHand(updatedHand, toDiscard)
+      hands = { ...hands, [declarer]: finalHand }
+
+      // applyDiscard records the discard on the exchange object;
+      // initPlay reads exchange.discard and exchange.talonRemainder directly.
+      exchangeForPlay = applyDiscard(updated, toDiscard, updatedHand)
 
       if (['three', 'two', 'one'].includes(contract)) {
         const calledSuit = recommendKingCall(hands[declarer], ['clubs', 'spades', 'hearts', 'diamonds'])
@@ -100,32 +101,25 @@ describe('full hand integration', () => {
     }
 
     let playState = initPlay(
-      dealResult, contract, declarer, partner, null, false, null, hands,
+      dealResult, contract, declarer, partner, exchangeForPlay, false, null, hands,
     )
 
-    // Add discarded cards and talonRemainder to captured piles now
-    // Discards go to declarer's trick pile; talonRemainder goes to opponents at end
-    playState = {
-      ...playState,
-      capturedCards: {
-        ...playState.capturedCards,
-        [declarer]: [...playState.capturedCards[declarer], ...talonDiscardCards],
-      },
-      talonRemainder,
-    }
+    // Card conservation: initPlay must seed capturedCards[declarer] with the
+    // discard and talonRemainder internally — no manual patching here.
+    // If this assertion fails, initPlay is not seeding the exchange correctly.
+    const discardPts = countPoints(exchangeForPlay?.discard ?? [])
+    expect(countPoints(playState.capturedCards[declarer])).toBe(discardPts)
 
     playState = playFullHand(playState)
 
     expect(isHandComplete(playState)).toBe(true)
     expect(playState.completedTricks).toHaveLength(12)
 
-    // Add talonRemainder to a non-declarer seat's pile for counting
-    const opponentSeat = ([0, 1, 2, 3] as Seat[]).find(s => s !== declarer && s !== partner) ?? 1
+    // Card conservation after play: all 54 card-points must be accounted for
+    // across captured piles plus the unchosen talon remainder.
+    // A failure here means cards leaked somewhere in the pipeline.
     const allCaptured = ([0, 1, 2, 3] as Seat[]).flatMap(s => playState.capturedCards[s])
-    const grandTotal = [...allCaptured, ...talonRemainder]
-
-    // countPoints of all 54 cards = 70
-    expect(countPoints(grandTotal)).toBe(70)
+    expect(countPoints([...allCaptured, ...playState.talonRemainder])).toBe(70)
   })
 
   it('zero-trump void deal is detected', () => {

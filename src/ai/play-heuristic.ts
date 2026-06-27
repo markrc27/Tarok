@@ -16,6 +16,7 @@ function isNegativeContract(contract: string): boolean {
 
 export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Card {
   const candidates = legalCards(state, seat)
+  if (candidates.length === 0) throw new Error(`chooseCard: no legal cards for seat ${seat}`)
   if (candidates.length === 1) return candidates[0]
 
   const negative = isNegativeContract(state.contract)

@@ -30,8 +30,13 @@ export default function StatisticsDialog({ history, playerNames, sessionScores, 
                 <td>{h.contract}</td>
                 {seats.map(s => (
                   <td key={s}>
-                    {s === h.declarer ? h.declarerScore :
-                      h.opponentScores[s] !== undefined ? h.opponentScores[s] : '—'}
+                    {s === h.declarer
+                      ? h.declarerScore
+                      : h.partner !== null && s === h.partner
+                        ? (h.partnerScore ?? h.declarerScore)
+                        : h.opponentScores[s] !== undefined
+                          ? h.opponentScores[s]
+                          : '—'}
                   </td>
                 ))}
               </tr>

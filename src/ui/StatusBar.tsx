@@ -1,7 +1,9 @@
 import React from 'react'
-import type { PlayState, BiddingState, Seat } from '../engine/types'
+import type { PlayState, BiddingState, Seat, SuitCard } from '../engine/types'
 import { countPoints } from '../engine/pointcount'
 import { CONTRACT_LABEL } from './labels'
+
+const SUIT_SYM: Record<string, string> = { clubs: '♣', spades: '♠', hearts: '♥', diamonds: '♦' }
 
 interface Props {
   playState: PlayState | null
@@ -16,15 +18,23 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
   const contractLabel = rawContract ? CONTRACT_LABEL[rawContract] : '—'
   const declarer = playState ? playerNames[playState.declarer] : '—'
 
-  const turn = playState
-    ? (() => {
-        const trick = playState.currentTrick
-        const playedSeats = new Set(trick.cards.map(c => c.seat))
-        const order: Seat[] = [trick.ledSeat, ((trick.ledSeat+1)%4) as Seat, ((trick.ledSeat+2)%4) as Seat, ((trick.ledSeat+3)%4) as Seat]
-        const next = order.find(s => !playedSeats.has(s))
-        return next !== undefined ? playerNames[next] : '—'
-      })()
-    : '—'
+  let partnerLabel = '—'
+  if (playState) {
+    if (playState.contract === 'klop' || !playState.kingCall || playState.partner === null) {
+      partnerLabel = 'None'
+    } else {
+      const ck = playState.kingCall.calledKing
+      const kingSeen = (c: { card: { kind: string } }) =>
+        c.card.kind === 'suit' && (c.card as SuitCard).suit === ck.suit && (c.card as SuitCard).rank === 'K'
+      const revealed = playState.completedTricks.some(t => t.cards.some(kingSeen))
+        || playState.currentTrick.cards.some(kingSeen)
+      partnerLabel = revealed ? playerNames[playState.partner] : 'Hidden'
+    }
+  }
+
+  const calledKingSym = playState?.kingCall
+    ? `K${SUIT_SYM[playState.kingCall.calledKing.suit] ?? '?'}`
+    : null
 
   let pts = 0
   if (playState) {
@@ -51,7 +61,10 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
     <div className="status-bar">
       <div className="status-item">Contract: <span>{contractLabel}</span></div>
       <div className="status-item">Declarer: <span>{declarer}</span></div>
-      <div className="status-item">Turn: <span>{turn}</span></div>
+      <div className="status-item">Partner: <span>{partnerLabel}</span></div>
+      {calledKingSym && (
+        <div className="status-item">Called: <span>{calledKingSym}</span></div>
+      )}
       <div className="status-item">Points: <span>{pts} / 70</span></div>
       {followHint && <div className="status-item" style={{ color: '#facc15' }}>{followHint}</div>}
       <div style={{ flex: 1 }} />

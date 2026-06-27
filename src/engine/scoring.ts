@@ -5,6 +5,29 @@ import type {
 import { countPoints } from './pointcount'
 import { getKontraMultiplier, evaluateBonus, bonusBaseValue } from './announce'
 
+export function adjustCapturedForTalon(
+  capturedCards: Record<Seat, Card[]>,
+  talonRemainder: Card[],
+  declarer: Seat,
+  partner: Seat | null,
+  kingInTalonCaptured: boolean,
+): Record<Seat, Card[]> {
+  if (talonRemainder.length === 0) return capturedCards
+  const adj: Record<Seat, Card[]> = {
+    0: [...capturedCards[0]],
+    1: [...capturedCards[1]],
+    2: [...capturedCards[2]],
+    3: [...capturedCards[3]],
+  }
+  if (kingInTalonCaptured) {
+    adj[declarer] = [...adj[declarer], ...talonRemainder]
+  } else {
+    const opp = ([0, 1, 2, 3] as Seat[]).find(s => s !== declarer && s !== partner) as Seat
+    adj[opp] = [...adj[opp], ...talonRemainder]
+  }
+  return adj
+}
+
 export function roundToNearest5(n: number): number {
   return Math.round(n / 5) * 5
 }
@@ -257,5 +280,6 @@ export function computeHandScore(params: {
     radliApplied: radliState.uncancelled[declarer] > 0,
     contract,
     declarer,
+    partner,
   }
 }

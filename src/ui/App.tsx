@@ -16,6 +16,11 @@ import ScoreDialog from './dialogs/ScoreDialog'
 import AnnouncementsDialog from './dialogs/AnnouncementsDialog'
 import OptionsDialog from './dialogs/OptionsDialog'
 import StatisticsDialog from './dialogs/StatisticsDialog'
+const BONUS_LABEL: Record<string, string> = {
+  trula: 'Trula', kings: 'Kings',
+  'king-ultimo': 'King Ultimo', 'pagat-ultimo': 'Pagat Ultimo', valat: 'Valat',
+}
+
 const AI_SEATS: { seat: Seat; pos: string; dir: 'h' | 'v' }[] = [
   { seat: 2, pos: 'seat-top', dir: 'h' },
   { seat: 1, pos: 'seat-left', dir: 'v' },
@@ -95,14 +100,14 @@ export default function App() {
           <div key={seat} className={`seat ${pos}`}>
             <div className="seat-avatar">🃏</div>
             <div className="seat-label">{playerNames[seat]}</div>
-            {phase !== 'idle' && phase !== 'setup' && (
+            {phase !== 'idle' && phase !== 'setup' && phase !== 'scoring' && (
               <Hand cards={(phase === 'playing' && playState ? playState.hands[seat] : dealResult.hands[seat])} faceUp={false} vertical={dir === 'v'} />
             )}
           </div>
         ))}
 
         {/* Human seat */}
-        {dealResult && phase !== 'idle' && phase !== 'setup' && (
+        {dealResult && phase !== 'idle' && phase !== 'setup' && phase !== 'scoring' && (
           <div className="seat seat-bottom">
             <Hand
               cards={humanHand}
@@ -130,6 +135,39 @@ export default function App() {
             ))}
           </div>
         )}
+
+        {/* Announcements overlay — top left */}
+        {phase === 'playing' && announcementState && (() => {
+          const { announcements, kontraTargets } = announcementState
+          const gameKontra = kontraTargets.find(k => k.target === 'game')?.level ?? 1
+          if (announcements.length === 0 && gameKontra === 1) return null
+          return (
+            <div style={{
+              position: 'absolute', top: 8, left: 8,
+              background: 'rgba(0,0,0,0.6)',
+              border: '1px solid #444',
+              borderRadius: 6,
+              padding: '6px 10px',
+              fontSize: 12,
+              color: '#ccc',
+              lineHeight: 1.8,
+              pointerEvents: 'none',
+              zIndex: 5,
+              minWidth: 110,
+            }}>
+              <div style={{ color: '#888', fontSize: 10, fontWeight: 'bold', marginBottom: 2, letterSpacing: 1 }}>ANNOUNCED</div>
+              {gameKontra > 1 && (
+                <div>Game <span style={{ color: '#f0c040' }}>×{gameKontra}</span></div>
+              )}
+              {announcements.map((ann, i) => (
+                <div key={i}>
+                  {BONUS_LABEL[ann.bonus] ?? ann.bonus}
+                  {ann.kontraLevel > 1 && <span style={{ color: '#f0c040' }}> ×{ann.kontraLevel}</span>}
+                </div>
+              ))}
+            </div>
+          )
+        })()}
       </div>
 
       <StatusBar playState={playState} biddingState={biddingState} playerNames={playerNames} sessionScores={sessionScores} roundsPlayed={roundId} />

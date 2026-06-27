@@ -11,7 +11,7 @@ import { initPlay, playCard, isHandComplete } from '../engine/play'
 import { initAnnouncements, applyAnnouncement } from '../engine/announce'
 import {
   initRadli, computeHandScore, updateRadliAfterHand, applyRadli,
-  scoreKlop, countDeclarerPoints,
+  scoreKlop, countDeclarerPoints, adjustCapturedForTalon,
 } from '../engine/scoring'
 import { CONTRACT_BASE } from '../engine/types'
 import { evaluateHand, recommendBid, recommendKingCall } from '../ai/bidding-heuristic'
@@ -107,7 +107,8 @@ export const useGameStore = create<Store>((set, get) => {
       const suit = recommendKingCall(newHand, ['clubs', 'spades', 'hearts', 'diamonds'])
       kingCall = resolveKingCall(suit, newHands, dealResult.talon, declarer)
     }
-    set({ dealResult: newDealResult, talonExchange: updated, kingCall })
+    const discardedExchange = { ...updated, discard: toDiscard }
+    set({ dealResult: newDealResult, talonExchange: discardedExchange, kingCall })
     advanceToAnnouncing()
   }
 
@@ -143,6 +144,7 @@ export const useGameStore = create<Store>((set, get) => {
   const runBotPlay = () => {
     const { playState, phase } = get()
     if (phase !== 'playing' || !playState) return
+    if (isHandComplete(playState)) return  // stale timer fired during 1200ms trick-display pause
     const playedSeats = new Set(playState.currentTrick.cards.map(c => c.seat))
     const ledSeat = playState.currentTrick.ledSeat
     const order: Seat[] = [ledSeat, ((ledSeat+1)%4) as Seat, ((ledSeat+2)%4) as Seat, ((ledSeat+3)%4) as Seat]
@@ -284,7 +286,8 @@ export const useGameStore = create<Store>((set, get) => {
       const newDealResult = { ...dealResult, hands: newHands }
       const contract = biddingState.highestBid ?? 'three'
       const needsKingCall = ['three', 'two', 'one'].includes(contract)
-      set({ dealResult: newDealResult, pendingDiscardCount: 0 })
+      const updatedExchange = talonExchange ? { ...talonExchange, discard: cards } : null
+      set({ dealResult: newDealResult, pendingDiscardCount: 0, talonExchange: updatedExchange })
       if (needsKingCall) {
         set({ phase: 'king-call' })
       } else {
@@ -339,13 +342,15 @@ export const useGameStore = create<Store>((set, get) => {
       }
 
       const { contract, declarer, partner, capturedCards, completedTricks,
-              talonRemainder, mondCapturedWithSkis, mondCapturedBy, kingCall } = playState
+              talonRemainder, mondCapturedWithSkis, mondCapturedBy, kingCall,
+              kingInTalonCaptured } = playState
       const ann = announcementState ?? initAnnouncements()
+      const effectiveCaptured = adjustCapturedForTalon(capturedCards, talonRemainder, declarer, partner, kingInTalonCaptured)
 
       // Determine win for radli bookkeeping
-      const declarerPts = countDeclarerPoints(capturedCards, declarer, partner)
+      const declarerPts = countDeclarerPoints(effectiveCaptured, declarer, partner)
       const declarerWon = (contract === 'beggar' || contract === 'open-beggar')
-        ? capturedCards[declarer].length === 0
+        ? effectiveCaptured[declarer].length === 0
         : declarerPts >= 36
 
       // Update radli: cancel one on win, then add new ones for klop/beggar+
@@ -361,7 +366,7 @@ export const useGameStore = create<Store>((set, get) => {
         for (const s of [0, 1, 2, 3] as Seat[]) delta[s] = klopScores[s]
       } else {
         const handScore = computeHandScore({
-          contract, declarer, partner, capturedCards, talonRemainder,
+          contract, declarer, partner, capturedCards: effectiveCaptured, talonRemainder,
           mondCapturedWithSkis, mondPlayedBySeat: mondCapturedBy,
           announcementState: ann, completedTricks,
           calledKing: kingCall?.calledKing ?? null,
@@ -385,7 +390,7 @@ export const useGameStore = create<Store>((set, get) => {
       }
 
       set({
-        phase: 'idle',
+        phase: 'setup',
         dealerSeat: nextDealer,
         sessionScores: newScores,
         radliState: newRadliState,
@@ -417,21 +422,23 @@ export const useGameStore = create<Store>((set, get) => {
       let newStats = statistics
       if (playState) {
         const { contract, declarer, partner, capturedCards, talonRemainder,
-                mondCapturedWithSkis, mondCapturedBy, kingCall } = playState
+                mondCapturedWithSkis, mondCapturedBy, kingCall,
+                kingInTalonCaptured } = playState
         const ann = announcementState ?? initAnnouncements()
-        const declarerPts = countDeclarerPoints(capturedCards, declarer, partner)
+        const effectiveCaptured = adjustCapturedForTalon(capturedCards, talonRemainder, declarer, partner, kingInTalonCaptured)
+        const declarerPts = countDeclarerPoints(effectiveCaptured, declarer, partner)
         const declarerWon = (contract === 'beggar' || contract === 'open-beggar')
-          ? capturedCards[declarer].length === 0
+          ? effectiveCaptured[declarer].length === 0
           : declarerPts >= 36
         const { newRadliState: afterCancel } = applyRadli(0, radliState, declarer, declarerWon)
         const newRadliState = updateRadliAfterHand(afterCancel, contract, declarerWon)
         if (contract !== 'klop') {
           const handScore = computeHandScore({
-            contract, declarer, partner, capturedCards, talonRemainder,
+            contract, declarer, partner, capturedCards: effectiveCaptured, talonRemainder,
             mondCapturedWithSkis, mondPlayedBySeat: mondCapturedBy,
             announcementState: ann, completedTricks: playState.completedTricks,
             calledKing: kingCall?.calledKing ?? null,
-            radliState: newRadliState, contractBase: CONTRACT_BASE[contract], won: declarerWon,
+            radliState, contractBase: CONTRACT_BASE[contract], won: declarerWon,
           })
           newStats = [...statistics, handScore]
         }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import type { PlayState, RadliState, AnnouncementState, Seat, Card, SuitCard } from '../../engine/types'
 import { CONTRACT_BASE } from '../../engine/types'
-import { computeHandScore, scoreKlop, countDeclarerPoints, calcDifference } from '../../engine/scoring'
+import { computeHandScore, scoreKlop, countDeclarerPoints, calcDifference, adjustCapturedForTalon } from '../../engine/scoring'
 import { countPoints } from '../../engine/pointcount'
 import { bonusBaseValue } from '../../engine/announce'
 import { CONTRACT_LABEL } from '../labels'
@@ -39,9 +39,12 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showRadliInfo, setShowRadliInfo] = useState(false)
 
   const { contract, declarer, partner, capturedCards, completedTricks,
-          talonRemainder, mondCapturedWithSkis, mondCapturedBy, kingCall } = playState
+          talonRemainder, mondCapturedWithSkis, mondCapturedBy, kingCall,
+          kingInTalonCaptured } = playState
+  const effectiveCaptured = adjustCapturedForTalon(capturedCards, talonRemainder, declarer, partner, kingInTalonCaptured)
 
   const seats: Seat[] = [0, 1, 2, 3]
 
@@ -52,17 +55,17 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
   let handScore = null as ReturnType<typeof computeHandScore> | null
 
   if (contract === 'klop') {
-    const klopScores = scoreKlop(capturedCards)
+    const klopScores = scoreKlop(effectiveCaptured)
     for (const s of seats) delta[s] = klopScores[s]
   } else {
-    declarerPts = countDeclarerPoints(capturedCards, declarer, partner)
+    declarerPts = countDeclarerPoints(effectiveCaptured, declarer, partner)
     won = (contract === 'beggar' || contract === 'open-beggar')
-      ? capturedCards[declarer].length === 0
+      ? effectiveCaptured[declarer].length === 0
       : declarerPts >= 36
     difference = calcDifference(declarerPts)
 
     handScore = computeHandScore({
-      contract, declarer, partner, capturedCards, talonRemainder,
+      contract, declarer, partner, capturedCards: effectiveCaptured, talonRemainder,
       mondCapturedWithSkis, mondPlayedBySeat: mondCapturedBy,
       announcementState, completedTricks,
       calledKing: kingCall?.calledKing ?? null,
@@ -105,7 +108,13 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
               <th>Role</th>
               <th>This round</th>
               <th>Session total</th>
-              <th>Radli</th>
+              <th>
+                Radli{' '}
+                <button
+                  onClick={() => setShowRadliInfo(v => !v)}
+                  style={{ background: 'none', border: '1px solid #555', borderRadius: '50%', color: '#aaa', cursor: 'pointer', fontSize: 10, lineHeight: 1, padding: '1px 4px', verticalAlign: 'middle' }}
+                >ℹ</button>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -127,6 +136,21 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             ))}
           </tbody>
         </table>
+
+        {/* Radli info popup */}
+        {showRadliInfo && (
+          <div style={{ margin: '8px 0', padding: '10px 12px', background: '#1a1a1a', borderRadius: 4, fontSize: 12, color: '#ccc', lineHeight: 1.7 }}>
+            <strong style={{ color: '#f0f0f0' }}>Radli</strong><br />
+            All four players receive a new radlc after any hand where:<br />
+            &bull; a <em>klop</em> was played<br />
+            &bull; a contract of <em>Beggar</em> or higher was played<br />
+            &bull; any kind of <em>valat</em> was won or lost<br />
+            <br />
+            When scoring, if the declarer holds outstanding radli, the declarer's score (and the partner's, if any) is <strong style={{ color: '#f0f0f0' }}>doubled</strong> and one radlc is annulled — but only on a <em>win</em>. On a loss the score is still doubled but the radlc is not cancelled.<br />
+            <br />
+            Uncancelled radli at the end of the session cost <strong style={{ color: '#f0f0f0' }}>100 points each</strong>.
+          </div>
+        )}
 
         {/* Expandable game log */}
         <div style={{ marginTop: 12 }}>
