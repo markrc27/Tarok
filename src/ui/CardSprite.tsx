@@ -43,7 +43,7 @@ export default function CardSprite({ card, faceUp = true, dimmed, onClick, selec
       <div
         className={`card face-down ${className}`}
         onClick={onClick}
-        style={{ cursor: onClick ? 'pointer' : 'default' }}
+        style={{ cursor: onClick ? 'pointer' : 'inherit' }}
       >
         <CardBack/>
       </div>
@@ -57,7 +57,7 @@ export default function CardSprite({ card, faceUp = true, dimmed, onClick, selec
       <div
         className={`card trump ${dimmed ? 'dimmed' : ''} ${selected ? 'selected-card' : ''} ${className}`}
         onClick={onClick}
-        style={{ cursor: onClick ? 'pointer' : 'default' }}
+        style={{ cursor: onClick ? 'pointer' : 'inherit' }}
       >
         <div className="card-corner-top">{label}</div>
         <div className="card-center">★</div>
@@ -75,7 +75,7 @@ export default function CardSprite({ card, faceUp = true, dimmed, onClick, selec
     <div
       className={`card ${isRed ? 'red' : 'black'} ${dimmed ? 'dimmed' : ''} ${selected ? 'selected-card' : ''} ${className}`}
       onClick={onClick}
-      style={{ cursor: onClick ? 'pointer' : 'default' }}
+      style={{ cursor: onClick ? 'pointer' : 'inherit' }}
     >
       <div className="card-corner-top">{rank}<br />{sym}</div>
       <div className="card-center">{sym}</div>

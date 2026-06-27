@@ -112,22 +112,25 @@ body {
 .seat-top    { top: 8px;   left: 50%; transform: translateX(-50%); }
 .seat-left   { top: 50%;   left: 8px; transform: translateY(-50%); }
 .seat-right  { top: 50%;   right: 8px; transform: translateY(-50%); }
-.seat-bottom { bottom: 60px; left: 50%; transform: translateX(-50%); }
+.seat-bottom { bottom: 8px; left: 50%; transform: translateX(-50%); }
 
 /* ── Hand ─────────────────────────────────────────────────────────────── */
 .hand {
   position: relative;
-  height: 120px;
+  height: 170px;
   min-width: 300px;
 }
 .hand-card {
   position: absolute;
-  cursor: pointer;
+  width: 90px;
+  height: 135px;
+  cursor: default;
   transition: top 0.15s;
   top: 0;
 }
-.hand-card:hover { top: -12px; }
-.hand-card.dimmed { opacity: 0.45; cursor: default; }
+.hand-card.playable { cursor: pointer; }
+.hand-card.playable:hover { top: -18px; }
+.hand-card.dimmed { opacity: 0.45; }
 
 .ai-cards {
   display: flex;
@@ -137,19 +140,19 @@ body {
 /* ── Trick area ───────────────────────────────────────────────────────── */
 .trick-area {
   position: absolute;
-  top: 50%;
+  top: calc(50% + 12px);
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 320px;
-  height: 200px;
+  width: 480px;
+  height: min(300px, calc(100% - 395px));
 }
 .trick-slot {
   position: absolute;
 }
-.trick-slot-top    { top: 0;   left: 50%; transform: translateX(-50%); }
-.trick-slot-left   { top: 50%; left: 0;  transform: translateY(-50%); }
-.trick-slot-right  { top: 50%; right: 0; transform: translateY(-50%); }
-.trick-slot-bottom { bottom: 0; left: 50%; transform: translateX(-50%); }
+.trick-slot-top    { top: 20px;    left: 50%; transform: translateX(-50%); }
+.trick-slot-left   { top: 50%;    left: 0;  transform: translateY(-50%); }
+.trick-slot-right  { top: 50%;    right: 0; transform: translateY(-50%); }
+.trick-slot-bottom { bottom: 20px; left: 50%; transform: translateX(-50%); }
 
 .trick-winner-card .card { outline: 3px solid #facc15; box-shadow: 0 0 12px #facc15; }
 .trick-winner-banner {
@@ -187,13 +190,13 @@ body {
 /* ── Card sprite ──────────────────────────────────────────────────────── */
 .card {
   position: relative;
-  width: 60px;
-  height: 90px;
-  border-radius: 5px;
+  width: 90px;
+  height: 135px;
+  border-radius: 8px;
   border: 1px solid #333;
   background: white;
   font-weight: bold;
-  font-size: 13px;
+  font-size: 20px;
   box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
   flex-shrink: 0;
   overflow: hidden;
@@ -207,15 +210,15 @@ body {
 .card.trump { color: #7700cc; }
 .card-corner-top {
   position: absolute;
-  top: 3px;
-  left: 4px;
+  top: 5px;
+  left: 6px;
   line-height: 1.15;
   text-align: left;
 }
 .card-corner-bot {
   position: absolute;
-  bottom: 3px;
-  right: 4px;
+  bottom: 5px;
+  right: 6px;
   line-height: 1.15;
   text-align: right;
   transform: rotate(180deg);
@@ -225,7 +228,7 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 22px;
+  font-size: 33px;
 }
 
 /* ── Status bar ───────────────────────────────────────────────────────── */

@@ -7,9 +7,11 @@ interface Props {
   playState: PlayState | null
   biddingState: BiddingState | null
   playerNames: Record<Seat, string>
+  sessionScores: Record<Seat, number>
+  roundsPlayed: number
 }
 
-export default function StatusBar({ playState, biddingState, playerNames }: Props) {
+export default function StatusBar({ playState, biddingState, playerNames, sessionScores, roundsPlayed }: Props) {
   const rawContract = biddingState?.highestBid ?? playState?.contract ?? null
   const contractLabel = rawContract ? CONTRACT_LABEL[rawContract] : '—'
   const declarer = playState ? playerNames[playState.declarer] : '—'
@@ -43,6 +45,8 @@ export default function StatusBar({ playState, biddingState, playerNames }: Prop
     }
   }
 
+  const seats: Seat[] = [0, 1, 2, 3]
+
   return (
     <div className="status-bar">
       <div className="status-item">Contract: <span>{contractLabel}</span></div>
@@ -50,6 +54,21 @@ export default function StatusBar({ playState, biddingState, playerNames }: Prop
       <div className="status-item">Turn: <span>{turn}</span></div>
       <div className="status-item">Points: <span>{pts} / 70</span></div>
       {followHint && <div className="status-item" style={{ color: '#facc15' }}>{followHint}</div>}
+      <div style={{ flex: 1 }} />
+      {roundsPlayed > 0 && (
+        <>
+          <div className="status-item">Rounds: <span>{roundsPlayed}</span></div>
+          <div className="status-item" style={{ borderLeft: '1px solid #333', paddingLeft: 12 }}>
+            {seats.map(s => (
+              <span key={s} style={{ marginRight: 10 }}>
+                {playerNames[s]}: <span style={{ color: sessionScores[s] >= 0 ? '#4f4' : '#f66' }}>
+                  {sessionScores[s] >= 0 ? '+' : ''}{sessionScores[s]}
+                </span>
+              </span>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

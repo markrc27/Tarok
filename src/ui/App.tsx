@@ -30,7 +30,7 @@ export default function App() {
   const {
     phase, dealResult, biddingState, talonExchange, kingCall,
     announcementState, playState, sessionScores, playerNames,
-    options, statistics, radliState, pendingDiscardCount,
+    options, statistics, radliState, pendingDiscardCount, roundId,
   } = store
 
   // Compute legal cards for human
@@ -132,7 +132,7 @@ export default function App() {
         )}
       </div>
 
-      <StatusBar playState={playState} biddingState={biddingState} playerNames={playerNames} />
+      <StatusBar playState={playState} biddingState={biddingState} playerNames={playerNames} sessionScores={sessionScores} roundsPlayed={roundId} />
 
       {/* Modal dialogs */}
       {isHumanBidding && humanLegalBids.length > 0 && (

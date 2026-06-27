@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import type { PlayState, RadliState, AnnouncementState, Seat, Card, SuitCard } from '../../engine/types'
 import { CONTRACT_BASE } from '../../engine/types'
 import { computeHandScore, scoreKlop, countDeclarerPoints, calcDifference } from '../../engine/scoring'
+import { countPoints } from '../../engine/pointcount'
 import { bonusBaseValue } from '../../engine/announce'
 import { CONTRACT_LABEL } from '../labels'
 
@@ -170,7 +171,8 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                   const order = [ledSeat, ((ledSeat+1)%4), ((ledSeat+2)%4), ((ledSeat+3)%4)] as Seat[]
                   const ordered = [...trick.cards].sort((a, b) => order.indexOf(a.seat) - order.indexOf(b.seat))
                   const plays = ordered.map(({ seat, card }) => `${playerNames[seat]}:${cardText(card)}`).join('  ')
-                  lines.push(`T${i+1}: ${plays}  -> ${playerNames[trick.winner ?? ledSeat]}`)
+                  const trickPts = countPoints(trick.cards.map(c => c.card))
+                  lines.push(`T${i+1}: ${plays}  -> ${playerNames[trick.winner ?? ledSeat]} (${trickPts} pts)`)
                 })
                 navigator.clipboard.writeText(lines.join('\n'))
                 setCopied(true)
@@ -246,6 +248,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                         </span>
                       ))}
                       <span style={{ color: '#aaa' }}>→ {playerNames[trick.winner ?? ledSeat]}</span>
+                      <span style={{ color: '#666', marginLeft: 6 }}>({countPoints(trick.cards.map(c => c.card))} pts)</span>
                     </div>
                   )
                 })}

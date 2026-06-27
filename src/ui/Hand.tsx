@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Card, SuitCard } from '../engine/types'
-import { cardId } from '../engine/deck'
+import { cardId, suitStrength } from '../engine/deck'
 import CardSprite from './CardSprite'
 
 const SUIT_ORDER = ['spades', 'clubs', 'hearts', 'diamonds']
@@ -12,7 +12,7 @@ function sortHand(cards: Card[]): Card[] {
     const sa = a as SuitCard, sb = b as SuitCard
     const suitDiff = SUIT_ORDER.indexOf(sa.suit) - SUIT_ORDER.indexOf(sb.suit)
     if (suitDiff !== 0) return suitDiff
-    return sb.points - sa.points
+    return suitStrength(sa) - suitStrength(sb)
   })
 }
 
@@ -52,7 +52,7 @@ export default function Hand({ cards, faceUp = true, legalCards = [], onPlay, ve
     }
     // Top seat: horizontal stack with overlap
     return (
-      <div style={{ position: 'relative', width: (n - 1) * 14 + 60, height: 90 }}>
+      <div style={{ position: 'relative', width: (n - 1) * 14 + 90, height: 135 }}>
         {cards.map((_, i) => (
           <div key={i} style={{ position: 'absolute', left: i * 14, top: 0 }}>
             <CardSprite faceUp={false} />
@@ -63,27 +63,24 @@ export default function Hand({ cards, faceUp = true, legalCards = [], onPlay, ve
   }
 
   const legalIds = new Set(legalCards.map(cardId))
-  const overlap = 28
+  const overlap = 50
   const sorted = sortHand(cards)
 
   return (
-    <div className="hand" style={{ minWidth: `${Math.max((sorted.length - 1) * overlap + 60, 200)}px` }}>
+    <div className="hand" style={{ width: '640px' }}>
       {sorted.map((card, i) => {
         const id = cardId(card)
         const isLegal = legalIds.has(id)
         const canPlay = onPlay !== undefined
+        const playable = canPlay && isLegal
         return (
           <div
             key={id}
-            className={`hand-card${canPlay && !isLegal ? ' dimmed' : ''}`}
+            className={`hand-card${canPlay && !isLegal ? ' dimmed' : ''}${playable ? ' playable' : ''}`}
             style={{ left: `${i * overlap}px` }}
+            onClick={playable ? () => onPlay(card) : undefined}
           >
-            <CardSprite
-              card={card}
-              faceUp
-              dimmed={canPlay && !isLegal}
-              onClick={canPlay && isLegal ? () => onPlay(card) : undefined}
-            />
+            <CardSprite card={card} faceUp dimmed={canPlay && !isLegal} />
           </div>
         )
       })}

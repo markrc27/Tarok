@@ -57,7 +57,6 @@ export default function AnnouncementsDialog({ contract, declarer, partner, hands
             </div>
           )}
           <div className="modal-actions">
-            <button className="btn btn-ghost" onClick={() => onFinish([], false)}>Pass</button>
             <button className="btn" onClick={() => onFinish([...checked], false)}>Confirm</button>
           </div>
         </>
