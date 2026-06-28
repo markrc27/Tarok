@@ -16,28 +16,12 @@ import {
 import { CONTRACT_BASE } from '../engine/types'
 import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard } from '../ai/bidding-heuristic'
 import { pickNames } from '../ui/names'
-import { chooseCard } from '../ai/play-heuristic'
+import { chooseCard, computeKnownPartner } from '../ai/play-heuristic'
 import { saveGameRecord, consumeDraftRecord } from './persistence'
 import type { RoundRecord } from '../engine/types'
 
 const BOT_DELAY = 400
 const HUMAN = 0 as Seat
-
-// Returns the partner seat only once the called king has appeared in a visible
-// trick (completed or the current one on the table). Until then returns null so
-// bots don't coordinate with an unconfirmed partner.
-function computeKnownPartner(state: PlayState): Seat | null {
-  const { kingCall, partner, completedTricks, currentTrick } = state
-  if (!kingCall || partner === null) return null
-  const { calledKing } = kingCall
-  const isCalledKing = (card: Card) =>
-    card.kind === 'suit' && card.suit === calledKing.suit && card.rank === 'K'
-  if (currentTrick.cards.some(e => isCalledKing(e.card))) return partner
-  for (const trick of completedTricks) {
-    if (trick.cards.some(e => isCalledKing(e.card))) return partner
-  }
-  return null
-}
 
 function makeInitialState(): GameState {
   return {

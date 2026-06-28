@@ -57,6 +57,21 @@ function cardStrength(c: Card): number {
   return suitStrength(c as SuitCard)
 }
 
+// Returns the partner seat only once the called king has appeared in a visible
+// trick (completed or the current one on the table). Until then returns null.
+export function computeKnownPartner(state: PlayState): Seat | null {
+  const { kingCall, partner, completedTricks, currentTrick } = state
+  if (!kingCall || partner === null) return null
+  const { calledKing } = kingCall
+  const isCalledKing = (card: Card) =>
+    card.kind === 'suit' && card.suit === calledKing.suit && card.rank === 'K'
+  if (currentTrick.cards.some(e => isCalledKing(e.card))) return partner
+  for (const trick of completedTricks) {
+    if (trick.cards.some(e => isCalledKing(e.card))) return partner
+  }
+  return null
+}
+
 // Points captured by the declarer team as far as the bot can tell.
 // Uses knownPartner (publicly revealed) rather than state.partner (engine ground truth).
 function declarerTeamPoints(state: PlayState, knownPartner: Seat | null): number {
