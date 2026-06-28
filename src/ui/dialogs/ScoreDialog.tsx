@@ -3,7 +3,7 @@ import type { PlayState, RadliState, AnnouncementState, Seat, Card, SuitCard } f
 import { CONTRACT_BASE } from '../../engine/types'
 import { computeHandScore, scoreKlop, countDeclarerPoints, calcDifference, adjustCapturedForTalon } from '../../engine/scoring'
 import { countPoints } from '../../engine/pointcount'
-import { bonusBaseValue } from '../../engine/announce'
+import { bonusBaseValue, getKontraMultiplier } from '../../engine/announce'
 import { CONTRACT_LABEL } from '../labels'
 
 const BONUS_LABEL: Record<string, string> = {
@@ -173,7 +173,10 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                   lines.push(`Card points: ${declarerPts} (diff ${difference >= 0 ? '+' : ''}${difference}) — ${won ? 'WON HAND' : 'LOST HAND'}`)
                   lines.push('')
                   lines.push('--- Score breakdown ---')
-                  lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base ${difference >= 0 ? '+' : ''}${difference} diff = ${won ? '+' : '-'}${Math.abs(CONTRACT_BASE[contract] + difference)}`)
+                  const gameKontraLog = getKontraMultiplier(announcementState, 'game')
+                  const gameNetLog = Math.abs((CONTRACT_BASE[contract] + difference) * gameKontraLog)
+                  const gameKontraStrLog = gameKontraLog > 1 ? ` x${gameKontraLog}` : ''
+                  lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base ${difference >= 0 ? '+' : ''}${difference} diff${gameKontraStrLog} = ${won ? '+' : '-'}${gameNetLog}`)
                   for (const b of handScore.bonusBreakdown) {
                     const net = b.value * b.kontraLevel
                     const kontraStr = b.announced && b.kontraLevel > 1 ? ` x${b.kontraLevel}` : ''
@@ -217,10 +220,17 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                     <span style={{ color: '#aaa', fontWeight: 'bold' }}>Score breakdown</span>
                     <span style={{ color: '#555', fontSize: 11 }}>default / announced</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base {difference >= 0 ? '+' : ''}{difference} diff</span>
-                    <span style={{ color: '#f0f0f0' }}>{won ? '+' : '−'}{Math.abs(CONTRACT_BASE[contract] + difference)}</span>
-                  </div>
+                  {(() => {
+                    const gk = getKontraMultiplier(announcementState, 'game')
+                    const gameNet = Math.abs((CONTRACT_BASE[contract] + difference) * gk)
+                    const gkStr = gk > 1 ? ` ×${gk}` : ''
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base {difference >= 0 ? '+' : ''}{difference} diff{gkStr}</span>
+                        <span style={{ color: '#f0f0f0' }}>{won ? '+' : '−'}{gameNet}</span>
+                      </div>
+                    )
+                  })()}
                   {handScore.bonusBreakdown.map((b, i) => {
                     const net = b.value * b.kontraLevel
                     const label = BONUS_LABEL[b.bonus] ?? b.bonus

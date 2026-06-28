@@ -30,7 +30,7 @@ function trumpLabel(ordinal: number): string {
 function CardBack() {
   return (
     <img
-      src="/LakeBled.png"
+      src="./LakeBled.png"
       style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
       alt=""
       draggable={false}
@@ -55,8 +55,8 @@ export default function CardSprite({ card, faceUp = true, dimmed, onClick, selec
 
   if (cardAppearance === 'traditional') {
     const src = card.kind === 'trump'
-      ? `/cards/trump-${(card as TrumpCard).ordinal}.png?v=5`
-      : `/cards/${(card as SuitCard).suit}-${String((card as SuitCard).rank)}.png?v=5`
+      ? `./cards/trump-${(card as TrumpCard).ordinal}.png?v=7`
+      : `./cards/${(card as SuitCard).suit}-${String((card as SuitCard).rank)}.png?v=7`
     return (
       <div
         className={`card ${dimmed ? 'dimmed' : ''} ${selected ? 'selected-card' : ''} ${className}`}

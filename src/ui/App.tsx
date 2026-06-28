@@ -73,6 +73,17 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [])
 
+  useEffect(() => {
+    if (cardAppearance !== 'traditional') return
+    const urls: string[] = []
+    for (let i = 1; i <= 22; i++) urls.push(`./cards/trump-${i}.png?v=7`)
+    const hdRanks = ['K', 'Q', 'Kn', 'J', '1', '2', '3', '4']
+    const scRanks = ['K', 'Q', 'Kn', 'J', '7', '8', '9', '10']
+    for (const suit of ['hearts', 'diamonds']) hdRanks.forEach(r => urls.push(`./cards/${suit}-${r}.png?v=7`))
+    for (const suit of ['spades', 'clubs']) scRanks.forEach(r => urls.push(`./cards/${suit}-${r}.png?v=7`))
+    urls.forEach(url => { fetch(url).catch(() => {}) })
+  }, [cardAppearance])
+
   const [nameInput, setNameInput] = useState('')
 
   // Compute legal cards for human
@@ -135,8 +146,8 @@ export default function App() {
                 value={nameInput}
                 maxLength={20}
                 onChange={e => setNameInput(e.target.value)}
-                onBlur={() => { const n = nameInput.trim() || 'You'; setNameInput(n); store.setPlayerName(n) }}
-                onKeyDown={e => { if (e.key === 'Enter') { const n = nameInput.trim() || 'You'; store.setPlayerName(n); store.startNewGame() } }}
+                onBlur={() => { const n = nameInput.trim(); setNameInput(n); store.setPlayerName(n) }}
+                onKeyDown={e => { if (e.key === 'Enter') { const n = nameInput.trim(); store.setPlayerName(n); store.startNewGame() } }}
                 style={{
                   background: '#2a2a2a', border: '1px solid #555', borderRadius: 4,
                   color: '#f0f0f0', fontSize: 15, padding: '6px 10px',
@@ -144,7 +155,7 @@ export default function App() {
                 }}
               />
             </div>
-            <button className="btn" style={{ fontSize: 16, padding: '10px 30px' }} onClick={() => { const n = nameInput.trim() || 'You'; store.setPlayerName(n); store.startNewGame() }}>
+            <button className="btn" style={{ fontSize: 16, padding: '10px 30px' }} onClick={() => { const n = nameInput.trim(); store.setPlayerName(n); store.startNewGame() }}>
               New Game
             </button>
           </div>
