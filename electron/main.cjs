@@ -10,6 +10,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 650,
     title: 'Tarok',
+    icon: path.join(__dirname, '../dist/favicon.ico'),
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   })
   win.loadFile(path.join(__dirname, '../dist/index.html'))
