@@ -4,7 +4,7 @@ import type { Seat } from '../engine/types'
 import { legalCards } from '../engine/play'
 import { legalBids } from '../engine/bidding'
 import { talonGroupSize } from '../engine/talon'
-import { saveGameRecord, saveDraftRecord, consumeDraftRecord } from '../state/persistence'
+import { saveGameRecord, saveDraftRecord, consumeDraftRecord, opfsLoad } from '../state/persistence'
 import MenuBar from './MenuBar'
 import StatusBar from './StatusBar'
 import Hand from './Hand'
@@ -41,10 +41,15 @@ export default function App() {
     radliState, pendingDiscardCount, roundId, roundHistory,
   } = store
 
-  // On mount: recover any draft saved from a browser refresh
+  // On mount: load from OPFS file (merges into localStorage), then recover any draft
   useEffect(() => {
-    const draft = consumeDraftRecord()
-    if (draft && draft.rounds > 0) saveGameRecord(draft)
+    opfsLoad().then(() => {
+      const draft = consumeDraftRecord()
+      if (draft && draft.rounds > 0) saveGameRecord(draft)
+    }).catch(() => {
+      const draft = consumeDraftRecord()
+      if (draft && draft.rounds > 0) saveGameRecord(draft)
+    })
   }, [])
 
   // Save draft + trigger browser "Leave site?" prompt on refresh/close

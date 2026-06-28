@@ -1,6 +1,6 @@
-import React, { useRef, useState } from 'react'
+import React, { useState } from 'react'
 import type { GameRecord, Seat } from '../../engine/types'
-import { loadGameHistory, mergeGameHistory } from '../../state/persistence'
+import { loadGameHistory } from '../../state/persistence'
 
 interface Props {
   onClose: () => void
@@ -21,9 +21,8 @@ function winnerSeat(record: GameRecord): Seat {
 }
 
 export default function HistoryDialog({ onClose }: Props) {
-  const [history, setHistory] = useState<GameRecord[]>(() => loadGameHistory())
+  const [history] = useState<GameRecord[]>(() => loadGameHistory())
   const [sortBy, setSortBy] = useState<SortKey>('newest')
-  const importRef = useRef<HTMLInputElement>(null)
 
   const sorted = [...history].sort((a, b) => {
     if (sortBy === 'newest') return b.playedAt - a.playedAt
@@ -35,33 +34,6 @@ export default function HistoryDialog({ onClose }: Props) {
   const sortBySeat = (seat: Seat) => setSortBy(seat)
 
   const dateSortLabel = sortBy === 'oldest' ? 'Date ↑' : 'Date ↓'
-
-  const handleExport = () => {
-    const json = JSON.stringify(history, null, 2)
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `tarok-history-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      try {
-        const records = JSON.parse(ev.target?.result as string) as GameRecord[]
-        if (!Array.isArray(records)) throw new Error()
-        mergeGameHistory(records)
-        setHistory(loadGameHistory())
-      } catch { alert('Invalid history file.') }
-    }
-    reader.readAsText(file)
-    e.target.value = ''
-  }
 
   return (
     <div className="modal-overlay">
@@ -123,11 +95,6 @@ export default function HistoryDialog({ onClose }: Props) {
         )}
 
         <div className="modal-actions">
-          <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
-          <button className="btn btn-ghost" onClick={() => importRef.current?.click()}>Import</button>
-          {history.length > 0 && (
-            <button className="btn btn-ghost" onClick={handleExport}>Export</button>
-          )}
           <button className="btn" onClick={onClose}>Close</button>
         </div>
       </div>

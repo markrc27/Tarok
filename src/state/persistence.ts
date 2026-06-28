@@ -2,7 +2,10 @@ import type { GameRecord } from '../engine/types'
 
 const HISTORY_KEY = 'tarok-game-history'
 const DRAFT_KEY = 'tarok-game-draft'
+const OPFS_FILE = 'tarok-history.json'
 const MAX_RECORDS = 100
+
+// ── localStorage (sync, primary read path) ─────────────────────────────────
 
 export function loadGameHistory(): GameRecord[] {
   try {
@@ -11,11 +14,25 @@ export function loadGameHistory(): GameRecord[] {
   } catch { return [] }
 }
 
+function writeHistory(records: GameRecord[]): void {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(records)) } catch {}
+}
+
 export function saveGameRecord(record: GameRecord): void {
   const history = loadGameHistory()
   history.unshift(record)
   if (history.length > MAX_RECORDS) history.splice(MAX_RECORDS)
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)) } catch {}
+  writeHistory(history)
+  opfsSave(history).catch(() => {})
+}
+
+export function mergeGameHistory(incoming: GameRecord[]): void {
+  const existing = loadGameHistory()
+  const byId = new Map(existing.map(r => [r.id, r]))
+  for (const r of incoming) byId.set(r.id, r)
+  const merged = [...byId.values()].sort((a, b) => b.playedAt - a.playedAt)
+  if (merged.length > MAX_RECORDS) merged.splice(MAX_RECORDS)
+  writeHistory(merged)
 }
 
 export function saveDraftRecord(record: GameRecord): void {
@@ -31,11 +48,35 @@ export function consumeDraftRecord(): GameRecord | null {
   } catch { return null }
 }
 
-export function mergeGameHistory(incoming: GameRecord[]): void {
-  const existing = loadGameHistory()
-  const byId = new Map(existing.map(r => [r.id, r]))
-  for (const r of incoming) byId.set(r.id, r)
-  const merged = [...byId.values()].sort((a, b) => b.playedAt - a.playedAt)
-  if (merged.length > MAX_RECORDS) merged.splice(MAX_RECORDS)
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(merged)) } catch {}
+// ── OPFS (async, auto-backup to a real browser-managed file) ───────────────
+
+async function opfsHandle(): Promise<FileSystemFileHandle | null> {
+  try {
+    const root = await navigator.storage.getDirectory()
+    return await root.getFileHandle(OPFS_FILE, { create: true })
+  } catch { return null }
+}
+
+async function opfsSave(records: GameRecord[]): Promise<void> {
+  const handle = await opfsHandle()
+  if (!handle) return
+  try {
+    const writable = await handle.createWritable()
+    await writable.write(JSON.stringify(records))
+    await writable.close()
+  } catch {}
+}
+
+// Called once on app startup. Reads the OPFS file and merges into localStorage.
+export async function opfsLoad(): Promise<void> {
+  const handle = await opfsHandle()
+  if (!handle) return
+  try {
+    const file = await handle.getFile()
+    const text = await file.text()
+    if (!text) return
+    const records = JSON.parse(text) as GameRecord[]
+    if (!Array.isArray(records) || records.length === 0) return
+    mergeGameHistory(records)
+  } catch {}
 }
