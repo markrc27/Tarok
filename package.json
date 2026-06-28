@@ -10,7 +10,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "electron:dev": "npm run build && electron .",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build && electron-builder --win --config.directories.output=C:\\TarokBuild"
   },
   "type": "module",
   "dependencies": {

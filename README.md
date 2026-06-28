@@ -18,7 +18,7 @@ npm install
 npm run electron:build
 ```
 
-This produces `release/Tarok Setup 1.0.0.exe`.
+This produces `C:\TarokBuild\Tarok Setup 1.0.0.exe`.
 
 ## Install
 
