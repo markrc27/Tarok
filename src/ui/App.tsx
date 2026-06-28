@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useGameStore } from '../state/store'
 import type { Seat } from '../engine/types'
 import { legalCards } from '../engine/play'
 import { legalBids } from '../engine/bidding'
 import { talonGroupSize } from '../engine/talon'
+import { saveGameRecord, saveDraftRecord, consumeDraftRecord } from '../state/persistence'
 import MenuBar from './MenuBar'
 import StatusBar from './StatusBar'
 import Hand from './Hand'
@@ -14,29 +15,60 @@ import TalonDialog from './dialogs/TalonDialog'
 import CallKingDialog from './dialogs/CallKingDialog'
 import ScoreDialog from './dialogs/ScoreDialog'
 import AnnouncementsDialog from './dialogs/AnnouncementsDialog'
-import OptionsDialog from './dialogs/OptionsDialog'
-import StatisticsDialog from './dialogs/StatisticsDialog'
+import HistoryDialog from './dialogs/HistoryDialog'
+import HelpDialog from './dialogs/HelpDialog'
+import RoundHistoryDialog from './dialogs/RoundHistoryDialog'
 const BONUS_LABEL: Record<string, string> = {
   trula: 'Trula', kings: 'Kings',
   'king-ultimo': 'King Ultimo', 'pagat-ultimo': 'Pagat Ultimo', valat: 'Valat',
 }
 
-const AI_SEATS: { seat: Seat; pos: string; dir: 'h' | 'v' }[] = [
+const AI_SEATS: { seat: Seat; pos: string; dir: 'h' | 'v'; flip?: boolean }[] = [
   { seat: 2, pos: 'seat-top', dir: 'h' },
-  { seat: 1, pos: 'seat-left', dir: 'v' },
+  { seat: 1, pos: 'seat-left', dir: 'v', flip: true },
   { seat: 3, pos: 'seat-right', dir: 'v' },
 ]
 
 export default function App() {
   const store = useGameStore()
-  const [showOptions, setShowOptions] = useState(false)
-  const [showStats, setShowStats] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
+  const [showRoundHistory, setShowRoundHistory] = useState(false)
 
   const {
     phase, dealResult, biddingState, talonExchange, kingCall,
     announcementState, playState, sessionScores, playerNames,
-    options, statistics, radliState, pendingDiscardCount, roundId,
+    radliState, pendingDiscardCount, roundId, roundHistory,
   } = store
+
+  // On mount: recover any draft saved from a browser refresh
+  useEffect(() => {
+    const draft = consumeDraftRecord()
+    if (draft && draft.rounds > 0) saveGameRecord(draft)
+  }, [])
+
+  // Save draft + trigger browser "Leave site?" prompt on refresh/close
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const s = useGameStore.getState()
+      const completedRounds = s.phase === 'setup' ? s.roundId : Math.max(0, s.roundId - 1)
+      if (completedRounds > 0) {
+        saveDraftRecord({
+          id: String(Date.now()),
+          playedAt: Date.now(),
+          playerNames: s.playerNames,
+          finalScores: s.sessionScores,
+          rounds: completedRounds,
+        })
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
+
+  const [nameInput, setNameInput] = useState('')
 
   // Compute legal cards for human
   const humanLegal = playState && phase === 'playing'
@@ -64,9 +96,22 @@ export default function App() {
   return (
     <>
       <MenuBar
-        onNewGame={() => store.startNewGame()}
-        onOptions={() => setShowOptions(true)}
-        onStatistics={() => setShowStats(true)}
+        onEndGame={() => {
+          if (phase === 'scoring') {
+            alert('Use the buttons in the score summary to end the game or start a new round.')
+            return
+          }
+          const completedRounds = phase === 'setup' ? roundId : Math.max(0, roundId - 1)
+          const msg = completedRounds > 0
+            ? 'End the current game? The current round will be discarded and your score will be saved.'
+            : 'Start over? No rounds have been completed yet.'
+          if (window.confirm(msg)) {
+            setShowRoundHistory(false)
+            store.endGameFromMenu()
+          }
+        }}
+        onHistory={() => setShowHistory(true)}
+        onHelp={() => setShowHelp(true)}
       />
 
       <div className="game-table">
@@ -79,9 +124,12 @@ export default function App() {
               <label style={{ color: '#aaa', fontSize: 13 }}>Your name</label>
               <input
                 type="text"
-                value={playerNames[0]}
+                autoFocus
+                value={nameInput}
                 maxLength={20}
-                onChange={e => store.setPlayerName(e.target.value)}
+                onChange={e => setNameInput(e.target.value)}
+                onBlur={() => { const n = nameInput.trim() || 'You'; setNameInput(n); store.setPlayerName(n) }}
+                onKeyDown={e => { if (e.key === 'Enter') { const n = nameInput.trim() || 'You'; store.setPlayerName(n); store.startNewGame() } }}
                 style={{
                   background: '#2a2a2a', border: '1px solid #555', borderRadius: 4,
                   color: '#f0f0f0', fontSize: 15, padding: '6px 10px',
@@ -89,18 +137,20 @@ export default function App() {
                 }}
               />
             </div>
-            <button className="btn" style={{ fontSize: 16, padding: '10px 30px' }} onClick={() => store.startNewGame()}>
+            <button className="btn" style={{ fontSize: 16, padding: '10px 30px' }} onClick={() => { const n = nameInput.trim() || 'You'; store.setPlayerName(n); store.startNewGame() }}>
               New Game
             </button>
           </div>
         )}
 
         {/* AI seats */}
-        {dealResult && AI_SEATS.map(({ seat, pos, dir }) => (
+        {dealResult && AI_SEATS.map(({ seat, pos, dir, flip }) => (
           <div key={seat} className={`seat ${pos}`}>
             <div className="seat-label">{playerNames[seat]}</div>
             {phase !== 'idle' && phase !== 'setup' && phase !== 'scoring' && (
-              <Hand cards={(phase === 'playing' && playState ? playState.hands[seat] : dealResult.hands[seat])} faceUp={false} vertical={dir === 'v'} />
+              <div style={flip ? { transform: 'rotate(180deg)', marginTop: 20 } : undefined}>
+                <Hand cards={(phase === 'playing' && playState ? playState.hands[seat] : dealResult.hands[seat])} faceUp={false} vertical={dir === 'v'} />
+              </div>
             )}
           </div>
         ))}
@@ -108,6 +158,7 @@ export default function App() {
         {/* Human seat */}
         {dealResult && phase !== 'idle' && phase !== 'setup' && phase !== 'scoring' && (
           <div className="seat seat-bottom">
+            <div className="seat-label" style={{ position: 'absolute', right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: 8, whiteSpace: 'nowrap' }}>{playerNames[0]}</div>
             <Hand
               cards={humanHand}
               faceUp
@@ -169,7 +220,7 @@ export default function App() {
         })()}
       </div>
 
-      <StatusBar playState={playState} biddingState={biddingState} playerNames={playerNames} sessionScores={sessionScores} roundsPlayed={roundId} />
+      {phase !== 'setup' && <StatusBar playState={playState} biddingState={biddingState} playerNames={playerNames} sessionScores={sessionScores} roundsPlayed={roundId} onShowRoundHistory={() => setShowRoundHistory(v => !v)} />}
 
       {/* Modal dialogs */}
       {isHumanBidding && humanLegalBids.length > 0 && (
@@ -231,24 +282,23 @@ export default function App() {
           radliState={radliState}
           playerNames={playerNames}
           onNewRound={() => { store.acknowledgeScore(); store.startNewGame() }}
-          onEndGame={() => store.endGame()}
+          onEndGame={() => { setShowRoundHistory(false); store.endGame() }}
         />
       )}
 
-      {showOptions && (
-        <OptionsDialog
-          soundEnabled={options.soundEnabled}
-          onToggleSound={() => store.setOption('soundEnabled', !options.soundEnabled)}
-          onClose={() => setShowOptions(false)}
-        />
+      {showHistory && (
+        <HistoryDialog onClose={() => setShowHistory(false)} />
       )}
 
-      {showStats && (
-        <StatisticsDialog
-          history={statistics}
+      {showHelp && (
+        <HelpDialog onClose={() => setShowHelp(false)} />
+      )}
+
+      {showRoundHistory && (
+        <RoundHistoryDialog
+          roundHistory={roundHistory}
           playerNames={playerNames}
-          sessionScores={sessionScores}
-          onClose={() => setShowStats(false)}
+          onClose={() => setShowRoundHistory(false)}
         />
       )}
     </>

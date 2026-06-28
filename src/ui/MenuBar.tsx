@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
 
 interface Props {
-  onNewGame: () => void
-  onOptions: () => void
-  onStatistics: () => void
+  onEndGame: () => void
+  onHistory: () => void
+  onHelp: () => void
 }
 
-export default function MenuBar({ onNewGame, onOptions, onStatistics }: Props) {
+export default function MenuBar({ onEndGame, onHistory, onHelp }: Props) {
   const [open, setOpen] = useState<string | null>(null)
 
   const toggle = (menu: string) => setOpen(o => o === menu ? null : menu)
@@ -27,13 +27,13 @@ export default function MenuBar({ onNewGame, onOptions, onStatistics }: Props) {
   return (
     <div className="menu-bar" onMouseLeave={close}>
       {item('game', 'Game', [
-        { label: 'New Round', onClick: onNewGame },
+        { label: 'End Game', onClick: onEndGame },
         { label: '', onClick: () => {}, sep: true },
-        { label: 'Options', onClick: onOptions },
-        { label: 'Statistics', onClick: onStatistics },
+        { label: 'History', onClick: onHistory },
       ])}
       {item('help', 'Help', [
-        { label: 'About Tarok', onClick: () => alert('Slovenian Tarok — built with Claude') },
+        { label: 'Rules', onClick: onHelp },
+        { label: 'About', onClick: () => alert('Slovenian Tarok — built with Claude') },
       ])}
     </div>
   )

@@ -201,6 +201,21 @@ export interface RadliState {
   uncancelled: Record<Seat, number>
 }
 
+export interface GameRecord {
+  id: string
+  playedAt: number
+  playerNames: Record<Seat, string>
+  finalScores: Record<Seat, number>
+  rounds: number
+}
+
+export interface RoundRecord {
+  roundNumber: number
+  contract: Contract
+  declarer: Seat
+  scoreDelta: Record<Seat, number>
+}
+
 export interface SessionState {
   scores: Record<Seat, number>
   radli: RadliState

@@ -1,6 +1,6 @@
 import type {
   Seat, DealResult, BiddingState, TalonExchange, KingCall,
-  AnnouncementState, PlayState, RadliState, HandScore, Contract, Card,
+  AnnouncementState, PlayState, RadliState, HandScore, Contract, Card, RoundRecord,
 } from '../engine/types'
 
 export type GamePhase =
@@ -36,4 +36,5 @@ export interface GameState {
   forehandChoiceContract: Contract | null
   pendingTrick: { cards: { seat: Seat; card: Card }[]; winner: Seat } | null
   roundId: number
+  roundHistory: RoundRecord[]
 }

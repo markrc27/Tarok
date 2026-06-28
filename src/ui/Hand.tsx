@@ -29,8 +29,6 @@ export default function Hand({ cards, faceUp = true, legalCards = [], onPlay, ve
     const n = cards.length
     if (vertical) {
       // Side seats: each card rotated 90°, stacked top-to-bottom with overlap.
-      // A rotated 60×90 card is visually 90px wide × 60px tall.
-      // left:15 centers the 60px DOM card inside a 90px-wide container.
       return (
         <div style={{ position: 'relative', width: 90, height: (n - 1) * 14 + 90 }}>
           {cards.map((_, i) => (

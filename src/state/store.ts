@@ -17,6 +17,8 @@ import { CONTRACT_BASE } from '../engine/types'
 import { evaluateHand, recommendBid, recommendKingCall } from '../ai/bidding-heuristic'
 import { pickNames } from '../ui/names'
 import { chooseCard } from '../ai/play-heuristic'
+import { saveGameRecord, consumeDraftRecord } from './persistence'
+import type { RoundRecord } from '../engine/types'
 
 const BOT_DELAY = 400
 const HUMAN = 0 as Seat
@@ -42,6 +44,7 @@ function makeInitialState(): GameState {
     forehandChoiceContract: null,
     pendingTrick: null,
     roundId: 0,
+    roundHistory: [],
   }
 }
 
@@ -58,6 +61,7 @@ type Store = GameState & {
   setForehandContract: (contract: Contract) => void
   setPlayerName: (name: string) => void
   endGame: () => void
+  endGameFromMenu: () => void
 }
 
 export const useGameStore = create<Store>((set, get) => {
@@ -66,16 +70,32 @@ export const useGameStore = create<Store>((set, get) => {
   const botDelay = (fn: () => void) => setTimeout(fn, BOT_DELAY)
 
   // Called after exchange/king-call to route through announcing (or skip for klop).
+  const FLAT_CONTRACTS = new Set(['beggar', 'open-beggar', 'solo-without', 'color-valat-without', 'valat-without'])
+
   const advanceToAnnouncing = () => {
-    const { biddingState } = get()
+    const { biddingState, kingCall } = get()
     if (!biddingState) return
     const contract = biddingState.highestBid ?? 'klop'
+
     if (contract === 'klop') {
       set({ announcementState: initAnnouncements() })
       advanceToPlay()
-    } else {
-      set({ phase: 'announcing', announcementState: initAnnouncements() })
+      return
     }
+
+    const declarer = biddingState.highestBidder ?? biddingState.forehand
+    const partner = kingCall?.partner ?? null
+    const humanOnDeclarerSide = HUMAN === declarer || HUMAN === partner
+
+    // Flat contracts have no announceable bonuses; skip the dialog when the human
+    // is on the declaring side (they can't kontra themselves either).
+    if (FLAT_CONTRACTS.has(contract) && humanOnDeclarerSide) {
+      set({ announcementState: initAnnouncements() })
+      advanceToPlay()
+      return
+    }
+
+    set({ phase: 'announcing', announcementState: initAnnouncements() })
   }
 
   const advanceToPlay = () => {
@@ -218,7 +238,7 @@ export const useGameStore = create<Store>((set, get) => {
     ...makeInitialState(),
 
     startNewGame: () => {
-      const { dealerSeat, sessionScores, statistics, playerNames, radliState, roundId } = get()
+      const { dealerSeat, sessionScores, statistics, playerNames, radliState, roundId, roundHistory } = get()
       const outcome = deal(dealerSeat)
       const biddingState = initBidding(dealerSeat, outcome.kind === 'void-deal')
       set({
@@ -232,6 +252,7 @@ export const useGameStore = create<Store>((set, get) => {
         playerNames,
         radliState,
         roundId: roundId + 1,
+        roundHistory,
       })
       botDelay(runBotBid)
     },
@@ -333,7 +354,7 @@ export const useGameStore = create<Store>((set, get) => {
     },
 
     acknowledgeScore: () => {
-      const { playState, announcementState, radliState, sessionScores, statistics, dealerSeat } = get()
+      const { playState, announcementState, radliState, sessionScores, statistics, dealerSeat, roundId, roundHistory } = get()
       const nextDealer = ((dealerSeat + 3) % 4) as Seat
 
       if (!playState) {
@@ -389,12 +410,20 @@ export const useGameStore = create<Store>((set, get) => {
         3: sessionScores[3] + delta[3],
       }
 
+      const newRoundRecord: RoundRecord = {
+        roundNumber: roundId,
+        contract,
+        declarer,
+        scoreDelta: { 0: delta[0], 1: delta[1], 2: delta[2], 3: delta[3] },
+      }
+
       set({
         phase: 'setup',
         dealerSeat: nextDealer,
         sessionScores: newScores,
         radliState: newRadliState,
         statistics: newStats,
+        roundHistory: [...roundHistory, newRoundRecord],
         playState: null,
         announcementState: null,
         pendingTrick: null,
@@ -414,25 +443,27 @@ export const useGameStore = create<Store>((set, get) => {
     },
 
     endGame: () => {
-      // Run the same score-tallying as acknowledgeScore so stats are saved,
-      // then reset to the setup screen for a new game.
-      const { playState, announcementState, radliState, sessionScores, statistics, dealerSeat, playerNames } = get()
+      const { playState, announcementState, radliState, sessionScores, statistics, dealerSeat, playerNames, roundId } = get()
       const nextDealer = ((dealerSeat + 3) % 4) as Seat
 
       let newStats = statistics
+      const delta: Record<Seat, number> = { 0: 0, 1: 0, 2: 0, 3: 0 }
+
       if (playState) {
         const { contract, declarer, partner, capturedCards, talonRemainder,
                 mondCapturedWithSkis, mondCapturedBy, kingCall,
                 kingInTalonCaptured } = playState
         const ann = announcementState ?? initAnnouncements()
         const effectiveCaptured = adjustCapturedForTalon(capturedCards, talonRemainder, declarer, partner, kingInTalonCaptured)
-        const declarerPts = countDeclarerPoints(effectiveCaptured, declarer, partner)
-        const declarerWon = (contract === 'beggar' || contract === 'open-beggar')
-          ? effectiveCaptured[declarer].length === 0
-          : declarerPts >= 36
-        const { newRadliState: afterCancel } = applyRadli(0, radliState, declarer, declarerWon)
-        const newRadliState = updateRadliAfterHand(afterCancel, contract, declarerWon)
-        if (contract !== 'klop') {
+
+        if (contract === 'klop') {
+          const klopScores = scoreKlop(capturedCards)
+          for (const s of [0, 1, 2, 3] as Seat[]) delta[s] = klopScores[s]
+        } else {
+          const declarerPts = countDeclarerPoints(effectiveCaptured, declarer, partner)
+          const declarerWon = (contract === 'beggar' || contract === 'open-beggar')
+            ? effectiveCaptured[declarer].length === 0
+            : declarerPts >= 36
           const handScore = computeHandScore({
             contract, declarer, partner, capturedCards: effectiveCaptured, talonRemainder,
             mondCapturedWithSkis, mondPlayedBySeat: mondCapturedBy,
@@ -440,9 +471,32 @@ export const useGameStore = create<Store>((set, get) => {
             calledKing: kingCall?.calledKing ?? null,
             radliState, contractBase: CONTRACT_BASE[contract], won: declarerWon,
           })
+          delta[declarer] = handScore.declarerScore
+          if (partner !== null) {
+            delta[partner] = (handScore.partnerScore ?? handScore.declarerScore) + handScore.mondPenalties[partner]
+          }
+          for (const s of [0, 1, 2, 3] as Seat[]) {
+            if (s !== declarer && s !== partner) delta[s] = handScore.opponentScores[s]
+          }
           newStats = [...statistics, handScore]
         }
       }
+
+      const finalScores: Record<Seat, number> = {
+        0: sessionScores[0] + delta[0],
+        1: sessionScores[1] + delta[1],
+        2: sessionScores[2] + delta[2],
+        3: sessionScores[3] + delta[3],
+      }
+
+      saveGameRecord({
+        id: String(Date.now()),
+        playedAt: Date.now(),
+        playerNames: { ...playerNames },
+        finalScores,
+        rounds: roundId,
+      })
+      consumeDraftRecord()
 
       const [a, b, c] = pickNames()
       set({
@@ -451,6 +505,34 @@ export const useGameStore = create<Store>((set, get) => {
         playerNames: { ...playerNames, 1: a, 2: b, 3: c },
         dealerSeat: nextDealer,
         statistics: newStats,
+      })
+    },
+
+    endGameFromMenu: () => {
+      const { sessionScores, playerNames, roundId, phase, dealerSeat, statistics } = get()
+      const nextDealer = ((dealerSeat + 3) % 4) as Seat
+
+      // Completed rounds = roundId when between rounds (setup), roundId-1 when mid-round
+      const completedRounds = phase === 'setup' ? roundId : Math.max(0, roundId - 1)
+
+      if (completedRounds > 0) {
+        saveGameRecord({
+          id: String(Date.now()),
+          playedAt: Date.now(),
+          playerNames: { ...playerNames },
+          finalScores: { ...sessionScores },
+          rounds: completedRounds,
+        })
+      }
+      consumeDraftRecord()
+
+      const [a, b, c] = pickNames()
+      set({
+        ...makeInitialState(),
+        phase: 'setup',
+        playerNames: { ...playerNames, 1: a, 2: b, 3: c },
+        dealerSeat: nextDealer,
+        statistics,
       })
     },
   }

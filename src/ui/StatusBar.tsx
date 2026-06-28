@@ -11,9 +11,10 @@ interface Props {
   playerNames: Record<Seat, string>
   sessionScores: Record<Seat, number>
   roundsPlayed: number
+  onShowRoundHistory?: () => void
 }
 
-export default function StatusBar({ playState, biddingState, playerNames, sessionScores, roundsPlayed }: Props) {
+export default function StatusBar({ playState, biddingState, playerNames, sessionScores, roundsPlayed, onShowRoundHistory }: Props) {
   const rawContract = biddingState?.highestBid ?? playState?.contract ?? null
   const contractLabel = rawContract ? CONTRACT_LABEL[rawContract] : '—'
   const declarer = playState ? playerNames[playState.declarer] : '—'
@@ -70,7 +71,14 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
       <div style={{ flex: 1 }} />
       {roundsPlayed > 0 && (
         <>
-          <div className="status-item">Rounds: <span>{roundsPlayed}</span></div>
+          <button
+            className="status-item"
+            onClick={onShowRoundHistory}
+            style={{ cursor: 'pointer', background: 'none', border: 'none', color: 'inherit', font: 'inherit', padding: 0 }}
+            title="View round history"
+          >
+            Round <span style={{ color: '#aaa' }}>{roundsPlayed}</span>
+          </button>
           <div className="status-item" style={{ borderLeft: '1px solid #333', paddingLeft: 12 }}>
             {seats.map(s => (
               <span key={s} style={{ marginRight: 10 }}>
