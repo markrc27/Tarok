@@ -50,6 +50,7 @@ function makeState(
     isColourValat: false,
     openBeggarRevealed: false,
     talonRemainder: [],
+    talonDiscard: [],
     kingCall: null,
     kingInTalonCaptured: false,
     ...opts,

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import type { PlayState, RadliState, AnnouncementState, Seat, Card, SuitCard } from '../../engine/types'
 import { CONTRACT_BASE } from '../../engine/types'
-import { computeHandScore, scoreKlop, countDeclarerPoints, calcDifference, adjustCapturedForTalon } from '../../engine/scoring'
+import { computeHandScore, scoreKlop, countDeclarerPoints, calcDifference, adjustCapturedForTalon, applyRadli, updateRadliAfterHand } from '../../engine/scoring'
 import { countPoints } from '../../engine/pointcount'
 import { bonusBaseValue, getKontraMultiplier } from '../../engine/announce'
 import { CONTRACT_LABEL } from '../labels'
@@ -42,7 +42,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
   const [showRadliInfo, setShowRadliInfo] = useState(false)
 
   const { contract, declarer, partner, capturedCards, completedTricks,
-          talonRemainder, mondCapturedWithSkis, mondCapturedBy, kingCall,
+          talonRemainder, talonDiscard, mondCapturedWithSkis, mondCapturedBy, kingCall,
           kingInTalonCaptured } = playState
   const effectiveCaptured = adjustCapturedForTalon(capturedCards, talonRemainder, declarer, partner, kingInTalonCaptured)
 
@@ -80,6 +80,10 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       if (s !== declarer && s !== partner) delta[s] = handScore.opponentScores[s]
     }
   }
+
+  // Project radli after this hand: mirror store's acknowledgeScore logic
+  const { newRadliState: afterCancel } = applyRadli(0, radliState, declarer, won)
+  const projectedRadli = updateRadliAfterHand(afterCancel, contract, won)
 
   return (
     <div className="modal-overlay">
@@ -131,7 +135,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                   {delta[seat] >= 0 ? '+' : ''}{delta[seat]}
                 </td>
                 <td>{sessionScores[seat] + delta[seat] >= 0 ? '+' : ''}{sessionScores[seat] + delta[seat]}</td>
-                <td>{radliState.uncancelled[seat] ?? 0}</td>
+                <td>{projectedRadli.uncancelled[seat] ?? 0}</td>
               </tr>
             ))}
           </tbody>
@@ -185,6 +189,12 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                   }
                   if (handScore.radliApplied) lines.push('Radli: score doubled')
                   lines.push(`Declarer net: ${handScore.declarerScore >= 0 ? '+' : ''}${handScore.declarerScore}`)
+                  if (talonDiscard.length > 0) {
+                    const discardPts = countPoints(talonDiscard)
+                    const discardCards = talonDiscard.map(cardText).join(', ')
+                    lines.push('')
+                    lines.push(`Talon discard (${discardPts} pts): ${discardCards}`)
+                  }
                 }
                 lines.push('')
                 lines.push('--- Session scores after this round ---')
@@ -253,6 +263,28 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                     <span style={{ color: handScore.declarerScore >= 0 ? '#4f4' : '#f44' }}>
                       {handScore.declarerScore >= 0 ? '+' : ''}{handScore.declarerScore}
                     </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Talon discard */}
+              {contract !== 'klop' && talonDiscard.length > 0 && (
+                <div style={{ marginBottom: 8, padding: '8px 10px', background: '#1a1a1a', borderRadius: 4 }}>
+                  <div style={{ color: '#aaa', marginBottom: 4, fontWeight: 'bold' }}>
+                    Talon discard
+                    <span style={{ fontWeight: 'normal', color: '#666', marginLeft: 6 }}>({countPoints(talonDiscard)} pts)</span>
+                  </div>
+                  <div>
+                    {talonDiscard.map((card, i) => (
+                      <span key={i} style={{ marginRight: 8 }}>
+                        <span style={{
+                          color: (card.kind === 'suit' && (card.suit === 'hearts' || card.suit === 'diamonds')) ? '#f88' : '#ddd'
+                        }}>
+                          {cardText(card)}
+                        </span>
+                        <span style={{ color: '#666', fontSize: 10, marginLeft: 2 }}>({card.points})</span>
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}

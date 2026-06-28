@@ -304,6 +304,7 @@ export function initPlay(
     isColourValat,
     openBeggarRevealed: false,
     talonRemainder,
+    talonDiscard: exchange?.discard ?? [],
     kingCall,
     kingInTalonCaptured: false,
   }

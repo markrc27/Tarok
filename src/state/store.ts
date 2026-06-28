@@ -5,7 +5,7 @@ import { deal } from '../engine/deal'
 import { initBidding, applyBid, resolveBidding, legalBids } from '../engine/bidding'
 import {
   initTalonExchange, selectTalonGroup as selectGroup, resolveKingCall,
-  discardHand, canDiscard, talonGroupSize,
+  discardHand, talonGroupSize,
 } from '../engine/talon'
 import { initPlay, playCard, isHandComplete } from '../engine/play'
 import { initAnnouncements, applyAnnouncement } from '../engine/announce'
@@ -14,7 +14,7 @@ import {
   scoreKlop, countDeclarerPoints, adjustCapturedForTalon,
 } from '../engine/scoring'
 import { CONTRACT_BASE } from '../engine/types'
-import { evaluateHand, recommendBid, recommendKingCall } from '../ai/bidding-heuristic'
+import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard } from '../ai/bidding-heuristic'
 import { pickNames } from '../ui/names'
 import { chooseCard } from '../ai/play-heuristic'
 import { saveGameRecord, consumeDraftRecord } from './persistence'
@@ -117,16 +117,16 @@ export const useGameStore = create<Store>((set, get) => {
     const { dealResult, biddingState } = get()
     if (!dealResult || !biddingState) return
     const exchange = initTalonExchange(dealResult.talon, contract)
-    const { updatedHand, exchange: updated } = selectGroup(exchange, 0, dealResult.hands[declarer])
+    const groupIdx = recommendTalonGroup(exchange.groups)
+    const { updatedHand, exchange: updated } = selectGroup(exchange, groupIdx, dealResult.hands[declarer])
     const groupSize = talonGroupSize(contract)
-    const discardable = updatedHand.filter(c => canDiscard(c, updatedHand))
-    const toDiscard = discardable.slice(0, groupSize)
+    const toDiscard = recommendDiscard(updatedHand, groupSize)
     const newHand = discardHand(updatedHand, toDiscard)
     const newHands = { ...dealResult.hands, [declarer]: newHand }
     const newDealResult = { ...dealResult, hands: newHands }
     let kingCall = null
     if (['three', 'two', 'one'].includes(contract)) {
-      const suit = recommendKingCall(newHand, ['clubs', 'spades', 'hearts', 'diamonds'])
+      const suit = recommendKingCall(newHand, ['clubs', 'spades', 'hearts', 'diamonds'], updated.talonRemainder)
       kingCall = resolveKingCall(suit, newHands, dealResult.talon, declarer)
     }
     const discardedExchange = { ...updated, discard: toDiscard }

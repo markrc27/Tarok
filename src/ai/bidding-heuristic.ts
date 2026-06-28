@@ -1,6 +1,7 @@
 import type { Card, Contract, Suit } from '../engine/types'
-import { isTrump, isPagat, isMond, isSkis, isKing } from '../engine/deck'
+import { isTrump, isPagat, isMond, isSkis, isKing, cardPoints } from '../engine/deck'
 import { contractStrength } from '../engine/bidding'
+import { canDiscard } from '../engine/talon'
 
 export interface HandEvaluation {
   trumpCount: number
@@ -77,14 +78,36 @@ export function recommendBid(
   )
 }
 
+// Pick the talon group index that adds the most raw card points.
+export function recommendTalonGroup(groups: Card[][]): number {
+  let bestIdx = 0
+  let bestScore = -1
+  for (let i = 0; i < groups.length; i++) {
+    const score = groups[i].reduce((sum, c) => sum + cardPoints(c), 0)
+    if (score > bestScore) { bestScore = score; bestIdx = i }
+  }
+  return bestIdx
+}
+
+// Discard the highest-value legally discardable cards (they count toward captured pile).
+export function recommendDiscard(hand: Card[], count: number): Card[] {
+  return hand
+    .filter(c => canDiscard(c, hand))
+    .sort((a, b) => cardPoints(b) - cardPoints(a))
+    .slice(0, count)
+}
+
 export function recommendKingCall(
   hand: Card[],
   legalSuits: Suit[],
+  talonRemainder: Card[] = [],
 ): Suit {
-  // Prefer suits where bot does not hold the King (to actually get a partner)
-  for (const suit of legalSuits) {
-    const holdsKing = hand.some(c => c.kind === 'suit' && c.suit === suit && c.rank === 'K')
-    if (!holdsKing) return suit
+  // Score each suit: prefer king in an opponent's hand (0) over king in remaining talon (-1)
+  // over king in own hand (-2, shouldn't happen but handled).
+  const score = (suit: Suit): number => {
+    if (hand.some(c => c.kind === 'suit' && c.suit === suit && c.rank === 'K')) return -2
+    if (talonRemainder.some(c => c.kind === 'suit' && c.suit === suit && c.rank === 'K')) return -1
+    return 0
   }
-  return legalSuits[0]
+  return legalSuits.reduce((best, s) => score(s) > score(best) ? s : best, legalSuits[0])
 }
