@@ -46,6 +46,7 @@ function makeInitialState(): GameState {
     pendingTrick: null,
     roundId: 0,
     roundHistory: [],
+    voidDealSeat: null,
   }
 }
 
@@ -241,8 +242,13 @@ export const useGameStore = create<Store>((set, get) => {
 
     startNewGame: () => {
       const { dealerSeat, sessionScores, statistics, playerNames, radliState, roundId, roundHistory } = get()
-      const outcome = deal(dealerSeat)
-      const biddingState = initBidding(dealerSeat, outcome.kind === 'void-deal')
+      let outcome = deal(dealerSeat)
+      let voidDealSeat: Seat | null = null
+      while (outcome.kind === 'void-deal') {
+        if (voidDealSeat === null) voidDealSeat = outcome.zeroTrumpSeat
+        outcome = deal(dealerSeat)
+      }
+      const biddingState = initBidding(dealerSeat, voidDealSeat !== null)
       set({
         ...makeInitialState(),
         phase: 'bidding',
@@ -255,6 +261,7 @@ export const useGameStore = create<Store>((set, get) => {
         radliState,
         roundId: roundId + 1,
         roundHistory,
+        voidDealSeat,
       })
       botDelay(runBotBid)
     },

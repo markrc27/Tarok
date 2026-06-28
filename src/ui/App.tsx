@@ -39,6 +39,7 @@ export default function App() {
     phase, dealResult, biddingState, talonExchange, kingCall,
     announcementState, playState, sessionScores, playerNames,
     radliState, pendingDiscardCount, roundId, roundHistory, cardAppearance,
+    voidDealSeat,
   } = store
 
   // On mount: load from OPFS file (merges into localStorage), then recover any draft
@@ -201,6 +202,21 @@ export default function App() {
             {dealResult.talon.map((_, i) => (
               <CardSprite key={i} faceUp={false} />
             ))}
+          </div>
+        )}
+
+        {/* Void-deal notice — top centre */}
+        {phase === 'bidding' && voidDealSeat !== null && (
+          <div style={{
+            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+            background: '#1e1a10', border: '1px solid #6b5a20',
+            borderRadius: 6, padding: '7px 14px',
+            fontSize: 12, color: '#d4b86a', whiteSpace: 'nowrap',
+            pointerEvents: 'none', zIndex: 5,
+            textAlign: 'center',
+          }}>
+            <strong>{playerNames[voidDealSeat]}</strong> had no taroks — cards were redealt.
+            {' '}Compulsory klop: bidding starts at Solo Without.
           </div>
         )}
 

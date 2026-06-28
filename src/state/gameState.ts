@@ -38,4 +38,5 @@ export interface GameState {
   pendingTrick: { cards: { seat: Seat; card: Card }[]; winner: Seat } | null
   roundId: number
   roundHistory: RoundRecord[]
+  voidDealSeat: Seat | null
 }
