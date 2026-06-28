@@ -23,6 +23,22 @@ import type { RoundRecord } from '../engine/types'
 const BOT_DELAY = 400
 const HUMAN = 0 as Seat
 
+// Returns the partner seat only once the called king has appeared in a visible
+// trick (completed or the current one on the table). Until then returns null so
+// bots don't coordinate with an unconfirmed partner.
+function computeKnownPartner(state: PlayState): Seat | null {
+  const { kingCall, partner, completedTricks, currentTrick } = state
+  if (!kingCall || partner === null) return null
+  const { calledKing } = kingCall
+  const isCalledKing = (card: Card) =>
+    card.kind === 'suit' && card.suit === calledKing.suit && card.rank === 'K'
+  if (currentTrick.cards.some(e => isCalledKing(e.card))) return partner
+  for (const trick of completedTricks) {
+    if (trick.cards.some(e => isCalledKing(e.card))) return partner
+  }
+  return null
+}
+
 function makeInitialState(): GameState {
   return {
     phase: 'setup',
@@ -173,7 +189,7 @@ export const useGameStore = create<Store>((set, get) => {
     const order: Seat[] = [ledSeat, ((ledSeat+1)%4) as Seat, ((ledSeat+2)%4) as Seat, ((ledSeat+3)%4) as Seat]
     const seat = order.find(s => !playedSeats.has(s))
     if (!seat || seat === HUMAN) return
-    const card = chooseCard(playState, seat, { difficultyBias: 0.5 })
+    const card = chooseCard(playState, seat, { difficultyBias: 0.5, knownPartner: computeKnownPartner(playState) })
     const { newState, trickComplete, trickWinner, handComplete } = playCard(playState, seat, card)
     set({ playState: newState })
     if (trickComplete && trickWinner !== null) {
