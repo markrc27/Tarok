@@ -1,5 +1,6 @@
 import React from 'react'
 import type { Card, SuitCard, TrumpCard } from '../engine/types'
+import { useGameStore } from '../state/store'
 
 interface Props {
   card?: Card
@@ -38,6 +39,8 @@ function CardBack() {
 }
 
 export default function CardSprite({ card, faceUp = true, dimmed, onClick, selected, className = '' }: Props) {
+  const cardAppearance = useGameStore(s => s.cardAppearance)
+
   if (!faceUp || !card) {
     return (
       <div
@@ -46,6 +49,21 @@ export default function CardSprite({ card, faceUp = true, dimmed, onClick, selec
         style={{ cursor: onClick ? 'pointer' : 'inherit' }}
       >
         <CardBack/>
+      </div>
+    )
+  }
+
+  if (cardAppearance === 'traditional') {
+    const src = card.kind === 'trump'
+      ? `/cards/trump-${(card as TrumpCard).ordinal}.png?v=5`
+      : `/cards/${(card as SuitCard).suit}-${String((card as SuitCard).rank)}.png?v=5`
+    return (
+      <div
+        className={`card ${dimmed ? 'dimmed' : ''} ${selected ? 'selected-card' : ''} ${className}`}
+        onClick={onClick}
+        style={{ cursor: onClick ? 'pointer' : 'inherit', padding: 0 }}
+      >
+        <img src={src} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center' }} alt="" draggable={false} />
       </div>
     )
   }

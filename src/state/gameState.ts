@@ -29,6 +29,7 @@ export interface GameState {
   playerNames: Record<Seat, string>
   missdealStrikes: Record<Seat, number>
   options: { soundEnabled: boolean }
+  cardAppearance: 'simple' | 'traditional'
   statistics: HandScore[]
   skisRoundEndSeat: Seat | null
   dealerSeat: Seat

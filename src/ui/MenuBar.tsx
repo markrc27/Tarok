@@ -4,21 +4,25 @@ interface Props {
   onEndGame: () => void
   onHistory: () => void
   onHelp: () => void
+  cardAppearance: 'simple' | 'traditional'
+  onSetCardAppearance: (a: 'simple' | 'traditional') => void
 }
 
-export default function MenuBar({ onEndGame, onHistory, onHelp }: Props) {
+export default function MenuBar({ onEndGame, onHistory, onHelp, cardAppearance, onSetCardAppearance }: Props) {
   const [open, setOpen] = useState<string | null>(null)
 
   const toggle = (menu: string) => setOpen(o => o === menu ? null : menu)
   const close = () => setOpen(null)
 
-  const item = (menu: string, label: string, items: { label: string; onClick: () => void; sep?: boolean }[]) => (
+  const item = (menu: string, label: string, items: { label: string; onClick: () => void; sep?: boolean; disabled?: boolean }[]) => (
     <div className={`menu-item${open === menu ? ' open' : ''}`}>
       <button onMouseDown={() => toggle(menu)}>{label}</button>
       <div className="menu-dropdown">
         {items.map((it, i) => (
           it.sep ? <hr key={i} /> :
-          <button key={i} onClick={() => { it.onClick(); close() }}>{it.label}</button>
+          <button key={i} onClick={() => { if (!it.disabled) { it.onClick(); close() } }}
+            style={it.disabled ? { color: '#888', cursor: 'default' } : undefined}
+          >{it.label}</button>
         ))}
       </div>
     </div>
@@ -30,6 +34,11 @@ export default function MenuBar({ onEndGame, onHistory, onHelp }: Props) {
         { label: 'End Game', onClick: onEndGame },
         { label: '', onClick: () => {}, sep: true },
         { label: 'History', onClick: onHistory },
+      ])}
+      {item('options', 'Options', [
+        { label: 'Card Appearance', onClick: () => {}, disabled: true },
+        { label: (cardAppearance === 'simple' ? '✓ ' : '   ') + 'Simple', onClick: () => onSetCardAppearance('simple') },
+        { label: (cardAppearance === 'traditional' ? '✓ ' : '   ') + 'Traditional', onClick: () => onSetCardAppearance('traditional') },
       ])}
       {item('help', 'Help', [
         { label: 'Rules', onClick: onHelp },

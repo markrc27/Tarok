@@ -37,6 +37,7 @@ function makeInitialState(): GameState {
     playerNames: (() => { const [a, b, c] = pickNames(); return { 0: 'You', 1: a, 2: b, 3: c } })(),
     missdealStrikes: { 0: 0, 1: 0, 2: 0, 3: 0 },
     options: { soundEnabled: false },
+    cardAppearance: (localStorage.getItem('tarok-card-appearance') as 'simple' | 'traditional') || 'simple',
     statistics: [],
     skisRoundEndSeat: null,
     dealerSeat: 0 as Seat,
@@ -62,6 +63,7 @@ type Store = GameState & {
   setPlayerName: (name: string) => void
   endGame: () => void
   endGameFromMenu: () => void
+  setCardAppearance: (appearance: 'simple' | 'traditional') => void
 }
 
 export const useGameStore = create<Store>((set, get) => {
@@ -534,6 +536,11 @@ export const useGameStore = create<Store>((set, get) => {
         dealerSeat: nextDealer,
         statistics,
       })
+    },
+
+    setCardAppearance: (appearance) => {
+      localStorage.setItem('tarok-card-appearance', appearance)
+      set({ cardAppearance: appearance })
     },
   }
 })

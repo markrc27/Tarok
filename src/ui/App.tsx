@@ -38,7 +38,7 @@ export default function App() {
   const {
     phase, dealResult, biddingState, talonExchange, kingCall,
     announcementState, playState, sessionScores, playerNames,
-    radliState, pendingDiscardCount, roundId, roundHistory,
+    radliState, pendingDiscardCount, roundId, roundHistory, cardAppearance,
   } = store
 
   // On mount: load from OPFS file (merges into localStorage), then recover any draft
@@ -117,6 +117,8 @@ export default function App() {
         }}
         onHistory={() => setShowHistory(true)}
         onHelp={() => setShowHelp(true)}
+        cardAppearance={cardAppearance}
+        onSetCardAppearance={store.setCardAppearance}
       />
 
       <div className="game-table">
