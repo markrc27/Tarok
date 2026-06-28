@@ -6,6 +6,7 @@ on:
 
 jobs:
   build-mac:
+    if: false  # disabled until Node v20/v24 conflict is resolved
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
