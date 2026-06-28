@@ -21,8 +21,10 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
 
   let partnerLabel = '—'
   if (playState) {
-    if (playState.contract === 'klop' || !playState.kingCall || playState.partner === null) {
+    if (playState.contract === 'klop' || !playState.kingCall) {
       partnerLabel = 'None'
+    } else if (playState.partner === null) {
+      partnerLabel = 'Hidden'
     } else {
       const ck = playState.kingCall.calledKing
       const kingSeen = (c: { card: { kind: string } }) =>

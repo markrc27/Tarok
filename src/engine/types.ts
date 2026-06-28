@@ -148,6 +148,7 @@ export interface PlayState {
   isColourValat: boolean
   openBeggarRevealed: boolean
   talonRemainder: Card[]
+  talonDiscard: Card[]
   kingCall: KingCall | null
   kingInTalonCaptured: boolean
 }
