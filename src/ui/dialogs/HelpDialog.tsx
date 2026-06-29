@@ -220,6 +220,8 @@ const SECTIONS: Section[] = [
     content: (
       <>
         <p>After all 12 tricks are played, card points are counted for the declarer's side. The total of all card points in the pack is <strong>70</strong>.</p>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Who scores each round?</h4>
+        <p><strong>Only the declarer and their partner gain or lose points.</strong> Opponents' scores are not affected by the result of a hand — their running total stays the same whether the declarer wins or loses.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Win condition</h4>
         <p>The declarer's side must capture <strong>≥ 35 card points</strong> to win (or in Beggar/Valat, meet their specific objective).</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Score formula</h4>
@@ -227,13 +229,22 @@ const SECTIONS: Section[] = [
           score = (base_value + |card_pts − 35|) + bonuses
         </p>
         <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
-          <li>On a <strong>win</strong>: declarers gain this amount; each opponent loses the same.</li>
-          <li>On a <strong>loss</strong>: declarers lose this amount; each opponent gains the same.</li>
-          <li>The <strong>difference</strong> (card_pts − 35) is added if won, subtracted if lost.</li>
-          <li>In a 2-vs-2 game, partner scores separately from declarer.</li>
+          <li>On a <strong>win</strong>: the declarer (and partner, if any) each gain this amount.</li>
+          <li>On a <strong>loss</strong>: the declarer (and partner, if any) each lose this amount.</li>
+          <li>The <strong>difference</strong> is how many card points the declaring side scored above or below 35, rounded to the nearest 5. It is added on a win and subtracted on a loss.</li>
+          <li>The partner receives the same score as the declarer.</li>
         </ul>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Bonuses</h4>
+        <p>Bonuses (trula, kings, pagat-ultimo, king-ultimo) always flow through the <strong>declarer's score</strong>:</p>
+        <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
+          <li><strong>Declarer's side wins a bonus</strong> (announced or not): its value is <em>added</em> to the declarer's score — even on a losing hand.</li>
+          <li><strong>Declarer's side fails an announced bonus</strong>: its value is <em>subtracted</em>.</li>
+          <li><strong>Opponents win a bonus</strong> (e.g. they capture all 4 kings): its value is <em>subtracted</em> from the declarer's score. Opponents never gain points from bonuses.</li>
+        </ul>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Mond penalty</h4>
+        <p>If the Mond (XXI) is captured by the Škis, the player who played the Mond loses <strong>20 points</strong>. This applies to any player — declarer, partner, or opponent — and is separate from bonus scoring.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Klop scoring</h4>
-        <p>Each player scores individually based on the card points they captured. Specific penalties apply for capturing the most tricks or holding specific cards — see the full rules for details.</p>
+        <p>Klop is the exception — all four players score individually based on the card points they captured. Taking zero cards scores +70; taking more than 35 card points scores −70; otherwise the card point total is subtracted from your score (rounded to the nearest 5).</p>
       </>
     ),
   },

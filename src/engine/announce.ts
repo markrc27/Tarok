@@ -95,6 +95,48 @@ export function getKontraMultiplier(state: AnnouncementState, target: 'game' | B
   return kt?.level ?? 1
 }
 
+export function evaluateBonusForSeats(
+  bonus: BonusName,
+  seats: Seat[],
+  capturedCards: Record<Seat, Card[]>,
+  completedTricks: Trick[],
+  calledKing: Card | null,
+): boolean {
+  const sideCards = seats.flatMap(s => capturedCards[s])
+
+  if (bonus === 'trula') {
+    const hasPagat = sideCards.some(isPagat)
+    const hasMond = sideCards.some(c => c.kind === 'trump' && (c as { ordinal: number }).ordinal === 21)
+    const hasSkis = sideCards.some(c => c.kind === 'trump' && (c as { ordinal: number }).ordinal === 22)
+    return hasPagat && hasMond && hasSkis
+  }
+
+  if (bonus === 'kings') {
+    return sideCards.filter(isKing).length === 4
+  }
+
+  if (bonus === 'pagat-ultimo') {
+    const lastTrick = completedTricks[completedTricks.length - 1]
+    if (!lastTrick || lastTrick.winner === null) return false
+    if (!seats.includes(lastTrick.winner)) return false
+    return lastTrick.cards.some(({ card }) => isPagat(card))
+  }
+
+  if (bonus === 'king-ultimo') {
+    if (!calledKing) return false
+    const lastTrick = completedTricks[completedTricks.length - 1]
+    if (!lastTrick || lastTrick.winner === null) return false
+    if (!seats.includes(lastTrick.winner)) return false
+    return lastTrick.cards.some(({ card }) => cardsEqual(card, calledKing))
+  }
+
+  if (bonus === 'valat') {
+    return completedTricks.every(t => t.winner !== null && seats.includes(t.winner))
+  }
+
+  return false
+}
+
 export function evaluateBonus(
   bonus: BonusName,
   capturedCards: Record<Seat, Card[]>,
@@ -103,46 +145,6 @@ export function evaluateBonus(
   partner: Seat | null,
   calledKing: Card | null,
 ): boolean {
-  const declarerSideSeats = ([0, 1, 2, 3] as Seat[]).filter(s => s === declarer || s === partner)
-  const declarerSideCards = declarerSideSeats.flatMap(s => capturedCards[s])
-
-  if (bonus === 'trula') {
-    // Declarer's side captured Škis, Mond, and Pagat
-    const hasPagat = declarerSideCards.some(isPagat)
-    const hasMond = declarerSideCards.some(c => c.kind === 'trump' && (c as { ordinal: number }).ordinal === 21)
-    const hasSkis = declarerSideCards.some(c => c.kind === 'trump' && (c as { ordinal: number }).ordinal === 22)
-    return hasPagat && hasMond && hasSkis
-  }
-
-  if (bonus === 'kings') {
-    // Declarer's side captured all 4 kings
-    const kingsHeld = declarerSideCards.filter(isKing)
-    return kingsHeld.length === 4
-  }
-
-  if (bonus === 'pagat-ultimo') {
-    // Pagat wins the last trick
-    const lastTrick = completedTricks[completedTricks.length - 1]
-    if (!lastTrick || lastTrick.winner === null) return false
-    const onDeclarerSide = declarerSideSeats.includes(lastTrick.winner)
-    if (!onDeclarerSide) return false
-    return lastTrick.cards.some(({ card }) => isPagat(card))
-  }
-
-  if (bonus === 'king-ultimo') {
-    // Called king wins the last trick
-    if (!calledKing) return false
-    const lastTrick = completedTricks[completedTricks.length - 1]
-    if (!lastTrick || lastTrick.winner === null) return false
-    const onDeclarerSide = declarerSideSeats.includes(lastTrick.winner)
-    if (!onDeclarerSide) return false
-    return lastTrick.cards.some(({ card }) => cardsEqual(card, calledKing))
-  }
-
-  if (bonus === 'valat') {
-    // Declarer's side wins every trick
-    return completedTricks.every(t => t.winner !== null && declarerSideSeats.includes(t.winner))
-  }
-
-  return false
+  const seats = ([0, 1, 2, 3] as Seat[]).filter(s => s === declarer || s === partner)
+  return evaluateBonusForSeats(bonus, seats, capturedCards, completedTricks, calledKing)
 }
