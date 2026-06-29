@@ -315,6 +315,7 @@ export default function App() {
           sessionScores={sessionScores}
           radliState={radliState}
           playerNames={playerNames}
+          roundId={roundId}
           onNewRound={() => { store.acknowledgeScore(); store.startNewGame() }}
           onEndGame={() => { setShowRoundHistory(false); store.endGame() }}
         />
