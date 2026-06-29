@@ -33,6 +33,7 @@ export default function App() {
   const store = useGameStore()
   const [showHistory, setShowHistory] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
   const [showRoundHistory, setShowRoundHistory] = useState(false)
 
   const {
@@ -129,6 +130,7 @@ export default function App() {
         }}
         onHistory={() => setShowHistory(true)}
         onHelp={() => setShowHelp(true)}
+        onAbout={() => setShowAbout(true)}
         cardAppearance={cardAppearance}
         onSetCardAppearance={store.setCardAppearance}
       />
@@ -139,6 +141,7 @@ export default function App() {
           <div className="idle-screen">
             <h1>Tarok</h1>
             <p>Slovenian card game — 4 players</p>
+            <p style={{ fontSize: 13, marginTop: -8 }}>v{__APP_VERSION__}</p>
             <div style={{ margin: '14px 0 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <label style={{ color: '#aaa', fontSize: 13 }}>Your name</label>
               <input
@@ -335,6 +338,20 @@ export default function App() {
           playerNames={playerNames}
           onClose={() => setShowRoundHistory(false)}
         />
+      )}
+
+      {showAbout && (
+        <div className="modal-overlay" onClick={() => setShowAbout(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 320 }}>
+            <h2 style={{ marginBottom: 6 }}>Tarok</h2>
+            <p style={{ color: '#aaa', fontSize: 13, marginBottom: 4 }}>Slovenian card game — 4 players</p>
+            <p style={{ color: '#666', fontSize: 13, marginBottom: 20 }}>v{__APP_VERSION__}</p>
+            <p style={{ color: '#888', fontSize: 12, marginBottom: 20 }}>Built with Claude</p>
+            <div className="modal-actions" style={{ justifyContent: 'center' }}>
+              <button className="btn" onClick={() => setShowAbout(false)}>Close</button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

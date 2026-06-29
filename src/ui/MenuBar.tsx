@@ -4,11 +4,12 @@ interface Props {
   onEndGame: () => void
   onHistory: () => void
   onHelp: () => void
+  onAbout: () => void
   cardAppearance: 'simple' | 'traditional'
   onSetCardAppearance: (a: 'simple' | 'traditional') => void
 }
 
-export default function MenuBar({ onEndGame, onHistory, onHelp, cardAppearance, onSetCardAppearance }: Props) {
+export default function MenuBar({ onEndGame, onHistory, onHelp, onAbout, cardAppearance, onSetCardAppearance }: Props) {
   const [open, setOpen] = useState<string | null>(null)
 
   const toggle = (menu: string) => setOpen(o => o === menu ? null : menu)
@@ -42,8 +43,11 @@ export default function MenuBar({ onEndGame, onHistory, onHelp, cardAppearance, 
       ])}
       {item('help', 'Help', [
         { label: 'Rules', onClick: onHelp },
-        { label: 'About', onClick: () => alert('Slovenian Tarok — built with Claude') },
+        { label: 'About', onClick: onAbout },
       ])}
+      <span style={{ marginLeft: 'auto', padding: '0 10px', color: '#f0f0f0', fontSize: 13, lineHeight: '24px', opacity: 0.6 }}>
+        v{__APP_VERSION__}
+      </span>
     </div>
   )
 }
