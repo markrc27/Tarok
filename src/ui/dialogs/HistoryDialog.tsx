@@ -37,14 +37,15 @@ export default function HistoryDialog({ onClose }: Props) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal" style={{ minWidth: 640, maxWidth: 800, maxHeight: '80vh', overflow: 'auto' }}>
+      <div className="modal" style={{ minWidth: 640, maxWidth: 800 }}>
         <h2>Game History</h2>
 
         {sorted.length === 0 ? (
           <p style={{ color: '#888', textAlign: 'center', margin: '24px 0' }}>No completed games yet.</p>
         ) : (
+          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
           <table className="score-table">
-            <thead>
+            <thead style={{ position: 'sticky', top: 0, background: '#1e1e1e' }}>
               <tr>
                 <th>
                   <button
@@ -56,8 +57,7 @@ export default function HistoryDialog({ onClose }: Props) {
                 </th>
                 <th>Rounds</th>
                 {([0, 1, 2, 3] as Seat[]).map(seat => {
-                  const names = new Set(sorted.map(r => r.playerNames[seat]))
-                  const label = names.size === 1 ? [...names][0] : (seat === 0 ? 'You' : `P${seat + 1}`)
+                  const label = `P${seat + 1}`
                   return (
                     <th key={seat}>
                       <button
@@ -92,6 +92,7 @@ export default function HistoryDialog({ onClose }: Props) {
               })}
             </tbody>
           </table>
+          </div>
         )}
 
         <div className="modal-actions">
