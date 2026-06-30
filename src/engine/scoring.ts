@@ -226,10 +226,12 @@ export function computeHandScore(params: {
 
   const declarerPoints = countDeclarerPoints(capturedCards, declarer, partner)
   const difference = calcDifference(declarerPoints)
-  // Beggar/open-beggar: win = take zero tricks. All others: win = ≥36 points.
+  const isValat = contract === 'valat-without' || contract === 'color-valat-without'
   const won = (contract === 'beggar' || contract === 'open-beggar')
     ? capturedCards[declarer].length === 0
-    : declarerPoints >= 36
+    : isValat
+      ? completedTricks.every(t => t.winner === declarer)
+      : declarerPoints >= 36
 
   const bonusResults: Record<BonusName, boolean> = {
     'trula': evaluateBonus('trula', capturedCards, completedTricks, declarer, partner, calledKing),

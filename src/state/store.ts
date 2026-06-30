@@ -108,7 +108,8 @@ export const useGameStore = create<Store>((set, get) => {
     const declarer = biddingState.highestBidder ?? biddingState.forehand
     const partner = kingCall?.partner ?? null
     const playState = initPlay(
-      dealResult, contract, declarer, partner, talonExchange, false, kingCall, dealResult.hands,
+      dealResult, contract, declarer, partner, talonExchange,
+      contract === 'color-valat-without', kingCall, dealResult.hands,
     )
     set({ phase: 'playing', playState })
     botDelay(runBotPlay)

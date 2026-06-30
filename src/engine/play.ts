@@ -90,8 +90,12 @@ export function resolveTrick(trick: TrickState, isColourValat: boolean): Seat {
       // Trumps demoted; only led suit wins
       if (cardEff === ledSuit && bestEff !== ledSuit) { winnerEntry = entry; continue }
       if (cardEff !== ledSuit) continue
-      // Both on led suit
-      if (card.kind === 'suit' && best.kind === 'suit' && suitStrength(card) > suitStrength(best)) winnerEntry = entry
+      // Both on led suit — compare by kind (trump-suit uses ordinal, plain suit uses rank)
+      if (card.kind === 'trump' && best.kind === 'trump') {
+        if (trumpStrength(card as Parameters<typeof trumpStrength>[0]) > trumpStrength(best as Parameters<typeof trumpStrength>[0])) winnerEntry = entry
+      } else if (card.kind === 'suit' && best.kind === 'suit') {
+        if (suitStrength(card) > suitStrength(best)) winnerEntry = entry
+      }
     } else {
       // Normal resolution
       if (cardEff === 'trump' && bestEff !== 'trump') { winnerEntry = entry; continue }

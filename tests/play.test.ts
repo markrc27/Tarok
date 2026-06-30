@@ -253,6 +253,51 @@ describe('resolveTrick', () => {
   })
 })
 
+describe('resolveTrick colour valat', () => {
+  it('Mond beats Pagat when both taroks played (tarok suit led)', () => {
+    // In colour valat, taroks are a plain suit — highest ordinal wins
+    const trick: TrickState = {
+      trickNumber: 1, ledSeat: 0,
+      ledSuit: 'trump-suit' as unknown as 'trump',
+      cards: [
+        { seat: 0, card: trump(1) },  // Pagat — low
+        { seat: 1, card: trump(21) }, // Mond — high
+        { seat: 2, card: trump(5) },  // low tarok
+        { seat: 3, card: trump(10) }, // medium tarok
+      ],
+    }
+    expect(resolveTrick(trick, true)).toBe(1) // Mond wins, not Pagat
+  })
+
+  it('Škis beats Mond in colour valat', () => {
+    const trick: TrickState = {
+      trickNumber: 1, ledSeat: 0,
+      ledSuit: 'trump-suit' as unknown as 'trump',
+      cards: [
+        { seat: 0, card: trump(21) }, // Mond
+        { seat: 1, card: trump(22) }, // Škis
+        { seat: 2, card: trump(5) },
+        { seat: 3, card: trump(10) }, // mid-range tarok (no Pagat — would trigger emperor trick)
+      ],
+    }
+    expect(resolveTrick(trick, true)).toBe(1) // Škis wins
+  })
+
+  it('suit card beats tarok when suit is led in colour valat', () => {
+    const trick: TrickState = {
+      trickNumber: 1, ledSeat: 0,
+      ledSuit: 'hearts',
+      cards: [
+        { seat: 0, card: suit('hearts', 'K', 5) },
+        { seat: 1, card: trump(21) }, // Mond — but taroks don't beat suits in colour valat
+        { seat: 2, card: suit('hearts', 'Q', 4) },
+        { seat: 3, card: trump(22) }, // Škis — also does not beat
+      ],
+    }
+    expect(resolveTrick(trick, true)).toBe(0) // King of hearts wins
+  })
+})
+
 describe('isEmperorTrick', () => {
   it('returns true when Škis, Mond, Pagat all present', () => {
     const trick: TrickState = {

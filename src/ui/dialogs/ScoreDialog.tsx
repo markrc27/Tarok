@@ -61,9 +61,12 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
     for (const s of seats) delta[s] = klopScores[s]
   } else {
     declarerPts = countDeclarerPoints(effectiveCaptured, declarer, partner)
+    const isValat = contract === 'valat-without' || contract === 'color-valat-without'
     won = (contract === 'beggar' || contract === 'open-beggar')
       ? effectiveCaptured[declarer].length === 0
-      : declarerPts >= 36
+      : isValat
+        ? completedTricks.every(t => t.winner === declarer)
+        : declarerPts >= 36
     difference = calcDifference(declarerPts)
 
     handScore = computeHandScore({
@@ -97,7 +100,12 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             <strong style={{ color: '#f0f0f0' }}>{CONTRACT_LABEL[contract]}</strong>
             {' — '}{playerNames[declarer]} declared
             {partner !== null ? `, ${playerNames[partner]} partnered` : ''}
-            {' — '}{declarerPts} card pts ({Math.abs(declarerPts - 35)} {won ? 'over' : 'under'} 35)
+            {(contract === 'valat-without' || contract === 'color-valat-without')
+              ? <>{' — '}{declarerPts} card pts — {won ? 'all tricks won' : 'missed a trick'}</>
+              : (contract === 'beggar' || contract === 'open-beggar')
+                ? null
+                : <>{' — '}{declarerPts} card pts ({Math.abs(declarerPts - 35)} {won ? 'over' : 'under'} 35)</>
+            }
             {' — '}
             <strong style={{ color: won ? '#4f4' : '#f44' }}>{won ? 'Won hand' : 'Lost hand'}</strong>
           </p>
@@ -242,7 +250,15 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                 lines.push(`=== Round: ${CONTRACT_LABEL[contract]} ===`)
                 if (contract !== 'klop' && handScore) {
                   lines.push(`Declarer: ${playerNames[declarer]}${partner !== null ? `, Partner: ${playerNames[partner]}` : ''}`)
-                  lines.push(`Card points: ${declarerPts} scored (need 35, ${difference >= 0 ? '+' : ''}${difference} diff) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+                  const cvContract = contract === 'valat-without' || contract === 'color-valat-without'
+                  const beggarContract = contract === 'beggar' || contract === 'open-beggar'
+                  if (cvContract) {
+                    lines.push(`Card points: ${declarerPts} scored (need all tricks) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+                  } else if (beggarContract) {
+                    lines.push(`Tricks taken: ${completedTricks.filter(t => t.winner === declarer).length} (need 0) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+                  } else {
+                    lines.push(`Card points: ${declarerPts} scored (need 35, ${difference >= 0 ? '+' : ''}${difference} diff) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+                  }
                   lines.push('')
                   lines.push('--- Score breakdown ---')
                   const gameKontraLog = getKontraMultiplier(announcementState, 'game')
