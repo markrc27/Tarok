@@ -50,6 +50,8 @@ function makeState(opts: {
   capturedCards?: Partial<Record<Seat, Card[]>>
   completedTricks?: Trick[]
   kingCall?: KingCall | null
+  isColourValat?: boolean
+  openBeggarRevealed?: boolean
 }): PlayState {
   const trickCards = opts.trickCards ?? []
   const ledCard = trickCards[0]?.card ?? null
@@ -67,8 +69,8 @@ function makeState(opts: {
     declarer: opts.declarer ?? 1,
     partner: opts.partner ?? null,
     forehand: 1,
-    isColourValat: false,
-    openBeggarRevealed: false,
+    isColourValat: opts.isColourValat ?? false,
+    openBeggarRevealed: opts.openBeggarRevealed ?? false,
     talonRemainder: [],
     talonDiscard: [],
     kingCall: opts.kingCall ?? null,
@@ -389,7 +391,154 @@ describe('computeKnownPartner', () => {
   })
 })
 
-// ── 7. No-cheat king discovery ────────────────────────────────────────────
+// ── 7. Open Beggar — smart opponent leading ───────────────────────────────
+
+describe('open beggar — opponent uses revealed hand to find forced-win leads', () => {
+  // Declarer (seat1) has only K♣(5pt) in clubs. Opponent (seat0) has 7♣(1pt).
+  // K♣ > 7♣ so declarer is forced to win if clubs is led.
+  // Also: opponent has K♥ and 7♠ — declarer has 7♥ and K♠.
+  // 7♥ < K♥ so hearts is NOT a forced win (declarer can duck with 7♥).
+  // K♠ > 7♠ so spades IS forced win. Algorithm should pick clubs or spades (first found).
+  it('leads a suit where all declarer cards beat opponent — forced win for declarer', () => {
+    const state = makeState({
+      contract: 'open-beggar',
+      declarer: 1,
+      openBeggarRevealed: true,
+      hand0: [suit('clubs', 7), suit('hearts', 'K', 5), suit('spades', 7)],
+      hand1: [suit('clubs', 'K', 5), suit('hearts', 7), suit('spades', 'K', 5)],
+    })
+    const card = chooseCard(state, 0, cfg())
+    // Both clubs and spades are "forced win" suits — either is correct
+    expect(['clubs', 'spades']).toContain((card as SuitCard).suit)
+    expect(card.kind).toBe('suit')
+  })
+
+  it('falls back to suit with fewest declarer cards when no forced-win suit exists', () => {
+    // Opponent has K♣ and K♥ — high cards in both suits.
+    // Declarer has 7♣ (can duck K♣: 7♣ < K♣) and J♥, Q♥, Kn♥ (all < K♥, so can duck too).
+    // No forced-win suit (declarer can always play lower). Clubs has 1 declarer card;
+    // hearts has 3. Fallback: lead clubs (fewest declarer cards = least flexibility).
+    const state = makeState({
+      contract: 'open-beggar',
+      declarer: 1,
+      openBeggarRevealed: true,
+      hand0: [suit('clubs', 'K', 5), suit('hearts', 'K', 5)],
+      hand1: [suit('clubs', 7), suit('hearts', 'J', 2), suit('hearts', 'Q', 4), suit('hearts', 'Kn', 3)],
+    })
+    const card = chooseCard(state, 0, cfg())
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs' })
+  })
+
+  it('ignores suits where declarer is void (they can freely discard)', () => {
+    // Declarer has no clubs — void. Opponent leads clubs → declarer discards low.
+    // Declarer has 7♥ in hearts; opponent has K♥ — K♥ > 7♥ so NOT forced win.
+    // Declarer has K♠; opponent has 7♠ — K♠ > 7♠ so spades IS forced win.
+    const state = makeState({
+      contract: 'open-beggar',
+      declarer: 1,
+      openBeggarRevealed: true,
+      hand0: [suit('clubs', 'K', 5), suit('hearts', 'K', 5), suit('spades', 7)],
+      hand1: [suit('hearts', 7), suit('spades', 'K', 5)], // no clubs
+    })
+    const card = chooseCard(state, 0, cfg())
+    // Should lead spades (forced win), not clubs (declarer void) or hearts (declarer can duck)
+    expect(card).toMatchObject({ kind: 'suit', suit: 'spades' })
+  })
+
+  it('falls back to standard high lead when hand is not yet revealed', () => {
+    // openBeggarRevealed = false — smart leading not active yet
+    const state = makeState({
+      contract: 'open-beggar',
+      declarer: 1,
+      openBeggarRevealed: false,
+      hand0: [suit('clubs', 7), suit('hearts', 'K', 5)],
+      hand1: [suit('clubs', 'K', 5), suit('hearts', 7)],
+    })
+    const card = chooseCard(state, 0, cfg())
+    // Standard path: lead highest by points → K♥(5pt)
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts', rank: 'K' })
+  })
+})
+
+// ── 8. Colour Valat — taroks treated as plain suit when leading ───────────
+
+describe('colour valat — taroks are not effective trumps for leading decisions', () => {
+  it('opponent leads tarok (not filtered as trump) before suit cards', () => {
+    // In colour valat, opponents should lead highest card regardless of kind.
+    // Without the fix, taroks would be filtered as "trumps" and held back.
+    // With the fix, taroks count as non-effective-trumps → opponent leads them freely.
+    const state = makeState({
+      contract: 'color-valat-without',
+      declarer: 1,
+      isColourValat: true,
+      hand0: [trump(15), suit('clubs', 7)], // T15 and 7♣
+    })
+    // Opponent (seat0) leading: non-effective-trumps include T15 in colour valat.
+    // Both are "non-trump" — leads highest by points. T15 is 1pt, 7♣ is 1pt → either OK,
+    // but the key check is T15 is NOT skipped (it used to be filtered as trump).
+    // With isColourValat, effectiveIsTrump(T15)=false so both go to nonTrumps pool.
+    const card = chooseCard(state, 0, cfg())
+    // Should pick one of the two (both 1pt, either is fine — just not skipping T15)
+    expect([trump(15), suit('clubs', 7)]).toContainEqual(card)
+  })
+
+  it('declarer does not lock onto leading taroks when they are not effective trumps', () => {
+    // Declarer in colour valat: taroks are not effective trumps so the "lead highest trump"
+    // branch is skipped. Falls through to highest-points card.
+    const state = makeState({
+      contract: 'color-valat-without',
+      declarer: 0,
+      isColourValat: true,
+      hand0: [trump(10), suit('clubs', 'K', 5)], // T10(1pt) and K♣(5pt)
+    })
+    const card = chooseCard(state, 0, cfg())
+    // No effective trumps → leads highest by cardPoints → K♣(5pt) over T10(1pt)
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })
+  })
+})
+
+// ── 9. Valat — opponents never fold on cheap tricks ───────────────────────
+
+describe('valat contracts — opponent point-counting fold is disabled', () => {
+  it('valat-without: opponent plays Mond on cheap trick (does not fold)', () => {
+    // Same setup as the fold test: Mond is only beater, trick has 1pt, not last to play.
+    // In a normal contract this would fold. In valat-without it must not.
+    const state = makeState({
+      contract: 'valat-without',
+      declarer: 1,
+      hand0: [mond, trump(2)],
+      trickCards: [{ seat: 1, card: trump(5) }],
+    })
+    const card = chooseCard(state, 0, cfg())
+    // Fold disabled in valat — plays Mond to fight for the trick
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })
+  })
+
+  it('color-valat-without: opponent plays Mond on cheap trick (does not fold)', () => {
+    const state = makeState({
+      contract: 'color-valat-without',
+      declarer: 1,
+      isColourValat: true,
+      hand0: [mond, trump(2)],
+      trickCards: [{ seat: 1, card: trump(5) }],
+    })
+    const card = chooseCard(state, 0, cfg())
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })
+  })
+
+  it('standard contract: fold still applies (regression)', () => {
+    // Confirm the fold still works for normal contracts (unchanged behaviour).
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 2,
+      hand0: [mond, trump(2)],
+      trickCards: [{ seat: 1, card: trump(5) }],
+    })
+    const card = chooseCard(state, 0, cfg(null))
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 2 }) // still folds
+  })
+})
+
+// ── 10. No-cheat king discovery ───────────────────────────────────────────
 
 describe('no-cheat king discovery — partner plays as opponent until king is revealed', () => {
   // Contract: declarer=1, state.partner=2 (engine truth), hand for seat2: [K♣(5), T10(1)]

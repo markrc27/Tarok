@@ -20,6 +20,11 @@ function onMySide(winner: Seat, seat: Seat, declarer: Seat, partner: Seat | null
   return !isDeclarerSide(winner, declarer, partner)
 }
 
+// In colour valat, taroks are not trumps — they're their own plain suit.
+function effectiveIsTrump(c: Card, isColourValat: boolean): boolean {
+  return c.kind === 'trump' && !isColourValat
+}
+
 // True if `candidate` beats `current` as the trick's leading card in context.
 function cardBeatsCard(
   candidate: Card,
@@ -119,12 +124,51 @@ function currentWinner(state: PlayState): Seat | null {
   return bestEntry.seat
 }
 
+// Open beggar: choose best lead for an opponent who can see the declarer's hand.
+// Strategy: find a suit where the declarer's weakest card still beats our best
+// (forced win for them). Fallback: lead the suit where declarer has fewest cards.
+function openBeggarOpponentLead(candidates: Card[], declarerHand: Card[]): Card | null {
+  const ourSuitCards = candidates.filter((c): c is SuitCard => c.kind === 'suit')
+  if (ourSuitCards.length === 0) return null
+
+  const suits = [...new Set(ourSuitCards.map(c => c.suit))]
+
+  for (const s of suits) {
+    const ourInSuit = ourSuitCards.filter(c => c.suit === s)
+    const declInSuit = declarerHand.filter((c): c is SuitCard => c.kind === 'suit' && c.suit === s)
+    if (declInSuit.length === 0) continue // declarer void — they discard freely
+    const ourMax = Math.max(...ourInSuit.map(c => suitStrength(c)))
+    const declMin = Math.min(...declInSuit.map(c => suitStrength(c)))
+    if (declMin > ourMax) {
+      // Every card declarer holds in this suit beats our best — forced win for them.
+      return ourInSuit.sort((a, b) => suitStrength(b) - suitStrength(a))[0]
+    }
+  }
+
+  // No forced-win suit: prefer a suit where declarer has the fewest cards
+  // (least flexibility to choose a low duck card).
+  const suitsWithDeclCards = suits
+    .filter(s => declarerHand.some(c => c.kind === 'suit' && (c as SuitCard).suit === s))
+    .sort((a, b) => {
+      const aCnt = declarerHand.filter(c => c.kind === 'suit' && (c as SuitCard).suit === a).length
+      const bCnt = declarerHand.filter(c => c.kind === 'suit' && (c as SuitCard).suit === b).length
+      return aCnt - bCnt
+    })
+  if (suitsWithDeclCards.length > 0) {
+    const targetSuit = suitsWithDeclCards[0]
+    const inSuit = ourSuitCards.filter(c => c.suit === targetSuit)
+    return inSuit.sort((a, b) => suitStrength(b) - suitStrength(a))[0]
+  }
+
+  return null
+}
+
 export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Card {
   const candidates = legalCards(state, seat)
   if (candidates.length === 0) throw new Error(`chooseCard: no legal cards for seat ${seat}`)
   if (candidates.length === 1) return candidates[0]
 
-  const { contract, declarer, currentTrick } = state
+  const { contract, declarer, currentTrick, isColourValat } = state
   const isLeading = currentTrick.cards.length === 0
   // Use knownPartner (publicly observed) rather than state.partner (engine ground truth)
   // so bots only coordinate once the called king has been played.
@@ -146,6 +190,12 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
     if (seat === declarer) {
       return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
     }
+    // Open beggar: opponents can see the declarer's hand once revealed.
+    // Use that information to lead suits that force the declarer to win.
+    if (isLeading && contract === 'open-beggar' && state.openBeggarRevealed) {
+      const smartLead = openBeggarOpponentLead(candidates, state.hands[declarer])
+      if (smartLead) return smartLead
+    }
     if (isLeading) {
       return candidates.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
     }
@@ -161,26 +211,28 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
   // ── Standard positive contracts ───────────────────────────────────────────
   const { ledSuit } = currentTrick
   const declarerPts = declarerTeamPoints(state, knownPartner)
+  // In valat contracts the declarer must win every trick — opponents must always
+  // fight and cannot afford the point-counting fold.
+  const isValatContract = contract === 'valat-without' || contract === 'color-valat-without'
 
   // ── Leading ──────────────────────────────────────────────────────────────
   if (isLeading) {
     if (onDeclarerSide) {
-      // Lead highest trump to draw out opponents; sort by ordinal (not points — low
-      // trumps are all 1pt so point-sort is random among them). Protect Pagat.
-      const trumps = candidates.filter(isTrump)
+      // Lead highest effective trump (taroks are not special in colour valat).
+      const trumps = candidates.filter(c => effectiveIsTrump(c, isColourValat))
       if (trumps.length > 0) {
         const usable = trumps.length > 1 ? trumps.filter(c => !isPagat(c)) : trumps
         return usable.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
       }
       return candidates.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
     } else {
-      // Opponent leading: play highest to set a bar the declarer must clear.
-      // Lead non-trump first — forces the declarer to follow suit or waste a trump.
-      const nonTrumps = candidates.filter(c => !isTrump(c))
+      // Opponent leading: lead non-effective-trump first to force declarer to follow
+      // suit or spend a trump. In colour valat, taroks count as non-trump here.
+      const nonTrumps = candidates.filter(c => !effectiveIsTrump(c, isColourValat))
       if (nonTrumps.length > 0) {
         return nonTrumps.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
       }
-      const trumps = candidates.filter(isTrump)
+      const trumps = candidates.filter(c => effectiveIsTrump(c, isColourValat))
       const usable = trumps.length > 1 ? trumps.filter(c => !isPagat(c)) : trumps
       return usable.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
     }
@@ -205,7 +257,7 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
   const bestCard = winnerEntry?.card ?? null
 
   const beaters = bestCard !== null
-    ? candidates.filter(c => cardBeatsCard(c, bestCard, ledSuit, state.isColourValat))
+    ? candidates.filter(c => cardBeatsCard(c, bestCard, ledSuit, isColourValat))
     : []
 
   if (beaters.length > 0) {
@@ -221,10 +273,12 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
       // Point-counting fold: don't spend a 5-pt card (Mond/Škis) on a near-empty
       // trick unless we're last to play or the declarer team is close to winning
       // (28+ pts = they can cross 35 in two more tricks → opponents must fight).
+      // Disabled in valat contracts — declarer must win every trick, so every
+      // trick is worth fighting for.
       const isLastToPlay = currentTrick.cards.length === 3
       const declarerNearWin = declarerPts >= 28
       const trickPts = currentTrickPoints(state)
-      if (!isLastToPlay && !declarerNearWin && trickPts <= 1 && cardPoints(lowestBeater) >= 5) {
+      if (!isValatContract && !isLastToPlay && !declarerNearWin && trickPts <= 1 && cardPoints(lowestBeater) >= 5) {
         return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
       }
 

@@ -274,23 +274,27 @@ export function computeHandScore(params: {
     opponentScores[seat] = mPenalties[seat]
   }
 
-  const bonusBreakdown: HandScore['bonusBreakdown'] = announcementState.announcements.map(ann => ({
-    bonus: ann.bonus,
-    announced: true,
-    achieved: bonusResults[ann.bonus],
-    value: bonusBaseValue(ann.bonus, ann.announced),
-    kontraLevel: getKontraMultiplier(announcementState, ann.bonus),
-    side: 'declarer' as const,
-  }))
+  const bonusBreakdown: HandScore['bonusBreakdown'] = []
 
-  const allBonuses: BonusName[] = ['trula', 'kings', 'king-ultimo', 'pagat-ultimo']
-  for (const bonus of allBonuses) {
-    const alreadyAnnounced = announcementState.announcements.some(a => a.bonus === bonus)
-    if (!alreadyAnnounced) {
-      if (bonusResults[bonus]) {
-        bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'declarer' })
-      } else if (opponentBonusResults[bonus]) {
-        bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'opponent' })
+  if (!isFlat) {
+    bonusBreakdown.push(...announcementState.announcements.map(ann => ({
+      bonus: ann.bonus,
+      announced: true,
+      achieved: bonusResults[ann.bonus],
+      value: bonusBaseValue(ann.bonus, ann.announced),
+      kontraLevel: getKontraMultiplier(announcementState, ann.bonus),
+      side: 'declarer' as const,
+    })))
+
+    const allBonuses: BonusName[] = ['trula', 'kings', 'king-ultimo', 'pagat-ultimo']
+    for (const bonus of allBonuses) {
+      const alreadyAnnounced = announcementState.announcements.some(a => a.bonus === bonus)
+      if (!alreadyAnnounced) {
+        if (bonusResults[bonus]) {
+          bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'declarer' })
+        } else if (opponentBonusResults[bonus]) {
+          bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'opponent' })
+        }
       }
     }
   }
