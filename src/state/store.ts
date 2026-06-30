@@ -16,7 +16,7 @@ import {
 import { CONTRACT_BASE } from '../engine/types'
 import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard } from '../ai/bidding-heuristic'
 import { pickNames } from '../ui/names'
-import { chooseCard } from '../ai/play-heuristic'
+import { chooseCard, computeKnownPartner } from '../ai/play-heuristic'
 import { saveGameRecord, consumeDraftRecord } from './persistence'
 import type { RoundRecord } from '../engine/types'
 
@@ -46,6 +46,7 @@ function makeInitialState(): GameState {
     pendingTrick: null,
     roundId: 0,
     roundHistory: [],
+    voidDealSeat: null,
   }
 }
 
@@ -107,7 +108,8 @@ export const useGameStore = create<Store>((set, get) => {
     const declarer = biddingState.highestBidder ?? biddingState.forehand
     const partner = kingCall?.partner ?? null
     const playState = initPlay(
-      dealResult, contract, declarer, partner, talonExchange, false, kingCall, dealResult.hands,
+      dealResult, contract, declarer, partner, talonExchange,
+      contract === 'color-valat-without', kingCall, dealResult.hands,
     )
     set({ phase: 'playing', playState })
     botDelay(runBotPlay)
@@ -172,7 +174,7 @@ export const useGameStore = create<Store>((set, get) => {
     const order: Seat[] = [ledSeat, ((ledSeat+1)%4) as Seat, ((ledSeat+2)%4) as Seat, ((ledSeat+3)%4) as Seat]
     const seat = order.find(s => !playedSeats.has(s))
     if (!seat || seat === HUMAN) return
-    const card = chooseCard(playState, seat, { difficultyBias: 0.5 })
+    const card = chooseCard(playState, seat, { difficultyBias: 0.5, knownPartner: computeKnownPartner(playState) })
     const { newState, trickComplete, trickWinner, handComplete } = playCard(playState, seat, card)
     set({ playState: newState })
     if (trickComplete && trickWinner !== null) {
@@ -241,8 +243,13 @@ export const useGameStore = create<Store>((set, get) => {
 
     startNewGame: () => {
       const { dealerSeat, sessionScores, statistics, playerNames, radliState, roundId, roundHistory } = get()
-      const outcome = deal(dealerSeat)
-      const biddingState = initBidding(dealerSeat, outcome.kind === 'void-deal')
+      let outcome = deal(dealerSeat)
+      let voidDealSeat: Seat | null = null
+      while (outcome.kind === 'void-deal') {
+        if (voidDealSeat === null) voidDealSeat = outcome.zeroTrumpSeat
+        outcome = deal(dealerSeat)
+      }
+      const biddingState = initBidding(dealerSeat, voidDealSeat !== null)
       set({
         ...makeInitialState(),
         phase: 'bidding',
@@ -255,6 +262,7 @@ export const useGameStore = create<Store>((set, get) => {
         radliState,
         roundId: roundId + 1,
         roundHistory,
+        voidDealSeat,
       })
       botDelay(runBotBid)
     },

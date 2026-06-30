@@ -65,34 +65,30 @@ const SECTIONS: Section[] = [
         <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
           <thead>
             <tr style={{ color: '#aaa' }}>
-              <th style={{ textAlign: 'left', padding: '3px 6px' }}>Contract</th>
-              <th style={{ textAlign: 'center', padding: '3px 6px' }}>Talon</th>
-              <th style={{ textAlign: 'center', padding: '3px 6px' }}>Partner</th>
-              <th style={{ textAlign: 'right', padding: '3px 6px' }}>Base pts</th>
-              <th style={{ textAlign: 'left', padding: '3px 6px' }}>Notes</th>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Contract</th>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Score</th>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Description</th>
             </tr>
           </thead>
           <tbody>
-            {[
-              ['Klop', '—', 'No', '—', 'All pass; individual scoring'],
-              ['Three (Tri)', '3', 'Yes', '10', 'Forehand only'],
-              ['Two (Dve)', '2', 'Yes', '20', ''],
-              ['One (Ena)', '1', 'Yes', '30', ''],
-              ['Solo Three', '3', 'No', '40', ''],
-              ['Solo Two', '2', 'No', '50', ''],
-              ['Solo One', '1', 'No', '60', ''],
-              ['Beggar (Beračič)', '—', 'No', '70', 'Win no tricks'],
-              ['Solo Without', '—', 'No', '80', ''],
-              ['Open Beggar', '—', 'No', '90', 'Cards played face-up; win no tricks'],
-              ['Colour Valat Without', '—', 'No', '125', 'Win all tricks with trumps'],
-              ['Valat Without', '—', 'No', '500', 'Win all tricks'],
-            ].map(([name, talon, partner, base, note]) => (
+            {([
+              ['Klop (sometimes called klopecki)', 'points taken, or 70', 'Avoid taking points; all players play individually; no bonuses; available to forehand only'],
+              ['Three (tri or trojka)', '10 + difference', 'Call a king; take 3 cards from the talon; win at least 36 card points; available to forehand only'],
+              ['Two (dva or dve or dvojka)', '20 + difference', 'Call a king; take 2 cards from the talon; win at least 36 card points'],
+              ['One (ena or enka or enica)', '30 + difference', 'Call a king; take 1 card from the talon; win at least 36 card points'],
+              ['Solo Three (solo tri)', '40 + difference', 'Play alone; take 3 cards from the talon; win at least 36 card points'],
+              ['Solo Two (solo dva)', '50 + difference', 'Play alone; take 2 cards from the talon; win at least 36 card points'],
+              ['Solo One (solo ena)', '60 + difference', 'Play alone; take 1 card from the talon; win at least 36 card points'],
+              ['Beggar (berač)', '70', 'Play alone; take no tricks; no bonuses'],
+              ['Solo Without (solo brez or brez talona)', '80', 'Play alone; no cards from the talon; win at least 36 card points; no bonuses'],
+              ['Open Beggar (odprti berač)', '90', "Play alone; take no tricks; declarer's cards are exposed face-up; no bonuses"],
+              ['Colour Valat Without (barvni valat brez)', '125', 'Play alone; no cards from the talon; taroks are not trumps; win all tricks; no bonuses'],
+              ['Valat Without (valat brez)', '500', 'Play alone; no cards from the talon; win all tricks; no bonuses'],
+            ] as [string, string, string][]).map(([name, score, desc]) => (
               <tr key={name} style={{ borderTop: '1px solid #2a2a2a' }}>
-                <td style={{ padding: '3px 6px', fontWeight: 'bold', color: '#e0e0e0' }}>{name}</td>
-                <td style={{ padding: '3px 6px', textAlign: 'center' }}>{talon}</td>
-                <td style={{ padding: '3px 6px', textAlign: 'center' }}>{partner}</td>
-                <td style={{ padding: '3px 6px', textAlign: 'right' }}>{base}</td>
-                <td style={{ padding: '3px 6px', color: '#888', fontSize: 11 }}>{note}</td>
+                <td style={{ padding: '4px 8px', fontWeight: 'bold', color: '#e0e0e0', whiteSpace: 'nowrap' }}>{name}</td>
+                <td style={{ padding: '4px 8px', color: '#f0c040', whiteSpace: 'nowrap' }}>{score}</td>
+                <td style={{ padding: '4px 8px', color: '#aaa', fontSize: 11 }}>{desc}</td>
               </tr>
             ))}
           </tbody>
@@ -224,6 +220,8 @@ const SECTIONS: Section[] = [
     content: (
       <>
         <p>After all 12 tricks are played, card points are counted for the declarer's side. The total of all card points in the pack is <strong>70</strong>.</p>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Who scores each round?</h4>
+        <p><strong>Only the declarer and their partner gain or lose points.</strong> Opponents' scores are not affected by the result of a hand — their running total stays the same whether the declarer wins or loses.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Win condition</h4>
         <p>The declarer's side must capture <strong>≥ 35 card points</strong> to win (or in Beggar/Valat, meet their specific objective).</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Score formula</h4>
@@ -231,13 +229,22 @@ const SECTIONS: Section[] = [
           score = (base_value + |card_pts − 35|) + bonuses
         </p>
         <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
-          <li>On a <strong>win</strong>: declarers gain this amount; each opponent loses the same.</li>
-          <li>On a <strong>loss</strong>: declarers lose this amount; each opponent gains the same.</li>
-          <li>The <strong>difference</strong> (card_pts − 35) is added if won, subtracted if lost.</li>
-          <li>In a 2-vs-2 game, partner scores separately from declarer.</li>
+          <li>On a <strong>win</strong>: the declarer (and partner, if any) each gain this amount.</li>
+          <li>On a <strong>loss</strong>: the declarer (and partner, if any) each lose this amount.</li>
+          <li>The <strong>difference</strong> is how many card points the declaring side scored above or below 35, rounded to the nearest 5. It is added on a win and subtracted on a loss.</li>
+          <li>The partner receives the same score as the declarer.</li>
         </ul>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Bonuses</h4>
+        <p>Bonuses (trula, kings, pagat-ultimo, king-ultimo) always flow through the <strong>declarer's score</strong>:</p>
+        <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
+          <li><strong>Declarer's side wins a bonus</strong> (announced or not): its value is <em>added</em> to the declarer's score — even on a losing hand.</li>
+          <li><strong>Declarer's side fails an announced bonus</strong>: its value is <em>subtracted</em>.</li>
+          <li><strong>Opponents win a bonus</strong> (e.g. they capture all 4 kings): its value is <em>subtracted</em> from the declarer's score. Opponents never gain points from bonuses.</li>
+        </ul>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Mond penalty</h4>
+        <p>If the Mond (XXI) is captured by the Škis, the player who played the Mond loses <strong>20 points</strong>. This applies to any player — declarer, partner, or opponent — and is separate from bonus scoring.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Klop scoring</h4>
-        <p>Each player scores individually based on the card points they captured. Specific penalties apply for capturing the most tricks or holding specific cards — see the full rules for details.</p>
+        <p>Klop is the exception — all four players score individually based on the card points they captured. Taking zero cards scores +70; taking more than 35 card points scores −70; otherwise the card point total is subtracted from your score (rounded to the nearest 5).</p>
       </>
     ),
   },

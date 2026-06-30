@@ -3,6 +3,13 @@ import type { Contract, BidAction } from '../../engine/types'
 import { CONTRACT_BASE } from '../../engine/types'
 import { CONTRACT_LABEL, CONTRACT_DESC } from '../labels'
 
+const ALL_CONTRACTS: Contract[] = [
+  'klop', 'three', 'two', 'one',
+  'solo-three', 'solo-two', 'solo-one',
+  'beggar', 'solo-without', 'open-beggar',
+  'color-valat-without', 'valat-without',
+]
+
 interface Props {
   legalBids: Contract[]
   onBid: (action: BidAction) => void
@@ -19,6 +26,8 @@ export default function BiddingDialog({ legalBids, onBid, isForehandChoice, curr
     e.preventDefault()
     setInfoFor(prev => prev === c ? null : c)
   }
+
+  const displayContracts = isForehandChoice ? legalBids : ALL_CONTRACTS
 
   return (
     <div className="bid-panel">
@@ -42,34 +51,38 @@ export default function BiddingDialog({ legalBids, onBid, isForehandChoice, curr
       )}
 
       <div className="bid-list">
-        {legalBids.map(c => (
-          <React.Fragment key={c}>
-            <label className="bid-option">
-              <input
-                type="radio"
-                name="contract"
-                checked={selected === c}
-                onChange={() => setSelected(c)}
-              />
-              <span>{CONTRACT_LABEL[c]}</span>
-              <span style={{ color: '#888', fontSize: 11 }}>
-                {CONTRACT_BASE[c] > 0 ? ` — base ${CONTRACT_BASE[c]}` : ''}
-              </span>
-              <button
-                className="info-btn"
-                onClick={(e) => toggleInfo(c, e)}
-                title="What is this contract?"
-              >
-                ?
-              </button>
-            </label>
-            {infoFor === c && (
-              <div className="contract-desc">
-                {CONTRACT_DESC[c]}
+        {displayContracts.map(c => {
+          const isLegal = legalBids.includes(c)
+          return (
+            <React.Fragment key={c}>
+              <div className="bid-option">
+                <input
+                  type="radio"
+                  name="contract"
+                  checked={selected === c}
+                  onChange={() => { if (isLegal) setSelected(c) }}
+                  disabled={!isLegal}
+                />
+                <span style={!isLegal ? { color: '#555' } : undefined}>{CONTRACT_LABEL[c]}</span>
+                <span style={{ color: !isLegal ? '#444' : '#888', fontSize: 11 }}>
+                  {CONTRACT_BASE[c] > 0 ? ` — base ${CONTRACT_BASE[c]}` : ''}
+                </span>
+                <button
+                  className="info-btn"
+                  onClick={(e) => toggleInfo(c, e)}
+                  title="What is this contract?"
+                >
+                  ?
+                </button>
               </div>
-            )}
-          </React.Fragment>
-        ))}
+              {infoFor === c && (
+                <div className="contract-desc">
+                  {CONTRACT_DESC[c]}
+                </div>
+              )}
+            </React.Fragment>
+          )
+        })}
       </div>
 
       <div className="modal-actions">

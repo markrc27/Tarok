@@ -23,22 +23,21 @@ export default function RoundHistoryDialog({ roundHistory, playerNames, onClose 
       padding: '14px 20px 12px',
       zIndex: 200,
       boxShadow: '0 4px 24px rgba(0,0,0,0.7)',
-      maxHeight: '55vh',
-      overflow: 'auto',
       minWidth: 560,
       maxWidth: 720,
     }}>
       {roundHistory.length === 0 ? (
         <p style={{ color: '#888', textAlign: 'center', padding: '8px 0' }}>No completed rounds yet.</p>
       ) : (
+        <div style={{ maxHeight: 170, overflowY: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ color: '#888', borderBottom: '1px solid #333' }}>
-              <th style={th}>#</th>
-              <th style={th}>Contract</th>
-              <th style={th}>Declarer</th>
+              <th style={{ ...th, position: 'sticky', top: 0, background: '#1a1a1a' }}>#</th>
+              <th style={{ ...th, position: 'sticky', top: 0, background: '#1a1a1a' }}>Contract</th>
+              <th style={{ ...th, position: 'sticky', top: 0, background: '#1a1a1a' }}>Declarer</th>
               {SEATS.map(s => (
-                <th key={s} style={{ ...th, color: '#ccc' }}>{playerNames[s]}</th>
+                <th key={s} style={{ ...th, color: '#ccc', position: 'sticky', top: 0, background: '#1a1a1a' }}>{playerNames[s]}</th>
               ))}
             </tr>
           </thead>
@@ -69,6 +68,7 @@ export default function RoundHistoryDialog({ roundHistory, playerNames, onClose 
             })}
           </tbody>
         </table>
+        </div>
       )}
 
       <div style={{ marginTop: 10, textAlign: 'right' }}>

@@ -31,11 +31,12 @@ interface Props {
   sessionScores: Record<Seat, number>
   radliState: RadliState
   playerNames: Record<Seat, string>
+  roundId: number
   onNewRound: () => void
   onEndGame: () => void
 }
 
-export default function ScoreDialog({ playState, announcementState, sessionScores, radliState, playerNames, onNewRound, onEndGame }: Props) {
+export default function ScoreDialog({ playState, announcementState, sessionScores, radliState, playerNames, roundId, onNewRound, onEndGame }: Props) {
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -47,6 +48,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
   const effectiveCaptured = adjustCapturedForTalon(capturedCards, talonRemainder, declarer, partner, kingInTalonCaptured)
 
   const seats: Seat[] = [0, 1, 2, 3]
+  const isFlat = ['beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without'].includes(contract)
 
   const delta: Record<Seat, number> = { 0: 0, 1: 0, 2: 0, 3: 0 }
   let declarerPts = 0
@@ -59,9 +61,12 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
     for (const s of seats) delta[s] = klopScores[s]
   } else {
     declarerPts = countDeclarerPoints(effectiveCaptured, declarer, partner)
+    const isValat = contract === 'valat-without' || contract === 'color-valat-without'
     won = (contract === 'beggar' || contract === 'open-beggar')
       ? effectiveCaptured[declarer].length === 0
-      : declarerPts >= 36
+      : isValat
+        ? completedTricks.every(t => t.winner === declarer)
+        : declarerPts >= 36
     difference = calcDifference(declarerPts)
 
     handScore = computeHandScore({
@@ -88,20 +93,31 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
   return (
     <div className="modal-overlay">
       <div className="modal" style={{ minWidth: 420, maxWidth: 560 }}>
-        <h2>Round Result</h2>
+        <h2>Round {roundId} Result</h2>
 
         {contract !== 'klop' ? (
           <p style={{ color: '#aaa', margin: '6px 0 14px', fontSize: 13 }}>
             <strong style={{ color: '#f0f0f0' }}>{CONTRACT_LABEL[contract]}</strong>
             {' — '}{playerNames[declarer]} declared
             {partner !== null ? `, ${playerNames[partner]} partnered` : ''}
-            {' — '}{declarerPts} card pts (diff {difference > 0 ? '+' : ''}{difference})
+            {(contract === 'valat-without' || contract === 'color-valat-without')
+              ? <>{' — '}{declarerPts} card pts — {won ? 'all tricks won' : 'missed a trick'}</>
+              : (contract === 'beggar' || contract === 'open-beggar')
+                ? null
+                : <>{' — '}{declarerPts} card pts ({Math.abs(declarerPts - 35)} {won ? 'over' : 'under'} 35)</>
+            }
             {' — '}
             <strong style={{ color: won ? '#4f4' : '#f44' }}>{won ? 'Won hand' : 'Lost hand'}</strong>
           </p>
         ) : (
           <p style={{ color: '#aaa', margin: '6px 0 14px', fontSize: 13 }}>
             <strong style={{ color: '#f0f0f0' }}>Klop</strong> — individual scoring
+          </p>
+        )}
+
+        {contract !== 'klop' && !isFlat && (
+          <p style={{ color: '#666', margin: '-10px 0 14px', fontSize: 12 }}>
+            {declarerPts} pts → rounds to {Math.round(declarerPts / 5) * 5} (nearest 5) → {Math.round(declarerPts / 5) * 5} − 35 = {difference >= 0 ? '+' : ''}{difference} {won ? 'over' : 'under'} threshold
           </p>
         )}
 
@@ -156,6 +172,66 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
           </div>
         )}
 
+        {/* Score breakdown — always visible */}
+        {handScore && contract !== 'klop' && (
+          <div style={{ margin: '12px 0 8px', padding: '8px 10px', background: '#1a1a1a', borderRadius: 4, fontSize: 12, color: '#ccc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ color: '#aaa', fontWeight: 'bold' }}>Score breakdown</span>
+              <span style={{ color: '#555', fontSize: 11 }}>default / announced</span>
+            </div>
+            {(() => {
+              const gk = getKontraMultiplier(announcementState, 'game')
+              const gkStr = gk > 1 ? ` ×${gk}` : ''
+              if (isFlat) {
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base (flat){gkStr}</span>
+                    <span style={{ color: '#f0f0f0' }}>{won ? '+' : '−'}{CONTRACT_BASE[contract] * gk}</span>
+                  </div>
+                )
+              }
+              const gameNet = (CONTRACT_BASE[contract] + Math.abs(difference)) * gk
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base {difference >= 0 ? '+' : ''}{difference} over threshold{gkStr}</span>
+                  <span style={{ color: '#f0f0f0' }}>{won ? '+' : '−'}{gameNet}</span>
+                </div>
+              )
+            })()}
+            {handScore.bonusBreakdown.map((b, i) => {
+              const net = b.value * b.kontraLevel
+              const label = BONUS_LABEL[b.bonus] ?? b.bonus
+              const kontraStr = b.kontraLevel > 1 ? ` ×${b.kontraLevel}` : ''
+              const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
+              if (b.side === 'opponent') {
+                return (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{label} (vs opponents, {tag}): ✓</span>
+                    <span style={{ color: '#f44' }}>−{net}</span>
+                  </div>
+                )
+              }
+              return (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{label} ({tag}): {b.achieved ? '✓' : '✗'}</span>
+                  <span style={{ color: b.achieved ? '#4f4' : '#f44' }}>
+                    {b.achieved ? '+' : '−'}{net}
+                  </span>
+                </div>
+              )
+            })}
+            {handScore.radliApplied && (
+              <div style={{ color: '#f0c040' }}>Radli: score doubled</div>
+            )}
+            <div style={{ borderTop: '1px solid #444', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+              <span>Declarer net</span>
+              <span style={{ color: handScore.declarerScore >= 0 ? '#4f4' : '#f44' }}>
+                {handScore.declarerScore >= 0 ? '+' : ''}{handScore.declarerScore}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Expandable game log */}
         <div style={{ marginTop: 12 }}>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -174,18 +250,34 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                 lines.push(`=== Round: ${CONTRACT_LABEL[contract]} ===`)
                 if (contract !== 'klop' && handScore) {
                   lines.push(`Declarer: ${playerNames[declarer]}${partner !== null ? `, Partner: ${playerNames[partner]}` : ''}`)
-                  lines.push(`Card points: ${declarerPts} (diff ${difference >= 0 ? '+' : ''}${difference}) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+                  const cvContract = contract === 'valat-without' || contract === 'color-valat-without'
+                  const beggarContract = contract === 'beggar' || contract === 'open-beggar'
+                  if (cvContract) {
+                    lines.push(`Card points: ${declarerPts} scored (need all tricks) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+                  } else if (beggarContract) {
+                    lines.push(`Tricks taken: ${completedTricks.filter(t => t.winner === declarer).length} (need 0) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+                  } else {
+                    lines.push(`Card points: ${declarerPts} scored (need 35, ${difference >= 0 ? '+' : ''}${difference} diff) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+                  }
                   lines.push('')
                   lines.push('--- Score breakdown ---')
                   const gameKontraLog = getKontraMultiplier(announcementState, 'game')
-                  const gameNetLog = Math.abs((CONTRACT_BASE[contract] + difference) * gameKontraLog)
                   const gameKontraStrLog = gameKontraLog > 1 ? ` x${gameKontraLog}` : ''
-                  lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base ${difference >= 0 ? '+' : ''}${difference} diff${gameKontraStrLog} = ${won ? '+' : '-'}${gameNetLog}`)
+                  if (isFlat) {
+                    lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base (flat)${gameKontraStrLog} = ${won ? '+' : '-'}${CONTRACT_BASE[contract] * gameKontraLog}`)
+                  } else {
+                    const gameNetLog = (CONTRACT_BASE[contract] + Math.abs(difference)) * gameKontraLog
+                    lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base ${difference >= 0 ? '+' : ''}${difference} over threshold${gameKontraStrLog} = ${won ? '+' : '-'}${gameNetLog}`)
+                  }
                   for (const b of handScore.bonusBreakdown) {
                     const net = b.value * b.kontraLevel
                     const kontraStr = b.announced && b.kontraLevel > 1 ? ` x${b.kontraLevel}` : ''
                     const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
-                    lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (${tag}): ${b.achieved ? 'ACHIEVED' : 'NOT ACHIEVED'} = ${b.achieved ? '+' : '-'}${net}`)
+                    if (b.side === 'opponent') {
+                      lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (vs opponents, ${tag}): ACHIEVED = -${net}`)
+                    } else {
+                      lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (${tag}): ${b.achieved ? 'ACHIEVED' : 'NOT ACHIEVED'} = ${b.achieved ? '+' : '-'}${net}`)
+                    }
                   }
                   if (handScore.radliApplied) lines.push('Radli: score doubled')
                   lines.push(`Declarer net: ${handScore.declarerScore >= 0 ? '+' : ''}${handScore.declarerScore}`)
@@ -222,50 +314,6 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
 
           {showLog && (
             <div style={{ marginTop: 8, fontSize: 12, color: '#ccc', maxHeight: 340, overflowY: 'auto' }}>
-
-              {/* Score breakdown */}
-              {handScore && contract !== 'klop' && (
-                <div style={{ marginBottom: 10, padding: '8px 10px', background: '#1a1a1a', borderRadius: 4 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ color: '#aaa', fontWeight: 'bold' }}>Score breakdown</span>
-                    <span style={{ color: '#555', fontSize: 11 }}>default / announced</span>
-                  </div>
-                  {(() => {
-                    const gk = getKontraMultiplier(announcementState, 'game')
-                    const gameNet = Math.abs((CONTRACT_BASE[contract] + difference) * gk)
-                    const gkStr = gk > 1 ? ` ×${gk}` : ''
-                    return (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base {difference >= 0 ? '+' : ''}{difference} diff{gkStr}</span>
-                        <span style={{ color: '#f0f0f0' }}>{won ? '+' : '−'}{gameNet}</span>
-                      </div>
-                    )
-                  })()}
-                  {handScore.bonusBreakdown.map((b, i) => {
-                    const net = b.value * b.kontraLevel
-                    const label = BONUS_LABEL[b.bonus] ?? b.bonus
-                    const kontraStr = b.kontraLevel > 1 ? ` ×${b.kontraLevel}` : ''
-                    const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
-                    return (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>{label} ({tag}): {b.achieved ? '✓' : '✗'}</span>
-                        <span style={{ color: b.achieved ? '#4f4' : '#f44' }}>
-                          {b.achieved ? '+' : '−'}{net}
-                        </span>
-                      </div>
-                    )
-                  })}
-                  {handScore.radliApplied && (
-                    <div style={{ color: '#f0c040' }}>Radli: score doubled</div>
-                  )}
-                  <div style={{ borderTop: '1px solid #444', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                    <span>Declarer net</span>
-                    <span style={{ color: handScore.declarerScore >= 0 ? '#4f4' : '#f44' }}>
-                      {handScore.declarerScore >= 0 ? '+' : ''}{handScore.declarerScore}
-                    </span>
-                  </div>
-                </div>
-              )}
 
               {/* Talon discard */}
               {contract !== 'klop' && talonDiscard.length > 0 && (

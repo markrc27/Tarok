@@ -33,12 +33,14 @@ export default function App() {
   const store = useGameStore()
   const [showHistory, setShowHistory] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
   const [showRoundHistory, setShowRoundHistory] = useState(false)
 
   const {
     phase, dealResult, biddingState, talonExchange, kingCall,
     announcementState, playState, sessionScores, playerNames,
     radliState, pendingDiscardCount, roundId, roundHistory, cardAppearance,
+    voidDealSeat,
   } = store
 
   // On mount: load from OPFS file (merges into localStorage), then recover any draft
@@ -128,6 +130,7 @@ export default function App() {
         }}
         onHistory={() => setShowHistory(true)}
         onHelp={() => setShowHelp(true)}
+        onAbout={() => setShowAbout(true)}
         cardAppearance={cardAppearance}
         onSetCardAppearance={store.setCardAppearance}
       />
@@ -138,6 +141,7 @@ export default function App() {
           <div className="idle-screen">
             <h1>Tarok</h1>
             <p>Slovenian card game — 4 players</p>
+            <p style={{ fontSize: 13, marginTop: -8 }}>v{__APP_VERSION__}</p>
             <div style={{ margin: '14px 0 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <label style={{ color: '#aaa', fontSize: 13 }}>Your name</label>
               <input
@@ -201,6 +205,21 @@ export default function App() {
             {dealResult.talon.map((_, i) => (
               <CardSprite key={i} faceUp={false} />
             ))}
+          </div>
+        )}
+
+        {/* Void-deal notice — top centre */}
+        {phase === 'bidding' && voidDealSeat !== null && (
+          <div style={{
+            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+            background: '#1e1a10', border: '1px solid #6b5a20',
+            borderRadius: 6, padding: '7px 14px',
+            fontSize: 12, color: '#d4b86a', whiteSpace: 'nowrap',
+            pointerEvents: 'none', zIndex: 5,
+            textAlign: 'center',
+          }}>
+            <strong>{playerNames[voidDealSeat]}</strong> had no taroks — cards were redealt.
+            {' '}Compulsory klop: bidding starts at Solo Without.
           </div>
         )}
 
@@ -299,6 +318,7 @@ export default function App() {
           sessionScores={sessionScores}
           radliState={radliState}
           playerNames={playerNames}
+          roundId={roundId}
           onNewRound={() => { store.acknowledgeScore(); store.startNewGame() }}
           onEndGame={() => { setShowRoundHistory(false); store.endGame() }}
         />
@@ -318,6 +338,20 @@ export default function App() {
           playerNames={playerNames}
           onClose={() => setShowRoundHistory(false)}
         />
+      )}
+
+      {showAbout && (
+        <div className="modal-overlay" onClick={() => setShowAbout(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 320 }}>
+            <h2 style={{ marginBottom: 6 }}>Tarok</h2>
+            <p style={{ color: '#aaa', fontSize: 13, marginBottom: 4 }}>Slovenian card game — 4 players</p>
+            <p style={{ color: '#666', fontSize: 13, marginBottom: 20 }}>v{__APP_VERSION__}</p>
+            <p style={{ color: '#888', fontSize: 12, marginBottom: 20 }}>Built with Claude</p>
+            <div className="modal-actions" style={{ justifyContent: 'center' }}>
+              <button className="btn" onClick={() => setShowAbout(false)}>Close</button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

@@ -3,7 +3,7 @@ import type {
   AnnouncementState, Announcement, Trick,
 } from './types'
 import { countPoints } from './pointcount'
-import { getKontraMultiplier, evaluateBonus, bonusBaseValue } from './announce'
+import { getKontraMultiplier, evaluateBonus, evaluateBonusForSeats, bonusBaseValue } from './announce'
 
 export function adjustCapturedForTalon(
   capturedCards: Record<Seat, Card[]>,
@@ -52,19 +52,22 @@ export function scoreNormalContract(
   announcements: AnnouncementState,
   bonusResults: Record<BonusName, boolean>,
   contractBase: number,
+  won: boolean,
+  opponentBonusResults: Record<BonusName, boolean>,
 ): number {
   const gameKontra = getKontraMultiplier(announcements, 'game')
-  let total = (contractBase + difference) * gameKontra
+  // Always use |difference| for magnitude; sign determined by win/loss
+  let total = (won ? 1 : -1) * (contractBase + Math.abs(difference)) * gameKontra
 
-  // Valat overrides all other bonuses
+  // Valat overrides all other bonuses (valat achieved implies won=true)
   if (bonusResults['valat']) {
     const valatAnn = announcements.announcements.find(a => a.bonus === 'valat')
     const valAnnounced = valatAnn?.announced ?? false
     const valKontra = getKontraMultiplier(announcements, 'valat')
-    total = bonusBaseValue('valat', valAnnounced) * valKontra
-    return total
+    return bonusBaseValue('valat', valAnnounced) * valKontra
   }
 
+  // Announced bonuses: achieved=+value, not achieved=-value (independent of win/loss)
   for (const ann of announcements.announcements) {
     const achieved = bonusResults[ann.bonus]
     const kontra = getKontraMultiplier(announcements, ann.bonus)
@@ -72,12 +75,21 @@ export function scoreNormalContract(
     total += achieved ? value : -value
   }
 
-  // Unannounced bonuses still count if achieved
   const allBonuses: BonusName[] = ['trula', 'kings', 'king-ultimo', 'pagat-ultimo']
+
+  // Declarer-side unannounced achieved bonuses: always positive, even on a loss
   for (const bonus of allBonuses) {
     const alreadyAnnounced = announcements.announcements.some(a => a.bonus === bonus)
     if (!alreadyAnnounced && bonusResults[bonus]) {
       total += bonusBaseValue(bonus, false)
+    }
+  }
+
+  // Opposition-won unannounced bonuses: subtracted from declarer's score
+  for (const bonus of allBonuses) {
+    const wasAnnounced = announcements.announcements.some(a => a.bonus === bonus)
+    if (!wasAnnounced && opponentBonusResults[bonus]) {
+      total -= bonusBaseValue(bonus, false)
     }
   }
 
@@ -214,10 +226,12 @@ export function computeHandScore(params: {
 
   const declarerPoints = countDeclarerPoints(capturedCards, declarer, partner)
   const difference = calcDifference(declarerPoints)
-  // Beggar/open-beggar: win = take zero tricks. All others: win = ≥36 points.
+  const isValat = contract === 'valat-without' || contract === 'color-valat-without'
   const won = (contract === 'beggar' || contract === 'open-beggar')
     ? capturedCards[declarer].length === 0
-    : declarerPoints >= 36
+    : isValat
+      ? completedTricks.every(t => t.winner === declarer)
+      : declarerPoints >= 36
 
   const bonusResults: Record<BonusName, boolean> = {
     'trula': evaluateBonus('trula', capturedCards, completedTricks, declarer, partner, calledKing),
@@ -229,14 +243,22 @@ export function computeHandScore(params: {
 
   const mPenalties = mondPenalty(mondCapturedWithSkis, mondPlayedBySeat)
 
+  const opponentSeats = ([0, 1, 2, 3] as Seat[]).filter(s => s !== declarer && s !== partner)
+  const opponentBonusResults: Record<BonusName, boolean> = {
+    trula: evaluateBonusForSeats('trula', opponentSeats, capturedCards, completedTricks, calledKing),
+    kings: evaluateBonusForSeats('kings', opponentSeats, capturedCards, completedTricks, calledKing),
+    'king-ultimo': evaluateBonusForSeats('king-ultimo', opponentSeats, capturedCards, completedTricks, calledKing),
+    'pagat-ultimo': evaluateBonusForSeats('pagat-ultimo', opponentSeats, capturedCards, completedTricks, calledKing),
+    valat: false,
+  }
+
   let declarerScore: number
   const isFlat = ['beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without'].includes(contract)
 
   if (isFlat) {
     declarerScore = scoreFlatContract(contract, won) + mPenalties[declarer]
   } else {
-    declarerScore = scoreNormalContract(contract, difference, announcementState, bonusResults, contractBase)
-    if (!won) declarerScore = -Math.abs(declarerScore)
+    declarerScore = scoreNormalContract(contract, difference, announcementState, bonusResults, contractBase, won, opponentBonusResults)
     declarerScore += mPenalties[declarer]
   }
 
@@ -250,23 +272,32 @@ export function computeHandScore(params: {
   const opponentScores: Record<Seat, number> = { 0: 0, 1: 0, 2: 0, 3: 0 }
   for (const seat of [0, 1, 2, 3] as Seat[]) {
     if (seat === declarer || seat === partner) continue
-    opponentScores[seat] = -declarerScore + mPenalties[seat]
+    // Opponents don't gain or lose from the hand result — only the mond penalty applies
+    opponentScores[seat] = mPenalties[seat]
   }
 
-  const bonusBreakdown: HandScore['bonusBreakdown'] = announcementState.announcements.map(ann => ({
-    bonus: ann.bonus,
-    announced: true,
-    achieved: bonusResults[ann.bonus],
-    value: bonusBaseValue(ann.bonus, ann.announced),
-    kontraLevel: getKontraMultiplier(announcementState, ann.bonus),
-  }))
+  const bonusBreakdown: HandScore['bonusBreakdown'] = []
 
-  // Unannounced bonuses that were achieved silently still count — add them to the breakdown for the log
-  const allBonuses: BonusName[] = ['trula', 'kings', 'king-ultimo', 'pagat-ultimo']
-  for (const bonus of allBonuses) {
-    const alreadyAnnounced = announcementState.announcements.some(a => a.bonus === bonus)
-    if (!alreadyAnnounced && bonusResults[bonus]) {
-      bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1 })
+  if (!isFlat) {
+    bonusBreakdown.push(...announcementState.announcements.map(ann => ({
+      bonus: ann.bonus,
+      announced: true,
+      achieved: bonusResults[ann.bonus],
+      value: bonusBaseValue(ann.bonus, ann.announced),
+      kontraLevel: getKontraMultiplier(announcementState, ann.bonus),
+      side: 'declarer' as const,
+    })))
+
+    const allBonuses: BonusName[] = ['trula', 'kings', 'king-ultimo', 'pagat-ultimo']
+    for (const bonus of allBonuses) {
+      const alreadyAnnounced = announcementState.announcements.some(a => a.bonus === bonus)
+      if (!alreadyAnnounced) {
+        if (bonusResults[bonus]) {
+          bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'declarer' })
+        } else if (opponentBonusResults[bonus]) {
+          bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'opponent' })
+        }
+      }
     }
   }
 

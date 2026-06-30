@@ -39,9 +39,9 @@ export default function TalonDialog({ exchange, hand, groupSize, onSelectGroup, 
   if (phase === 'select-group') {
     return (
       <div className="modal-overlay">
-        <div className="modal">
+        <div className="modal" style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)' }}>
           <h2>Choose Talon Group</h2>
-          <div className="talon-groups">
+          <div className="talon-groups" style={{ overflowY: 'auto', flex: 1 }}>
             {exchange.groups.map((group, i) => (
               <div
                 key={i}
@@ -64,12 +64,12 @@ export default function TalonDialog({ exchange, hand, groupSize, onSelectGroup, 
 
   return (
     <div className="modal-overlay">
-      <div className="modal">
+      <div className="modal" style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)' }}>
         <h2>Discard {groupSize} Card{groupSize > 1 ? 's' : ''}</h2>
         <p style={{ color: '#aaa', fontSize: 12, marginBottom: 6 }}>
           Select {groupSize} card{groupSize > 1 ? 's' : ''} to discard (Kings and Trula cannot be discarded).
         </p>
-        <div className="discard-hand">
+        <div className="discard-hand" style={{ overflowY: 'auto', flex: 1 }}>
           {hand.map(c => {
             const id = cardId(c)
             const isDiscardable = discardableHand.some(d => cardId(d) === id)
@@ -85,7 +85,7 @@ export default function TalonDialog({ exchange, hand, groupSize, onSelectGroup, 
             )
           })}
         </div>
-        <div className="modal-actions">
+        <div className="modal-actions" style={{ flexShrink: 0 }}>
           <button
             className="btn"
             disabled={discardSelected.size !== groupSize}

@@ -190,6 +190,7 @@ export interface HandScore {
     achieved: boolean
     value: number
     kontraLevel: KontraLevel
+    side: 'declarer' | 'opponent'
   }[]
   totalDifference: number
   radliApplied: boolean

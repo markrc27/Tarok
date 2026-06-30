@@ -93,7 +93,7 @@ body {
   gap: 4px;
 }
 .seat-label {
-  font-size: 12px;
+  font-size: 16px;
   background: rgba(0,0,0,0.4);
   padding: 2px 8px;
   border-radius: 3px;
@@ -238,8 +238,9 @@ body {
   font-size: 12px;
   flex-shrink: 0;
   display: flex;
-  gap: 20px;
-  height: 22px;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  min-height: 22px;
   align-items: center;
 }
 .status-item { color: #ccc; }
@@ -251,9 +252,14 @@ body {
   inset: 0;
   background: rgba(0,0,0,0.55);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
+  padding: 20px;
   z-index: 200;
+}
+.modal-overlay > .modal {
+  margin: auto;
 }
 .modal {
   background: #1e1e1e;
@@ -314,7 +320,7 @@ body {
 }
 
 /* ── Bid list ─────────────────────────────────────────────────────────── */
-.bid-list { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; }
+.bid-list { display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 200px); overflow-y: auto; }
 .bid-option {
   display: flex; align-items: center; gap: 10px;
   padding: 4px 2px;

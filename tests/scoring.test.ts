@@ -2,11 +2,13 @@ import { describe, it, expect } from 'vitest'
 import {
   calcDifference, scoreKlop, mondPenalty, applyRadli, updateRadliAfterHand,
   radliEndOfSession, missdealPenalty, scoreFlatContract, initRadli, roundToNearest5,
-  countDeclarerPoints,
+  countDeclarerPoints, computeHandScore,
 } from '../src/engine/scoring'
 import { buildDeck } from '../src/engine/deck'
 import { countPoints } from '../src/engine/pointcount'
-import type { Card, Seat, SuitCard, TrumpCard } from '../src/engine/types'
+import { initAnnouncements } from '../src/engine/announce'
+import type { Card, Seat, SuitCard, TrumpCard, Trick } from '../src/engine/types'
+import { CONTRACT_BASE } from '../src/engine/types'
 
 function trump(ordinal: number): TrumpCard {
   return { kind: 'trump', ordinal: ordinal as TrumpCard['ordinal'], points: ordinal === 1 || ordinal === 21 || ordinal === 22 ? 5 : 1 }
@@ -241,5 +243,48 @@ describe('scoreFlatContract', () => {
 
   it('valat-without won: +500', () => {
     expect(scoreFlatContract('valat-without', true)).toBe(500)
+  })
+})
+
+describe('computeHandScore valat win condition', () => {
+  function makeTrick(winner: Seat, cards: Card[]): Trick {
+    return { cards: cards.map((card, i) => ({ seat: ((winner + i) % 4) as Seat, card })), winner }
+  }
+
+  it('valat-without: declarer wins all tricks → +500', () => {
+    const deck = buildDeck()
+    // Give all cards to declarer (seat 0) — they won everything
+    const capturedCards = { 0: deck, 1: [], 2: [], 3: [] } as Record<Seat, Card[]>
+    const tricks: Trick[] = Array.from({ length: 18 }, (_, i) =>
+      makeTrick(0, deck.slice(i * 3, i * 3 + 3))
+    )
+    const hs = computeHandScore({
+      contract: 'valat-without', declarer: 0, partner: null,
+      capturedCards, talonRemainder: [], mondCapturedWithSkis: false, mondPlayedBySeat: null,
+      announcementState: initAnnouncements(), completedTricks: tricks,
+      calledKing: null, radliState: initRadli(), contractBase: CONTRACT_BASE['valat-without'], won: true,
+    })
+    expect(hs.declarerScore).toBe(500)
+  })
+
+  it('valat-without: declarer misses one trick but has ≥36 pts → -500 (not +500)', () => {
+    const deck = buildDeck()
+    // Opponent seat 1 wins the last trick (3 blank suit cards), declarer gets the rest
+    const oppCards = deck.slice(0, 3)
+    const declarerCards = deck.slice(3)
+    const capturedCards = { 0: declarerCards, 1: oppCards, 2: [], 3: [] } as Record<Seat, Card[]>
+    const tricks: Trick[] = [
+      makeTrick(1, oppCards),
+      ...Array.from({ length: 17 }, (_, i) =>
+        makeTrick(0, declarerCards.slice(i * 3, i * 3 + 3))
+      ),
+    ]
+    const hs = computeHandScore({
+      contract: 'valat-without', declarer: 0, partner: null,
+      capturedCards, talonRemainder: [], mondCapturedWithSkis: false, mondPlayedBySeat: null,
+      announcementState: initAnnouncements(), completedTricks: tricks,
+      calledKing: null, radliState: initRadli(), contractBase: CONTRACT_BASE['valat-without'], won: false,
+    })
+    expect(hs.declarerScore).toBe(-500)
   })
 })

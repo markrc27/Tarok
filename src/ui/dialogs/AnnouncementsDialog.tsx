@@ -67,7 +67,7 @@ export default function AnnouncementsDialog({ contract, declarer, partner, hands
           <p style={{ color: '#aaa', fontSize: 12, margin: '0 0 14px' }}>This doubles the point value for the round.</p>
           <div className="modal-actions">
             <button className="btn btn-ghost" onClick={() => onFinish([], false)}>Pass</button>
-            <button className="btn" onClick={() => onFinish([], true)}>Confirm</button>
+            <button className="btn" onClick={() => onFinish([], true)}>Call</button>
           </div>
         </>
       ) : (

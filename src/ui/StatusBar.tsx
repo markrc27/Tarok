@@ -3,7 +3,7 @@ import type { PlayState, BiddingState, Seat, SuitCard } from '../engine/types'
 import { countPoints } from '../engine/pointcount'
 import { CONTRACT_LABEL } from './labels'
 
-const SUIT_SYM: Record<string, string> = { clubs: '♣', spades: '♠', hearts: '♥', diamonds: '♦' }
+const SUIT_NAME: Record<string, string> = { clubs: 'Clubs', spades: 'Spades', hearts: 'Hearts', diamonds: 'Diamonds' }
 
 interface Props {
   playState: PlayState | null
@@ -35,8 +35,8 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
     }
   }
 
-  const calledKingSym = playState?.kingCall
-    ? `K${SUIT_SYM[playState.kingCall.calledKing.suit] ?? '?'}`
+  const calledKingSuit = playState?.kingCall
+    ? SUIT_NAME[playState.kingCall.calledKing.suit] ?? playState.kingCall.calledKing.suit
     : null
 
   let pts = 0
@@ -65,8 +65,8 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
       <div className="status-item">Contract: <span>{contractLabel}</span></div>
       <div className="status-item">Declarer: <span>{declarer}</span></div>
       <div className="status-item">Partner: <span>{partnerLabel}</span></div>
-      {calledKingSym && (
-        <div className="status-item">Called: <span>{calledKingSym}</span></div>
+      {calledKingSuit && (
+        <div className="status-item">Called King: <span>{calledKingSuit}</span></div>
       )}
       <div className="status-item">Points: <span>{pts} / 70</span></div>
       {followHint && <div className="status-item" style={{ color: '#facc15' }}>{followHint}</div>}
