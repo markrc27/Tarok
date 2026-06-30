@@ -220,6 +220,12 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                 </div>
               )
             })}
+            {seats.filter(s => handScore.mondPenalties[s] !== 0).map(s => (
+              <div key={s} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Mond lost with Škis ({playerNames[s]})</span>
+                <span style={{ color: '#f44' }}>{handScore.mondPenalties[s]}</span>
+              </div>
+            ))}
             {handScore.radliApplied && (
               <div style={{ color: '#f0c040' }}>Radli: score doubled</div>
             )}
@@ -277,6 +283,11 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                       lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (vs opponents, ${tag}): ACHIEVED = -${net}`)
                     } else {
                       lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (${tag}): ${b.achieved ? 'ACHIEVED' : 'NOT ACHIEVED'} = ${b.achieved ? '+' : '-'}${net}`)
+                    }
+                  }
+                  for (const s of seats) {
+                    if (handScore.mondPenalties[s] !== 0) {
+                      lines.push(`Mond lost with Škis (${playerNames[s]}): ${handScore.mondPenalties[s]}`)
                     }
                   }
                   if (handScore.radliApplied) lines.push('Radli: score doubled')
