@@ -215,9 +215,17 @@ export function playCard(state: PlayState, seat: Seat, card: Card): PlayResult {
 }
 
 export function applyTrickResult(state: PlayState, winner: Seat): PlayState {
+  // Klop vitamin: the first 6 tricks each give the top talon card to the winner.
+  let newKlopTalon = state.klopTalon
+  let vitamin: Card | undefined
+  if (state.contract === 'klop' && newKlopTalon.length > 0) {
+    ;[vitamin, ...newKlopTalon] = newKlopTalon
+  }
+
   const trick: Trick = {
     cards: state.currentTrick.cards,
     winner,
+    ...(vitamin !== undefined ? { vitamin } : {}),
   }
 
   const mondCheck = checkMondCapture(state.currentTrick)
@@ -226,9 +234,13 @@ export function applyTrickResult(state: PlayState, winner: Seat): PlayState {
     ? true
     : state.mondCapturedWithSkis
 
-  // All trick cards go to winner's capture pile
+  // All trick cards go to winner's capture pile; vitamin (if any) goes there too
   const newCaptured = { ...state.capturedCards }
-  newCaptured[winner] = [...newCaptured[winner], ...state.currentTrick.cards.map(e => e.card)]
+  newCaptured[winner] = [
+    ...newCaptured[winner],
+    ...state.currentTrick.cards.map(e => e.card),
+    ...(vitamin !== undefined ? [vitamin] : []),
+  ]
 
   // Check if called king in talon was captured (king appears in trick captured by declarer's side)
   let kingInTalonCaptured = state.kingInTalonCaptured
@@ -262,6 +274,7 @@ export function applyTrickResult(state: PlayState, winner: Seat): PlayState {
     mondCapturedWithSkis: newMondCapturedWithSkis,
     openBeggarRevealed,
     kingInTalonCaptured,
+    klopTalon: newKlopTalon,
   }
 }
 
@@ -309,6 +322,7 @@ export function initPlay(
     openBeggarRevealed: false,
     talonRemainder,
     talonDiscard: exchange?.discard ?? [],
+    klopTalon: contract === 'klop' ? [...dealResult.talon] : [],
     kingCall,
     kingInTalonCaptured: false,
   }

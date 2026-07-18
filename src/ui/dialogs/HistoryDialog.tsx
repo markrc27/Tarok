@@ -56,6 +56,7 @@ export default function HistoryDialog({ onClose }: Props) {
                   </button>
                 </th>
                 <th>Rounds</th>
+                <th>Difficulty</th>
                 {([0, 1, 2, 3] as Seat[]).map(seat => {
                   const label = `P${seat + 1}`
                   return (
@@ -78,6 +79,11 @@ export default function HistoryDialog({ onClose }: Props) {
                   <tr key={record.id}>
                     <td style={{ color: '#aaa', whiteSpace: 'nowrap', fontSize: 12 }}>{formatDate(record.playedAt)}</td>
                     <td style={{ textAlign: 'center' }}>{record.rounds}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      {record.difficulty === 'hard'
+                        ? <span style={{ color: '#f0c040', fontSize: 11, fontWeight: 'bold' }}>Hard</span>
+                        : <span style={{ color: '#888', fontSize: 11 }}>Easy</span>}
+                    </td>
                     {([0, 1, 2, 3] as Seat[]).map(seat => (
                       <td key={seat} style={{
                         color: seat === winner ? '#f0c040' : record.finalScores[seat] >= 0 ? '#4f4' : '#f44',

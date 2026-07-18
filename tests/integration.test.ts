@@ -91,7 +91,7 @@ describe('full hand integration', () => {
 
       // applyDiscard records the discard on the exchange object;
       // initPlay reads exchange.discard and exchange.talonRemainder directly.
-      exchangeForPlay = applyDiscard(updated, toDiscard, updatedHand)
+      exchangeForPlay = applyDiscard(updated, toDiscard)
 
       if (['three', 'two', 'one'].includes(contract)) {
         const calledSuit = recommendKingCall(hands[declarer], ['clubs', 'spades', 'hearts', 'diamonds'])
@@ -188,7 +188,11 @@ describe('full hand integration', () => {
     expect(isHandComplete(playState)).toBe(true)
     const totalCapturedCards = ([0, 1, 2, 3] as Seat[])
       .flatMap(s => playState.capturedCards[s])
-    // In klop, 48 cards played (54 - 6 talon); all should be captured
-    expect(totalCapturedCards.length).toBe(48)
+    // 48 played cards + 6 vitamin cards (one per trick T1–T6) = 54 total captured
+    expect(totalCapturedCards.length).toBe(54)
+    // Point conservation: all 70 pack points must be in captured piles (talon fully consumed)
+    expect(countPoints(totalCapturedCards)).toBe(70)
+    // klopTalon exhausted after 6 tricks
+    expect(playState.klopTalon.length).toBe(0)
   })
 })

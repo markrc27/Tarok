@@ -4,14 +4,7 @@ import { CONTRACT_BASE } from '../../engine/types'
 import { computeHandScore, scoreKlop, countDeclarerPoints, calcDifference, adjustCapturedForTalon, applyRadli, updateRadliAfterHand } from '../../engine/scoring'
 import { countPoints } from '../../engine/pointcount'
 import { bonusBaseValue, getKontraMultiplier } from '../../engine/announce'
-import { CONTRACT_LABEL } from '../labels'
-
-const BONUS_LABEL: Record<string, string> = {
-  trula: 'Trula', kings: 'Kings', 'king-ultimo': 'King Ultimo',
-  'pagat-ultimo': 'Pagat Ultimo', valat: 'Valat',
-}
-
-const SUIT_SYM: Record<string, string> = { clubs: '♣', spades: '♠', hearts: '♥', diamonds: '♦' }
+import { CONTRACT_LABEL, BONUS_LABEL, SUIT_SYM } from '../labels'
 const RANK_LABEL: Record<string, string> = { K: 'K', Q: 'Q', Kn: 'C', J: 'J' }
 
 function cardText(card: Card): string {
@@ -32,7 +25,7 @@ interface Props {
   radliState: RadliState
   playerNames: Record<Seat, string>
   roundId: number
-  onNewRound: () => void
+  onNewRound: (logText: string) => void
   onEndGame: () => void
 }
 
@@ -89,6 +82,75 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
   // Project radli after this hand: mirror store's acknowledgeScore logic
   const { newRadliState: afterCancel } = applyRadli(0, radliState, declarer, won)
   const projectedRadli = updateRadliAfterHand(afterCancel, contract, won)
+
+  function buildLogLines(): string[] {
+    const lines: string[] = []
+    lines.push(`=== Round: ${CONTRACT_LABEL[contract]} ===`)
+    if (contract !== 'klop' && handScore) {
+      lines.push(`Declarer: ${playerNames[declarer]}${partner !== null ? `, Partner: ${playerNames[partner]}` : ''}`)
+      const cvContract = contract === 'valat-without' || contract === 'color-valat-without'
+      const beggarContract = contract === 'beggar' || contract === 'open-beggar'
+      if (cvContract) {
+        lines.push(`Card points: ${declarerPts} scored (need all tricks) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+      } else if (beggarContract) {
+        lines.push(`Tricks taken: ${completedTricks.filter(t => t.winner === declarer).length} (need 0) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+      } else {
+        lines.push(`Card points: ${declarerPts} scored (need 35, ${difference >= 0 ? '+' : ''}${difference} diff) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+      }
+      lines.push('')
+      lines.push('--- Score breakdown ---')
+      const gameKontraLog = getKontraMultiplier(announcementState, 'game')
+      const gameKontraStrLog = gameKontraLog > 1 ? ` x${gameKontraLog}` : ''
+      if (isFlat) {
+        lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base (flat)${gameKontraStrLog} = ${won ? '+' : '-'}${CONTRACT_BASE[contract] * gameKontraLog}`)
+      } else {
+        const gameNetLog = (CONTRACT_BASE[contract] + Math.abs(difference)) * gameKontraLog
+        lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base ${difference >= 0 ? '+' : ''}${difference} over threshold${gameKontraStrLog} = ${won ? '+' : '-'}${gameNetLog}`)
+      }
+      for (const b of handScore.bonusBreakdown) {
+        const net = b.value * b.kontraLevel
+        const kontraStr = b.announced && b.kontraLevel > 1 ? ` x${b.kontraLevel}` : ''
+        const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
+        if (b.side === 'opponent') {
+          lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (vs opponents, ${tag}): ACHIEVED = -${net}`)
+        } else {
+          lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (${tag}): ${b.achieved ? 'ACHIEVED' : 'NOT ACHIEVED'} = ${b.achieved ? '+' : '-'}${net}`)
+        }
+      }
+      if (handScore.radliApplied) lines.push('Radli: score doubled')
+      const sideScoreLog = handScore.declarerScore - handScore.mondPenalties[declarer]
+      lines.push(`Declarer net: ${sideScoreLog >= 0 ? '+' : ''}${sideScoreLog}`)
+      for (const s of seats) {
+        if (handScore.mondPenalties[s] !== 0) {
+          lines.push(`Mond lost with Škis: ${playerNames[s]} (individual) = ${handScore.mondPenalties[s]}`)
+        }
+      }
+      if (talonDiscard.length > 0) {
+        const discardPts = countPoints(talonDiscard)
+        const discardCards = talonDiscard.map(cardText).join(', ')
+        lines.push('')
+        lines.push(`Talon discard (${discardPts} pts): ${discardCards}`)
+      }
+    }
+    lines.push('')
+    lines.push('--- Session scores after this round ---')
+    for (const s of seats) {
+      lines.push(`  ${playerNames[s]}: ${sessionScores[s] + delta[s] >= 0 ? '+' : ''}${sessionScores[s] + delta[s]} (this round: ${delta[s] >= 0 ? '+' : ''}${delta[s]})`)
+    }
+    lines.push('')
+    lines.push(`--- Tricks (${completedTricks.length}) ---`)
+    completedTricks.forEach((trick, i) => {
+      const ledSeat = trick.cards[0]?.seat
+      const order = [ledSeat, ((ledSeat+1)%4), ((ledSeat+2)%4), ((ledSeat+3)%4)] as Seat[]
+      const ordered = [...trick.cards].sort((a, b) => order.indexOf(a.seat) - order.indexOf(b.seat))
+      const plays = ordered.map(({ seat, card }) => `${playerNames[seat]}:${cardText(card)}`).join('  ')
+      const vitaminStr = trick.vitamin ? `  [vitamin: ${cardText(trick.vitamin)}]` : ''
+      const allCards = trick.vitamin ? [...trick.cards.map(c => c.card), trick.vitamin] : trick.cards.map(c => c.card)
+      const trickPts = countPoints(allCards)
+      lines.push(`T${i+1}: ${plays}${vitaminStr}  -> ${playerNames[trick.winner ?? ledSeat]} (${trickPts} pts)`)
+    })
+    return lines
+  }
 
   return (
     <div className="modal-overlay">
@@ -220,21 +282,26 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                 </div>
               )
             })}
-            {seats.filter(s => handScore.mondPenalties[s] !== 0).map(s => (
-              <div key={s} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Mond lost with Škis ({playerNames[s]})</span>
-                <span style={{ color: '#f44' }}>{handScore.mondPenalties[s]}</span>
-              </div>
-            ))}
             {handScore.radliApplied && (
               <div style={{ color: '#f0c040' }}>Radli: score doubled</div>
             )}
-            <div style={{ borderTop: '1px solid #444', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-              <span>Declarer net</span>
-              <span style={{ color: handScore.declarerScore >= 0 ? '#4f4' : '#f44' }}>
-                {handScore.declarerScore >= 0 ? '+' : ''}{handScore.declarerScore}
-              </span>
-            </div>
+            {(() => {
+              const sideScore = handScore.declarerScore - handScore.mondPenalties[declarer]
+              return (
+                <div style={{ borderTop: '1px solid #444', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                  <span>Declarer net</span>
+                  <span style={{ color: sideScore >= 0 ? '#4f4' : '#f44' }}>
+                    {sideScore >= 0 ? '+' : ''}{sideScore}
+                  </span>
+                </div>
+              )
+            })()}
+            {seats.filter(s => handScore.mondPenalties[s] !== 0).map(s => (
+              <div key={s} style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
+                <span>Mond lost with Škis: {playerNames[s]} (individual)</span>
+                <span style={{ color: '#f44' }}>{handScore.mondPenalties[s]}</span>
+              </div>
+            ))}
           </div>
         )}
 
@@ -252,69 +319,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
               className="btn btn-ghost"
               style={{ fontSize: 12, padding: '4px 10px' }}
               onClick={() => {
-                const lines: string[] = []
-                lines.push(`=== Round: ${CONTRACT_LABEL[contract]} ===`)
-                if (contract !== 'klop' && handScore) {
-                  lines.push(`Declarer: ${playerNames[declarer]}${partner !== null ? `, Partner: ${playerNames[partner]}` : ''}`)
-                  const cvContract = contract === 'valat-without' || contract === 'color-valat-without'
-                  const beggarContract = contract === 'beggar' || contract === 'open-beggar'
-                  if (cvContract) {
-                    lines.push(`Card points: ${declarerPts} scored (need all tricks) — ${won ? 'WON HAND' : 'LOST HAND'}`)
-                  } else if (beggarContract) {
-                    lines.push(`Tricks taken: ${completedTricks.filter(t => t.winner === declarer).length} (need 0) — ${won ? 'WON HAND' : 'LOST HAND'}`)
-                  } else {
-                    lines.push(`Card points: ${declarerPts} scored (need 35, ${difference >= 0 ? '+' : ''}${difference} diff) — ${won ? 'WON HAND' : 'LOST HAND'}`)
-                  }
-                  lines.push('')
-                  lines.push('--- Score breakdown ---')
-                  const gameKontraLog = getKontraMultiplier(announcementState, 'game')
-                  const gameKontraStrLog = gameKontraLog > 1 ? ` x${gameKontraLog}` : ''
-                  if (isFlat) {
-                    lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base (flat)${gameKontraStrLog} = ${won ? '+' : '-'}${CONTRACT_BASE[contract] * gameKontraLog}`)
-                  } else {
-                    const gameNetLog = (CONTRACT_BASE[contract] + Math.abs(difference)) * gameKontraLog
-                    lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base ${difference >= 0 ? '+' : ''}${difference} over threshold${gameKontraStrLog} = ${won ? '+' : '-'}${gameNetLog}`)
-                  }
-                  for (const b of handScore.bonusBreakdown) {
-                    const net = b.value * b.kontraLevel
-                    const kontraStr = b.announced && b.kontraLevel > 1 ? ` x${b.kontraLevel}` : ''
-                    const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
-                    if (b.side === 'opponent') {
-                      lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (vs opponents, ${tag}): ACHIEVED = -${net}`)
-                    } else {
-                      lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (${tag}): ${b.achieved ? 'ACHIEVED' : 'NOT ACHIEVED'} = ${b.achieved ? '+' : '-'}${net}`)
-                    }
-                  }
-                  for (const s of seats) {
-                    if (handScore.mondPenalties[s] !== 0) {
-                      lines.push(`Mond lost with Škis (${playerNames[s]}): ${handScore.mondPenalties[s]}`)
-                    }
-                  }
-                  if (handScore.radliApplied) lines.push('Radli: score doubled')
-                  lines.push(`Declarer net: ${handScore.declarerScore >= 0 ? '+' : ''}${handScore.declarerScore}`)
-                  if (talonDiscard.length > 0) {
-                    const discardPts = countPoints(talonDiscard)
-                    const discardCards = talonDiscard.map(cardText).join(', ')
-                    lines.push('')
-                    lines.push(`Talon discard (${discardPts} pts): ${discardCards}`)
-                  }
-                }
-                lines.push('')
-                lines.push('--- Session scores after this round ---')
-                for (const s of seats) {
-                  lines.push(`  ${playerNames[s]}: ${sessionScores[s] + delta[s] >= 0 ? '+' : ''}${sessionScores[s] + delta[s]} (this round: ${delta[s] >= 0 ? '+' : ''}${delta[s]})`)
-                }
-                lines.push('')
-                lines.push(`--- Tricks (${completedTricks.length}) ---`)
-                completedTricks.forEach((trick, i) => {
-                  const ledSeat = trick.cards[0]?.seat
-                  const order = [ledSeat, ((ledSeat+1)%4), ((ledSeat+2)%4), ((ledSeat+3)%4)] as Seat[]
-                  const ordered = [...trick.cards].sort((a, b) => order.indexOf(a.seat) - order.indexOf(b.seat))
-                  const plays = ordered.map(({ seat, card }) => `${playerNames[seat]}:${cardText(card)}`).join('  ')
-                  const trickPts = countPoints(trick.cards.map(c => c.card))
-                  lines.push(`T${i+1}: ${plays}  -> ${playerNames[trick.winner ?? ledSeat]} (${trickPts} pts)`)
-                })
-                navigator.clipboard.writeText(lines.join('\n'))
+                navigator.clipboard.writeText(buildLogLines().join('\n'))
                 setCopied(true)
                 setTimeout(() => setCopied(false), 2000)
               }}
@@ -359,6 +364,9 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                     const order = [ledSeat, ((ledSeat+1)%4), ((ledSeat+2)%4), ((ledSeat+3)%4)]
                     return order.indexOf(a.seat) - order.indexOf(b.seat)
                   })
+                  const allCards = trick.vitamin
+                    ? [...trick.cards.map(c => c.card), trick.vitamin]
+                    : trick.cards.map(c => c.card)
                   return (
                     <div key={i} style={{ marginBottom: 2, lineHeight: '1.5' }}>
                       <span style={{ color: '#666', marginRight: 4 }}>T{i + 1}</span>
@@ -372,8 +380,14 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                           </span>
                         </span>
                       ))}
+                      {trick.vitamin && (
+                        <span style={{ marginRight: 6 }}>
+                          <span style={{ color: '#f0c040', fontSize: 10 }}>vitamin: </span>
+                          <span style={{ color: '#f0c040' }}>{cardText(trick.vitamin)}</span>
+                        </span>
+                      )}
                       <span style={{ color: '#aaa' }}>→ {playerNames[trick.winner ?? ledSeat]}</span>
-                      <span style={{ color: '#666', marginLeft: 6 }}>({countPoints(trick.cards.map(c => c.card))} pts)</span>
+                      <span style={{ color: '#666', marginLeft: 6 }}>({countPoints(allCards)} pts)</span>
                     </div>
                   )
                 })}
@@ -396,7 +410,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
         ) : (
           <div className="modal-actions">
             <button className="btn btn-ghost" onClick={() => setConfirmEnd(true)}>End Game</button>
-            <button className="btn" onClick={onNewRound}>New Round</button>
+            <button className="btn" onClick={() => onNewRound(buildLogLines().join('\n'))}>New Round</button>
           </div>
         )}
       </div>

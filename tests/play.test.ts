@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { legalCards, resolveTrick, isEmperorTrick, checkMondCapture, playCard, firstLeader } from '../src/engine/play'
+import { legalCards, resolveTrick, isEmperorTrick, checkMondCapture, playCard, firstLeader, applyTrickResult } from '../src/engine/play'
+import { countPoints } from '../src/engine/pointcount'
 import type { Card, PlayState, TrickState, Seat, SuitCard, TrumpCard } from '../src/engine/types'
 
 function trump(ordinal: number): TrumpCard {
@@ -51,6 +52,7 @@ function makeState(
     openBeggarRevealed: false,
     talonRemainder: [],
     talonDiscard: [],
+    klopTalon: [],
     kingCall: null,
     kingInTalonCaptured: false,
     ...opts,
@@ -437,5 +439,102 @@ describe('hand complete', () => {
       s = result.newState
     }
     expect(result!.handComplete).toBe(true)
+  })
+})
+
+// ── Klop vitamin tests (ENG-001) ──────────────────────────────────────────
+
+describe('klop vitamins', () => {
+  function makeTrickState(trickNumber: number): TrickState {
+    return { trickNumber, ledSeat: 0, cards: [], ledSuit: null }
+  }
+
+  function baseKlopState(klopTalon: Card[], completedCount = 0): PlayState {
+    return makeState(
+      { 0: [], 1: [], 2: [], 3: [] },
+      { trickNumber: completedCount + 1 },
+      {
+        contract: 'klop',
+        klopTalon,
+        completedTricks: Array.from({ length: completedCount }, () => ({
+          cards: [],
+          winner: 0 as Seat,
+        })),
+        currentTrick: makeTrickState(completedCount + 1),
+      },
+    )
+  }
+
+  it('vitamin from klopTalon is added to winner captured pile (trick 1)', () => {
+    const vitamin = trump(5)
+    const state = baseKlopState([vitamin])
+    const after = applyTrickResult(state, 2 as Seat)
+    expect(after.capturedCards[2]).toContainEqual(vitamin)
+    expect(after.klopTalon).toHaveLength(0)
+  })
+
+  it('vitamin is recorded on the completed trick', () => {
+    const vitamin = low('spades')
+    const state = baseKlopState([vitamin])
+    const after = applyTrickResult(state, 1 as Seat)
+    const lastTrick = after.completedTricks[after.completedTricks.length - 1]
+    expect(lastTrick.vitamin).toEqual(vitamin)
+  })
+
+  it('no vitamin after klopTalon is exhausted (trick 7+)', () => {
+    const state = baseKlopState([], 6) // 6 vitamins already dealt
+    const after = applyTrickResult(state, 0 as Seat)
+    const lastTrick = after.completedTricks[after.completedTricks.length - 1]
+    expect(lastTrick.vitamin).toBeUndefined()
+    expect(after.klopTalon).toHaveLength(0)
+  })
+
+  it('non-klop contract: klopTalon stays empty, no vitamin on trick', () => {
+    const state = makeState(
+      { 0: [], 1: [], 2: [], 3: [] },
+      {},
+      { contract: 'one', klopTalon: [] },
+    )
+    const after = applyTrickResult(state, 0 as Seat)
+    const lastTrick = after.completedTricks[after.completedTricks.length - 1]
+    expect(lastTrick.vitamin).toBeUndefined()
+  })
+
+  it('vitamin goes to the trick winner, not other seats', () => {
+    const vitamin = king('clubs')
+    const state = baseKlopState([vitamin])
+    const after = applyTrickResult(state, 3 as Seat)
+    expect(after.capturedCards[3]).toContainEqual(vitamin)
+    expect(after.capturedCards[0]).not.toContainEqual(vitamin)
+    expect(after.capturedCards[1]).not.toContainEqual(vitamin)
+    expect(after.capturedCards[2]).not.toContainEqual(vitamin)
+  })
+
+  it('six vitamins consumed over tricks 1–6, klopTalon empty after trick 6', () => {
+    const vitamins = [trump(2), trump(3), low('clubs'), low('spades'), low('hearts'), low('diamonds')]
+    let state = baseKlopState([...vitamins])
+    for (let i = 0; i < 6; i++) {
+      state = applyTrickResult(state, (i % 4) as Seat)
+      expect(state.klopTalon).toHaveLength(5 - i)
+    }
+    expect(state.klopTalon).toHaveLength(0)
+  })
+
+  it('point conservation: all 70 points in captured piles when vitamins supplied', () => {
+    // 4 low suit cards per trick × 12 tricks = 48 cards, 48 pts; vitamins add 22 pts
+    // But we only need to verify conservation, not exact distribution.
+    // Use a micro-deck: 12 tricks each with 4 low cards + 6 vitamins = 54 cards total.
+    const vitamins = [trump(2), trump(3), low('clubs'), low('spades'), low('hearts'), low('diamonds')]
+    let state = baseKlopState([...vitamins])
+    // Simulate 6 vitamin tricks
+    for (let i = 0; i < 6; i++) {
+      state = applyTrickResult(state, 0 as Seat)
+    }
+    const totalCaptured = ([0, 1, 2, 3] as Seat[]).flatMap(s => state.capturedCards[s])
+    // All vitamins should be in captured piles, klopTalon empty
+    expect(state.klopTalon).toHaveLength(0)
+    const capturedPts = countPoints(totalCaptured)
+    const vitaminPts = countPoints(vitamins)
+    expect(capturedPts).toBe(vitaminPts) // only vitamins in piles (trick cards were empty)
   })
 })

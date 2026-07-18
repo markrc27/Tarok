@@ -4,6 +4,7 @@ import type {
 } from './types'
 import { countPoints } from './pointcount'
 import { getKontraMultiplier, evaluateBonus, evaluateBonusForSeats, bonusBaseValue } from './announce'
+import { isPagat, cardsEqual } from './deck'
 
 export function adjustCapturedForTalon(
   capturedCards: Record<Seat, Card[]>,
@@ -162,6 +163,7 @@ export function updateRadliAfterHand(
   state: RadliState,
   contract: Contract,
   _won: boolean,
+  valatBonusAchieved = false,
 ): RadliState {
   const contractStrength: Partial<Record<Contract, number>> = {
     'beggar': 7, 'solo-without': 8, 'open-beggar': 9,
@@ -170,7 +172,7 @@ export function updateRadliAfterHand(
   const isBeggarOrHigher = (contractStrength[contract] ?? 0) >= 7
   const isKlop = contract === 'klop'
 
-  if (!isKlop && !isBeggarOrHigher) return state
+  if (!isKlop && !isBeggarOrHigher && !valatBonusAchieved) return state
 
   // All four seats gain one uncancelled radl
   const newUncancelled = { ...state.uncancelled }
@@ -252,22 +254,47 @@ export function computeHandScore(params: {
     valat: false,
   }
 
-  let declarerScore: number
   const isFlat = ['beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without'].includes(contract)
 
+  // Compute the shared side score without mond penalty so radli doesn't double it
+  let sideScore: number
   if (isFlat) {
-    declarerScore = scoreFlatContract(contract, won) + mPenalties[declarer]
+    sideScore = scoreFlatContract(contract, won)
   } else {
-    declarerScore = scoreNormalContract(contract, difference, announcementState, bonusResults, contractBase, won, opponentBonusResults)
-    declarerScore += mPenalties[declarer]
+    sideScore = scoreNormalContract(contract, difference, announcementState, bonusResults, contractBase, won, opponentBonusResults)
   }
 
-  // Apply radli for declarer
-  const { score: finalScore, newRadliState } = applyRadli(declarerScore, radliState, declarer, won)
-  declarerScore = finalScore
+  // Unannounced ultimo failures: card played to last trick by declarer side but beaten.
+  // Only on normal contracts (flat contracts have no bonuses).
+  if (!isFlat && completedTricks.length > 0) {
+    const lastTrick = completedTricks[completedTricks.length - 1]
+    const declarerSeats = ([0, 1, 2, 3] as Seat[]).filter(s => s === declarer || s === partner)
+    const winnerCard = lastTrick.cards.find(e => e.seat === lastTrick.winner)?.card
+
+    const pagatAnnounced = announcementState.announcements.some(a => a.bonus === 'pagat-ultimo')
+    if (!pagatAnnounced && !bonusResults['pagat-ultimo']) {
+      const pagatByDeclSide = lastTrick.cards.find(e => declarerSeats.includes(e.seat) && isPagat(e.card))
+      if (pagatByDeclSide && winnerCard && !isPagat(winnerCard)) {
+        sideScore -= bonusBaseValue('pagat-ultimo', false)
+      }
+    }
+
+    const kingAnnounced = announcementState.announcements.some(a => a.bonus === 'king-ultimo')
+    if (!kingAnnounced && !bonusResults['king-ultimo'] && calledKing) {
+      const kingByDeclSide = lastTrick.cards.find(e => declarerSeats.includes(e.seat) && cardsEqual(e.card, calledKing))
+      if (kingByDeclSide && winnerCard && !cardsEqual(winnerCard, calledKing)) {
+        sideScore -= bonusBaseValue('king-ultimo', false)
+      }
+    }
+  }
+
+  // Apply radli to the clean side score — mond penalty must not be doubled
+  const { score: radledSideScore, newRadliState } = applyRadli(sideScore, radliState, declarer, won)
   void newRadliState
 
-  const partnerScore = partner !== null ? declarerScore : null
+  // Mond penalty is individual — applied per seat after radli, never shared with the partner
+  const declarerScore = radledSideScore + mPenalties[declarer]
+  const partnerScore = partner !== null ? radledSideScore : null
 
   const opponentScores: Record<Seat, number> = { 0: 0, 1: 0, 2: 0, 3: 0 }
   for (const seat of [0, 1, 2, 3] as Seat[]) {

@@ -14,7 +14,7 @@ import {
   scoreKlop, countDeclarerPoints, adjustCapturedForTalon,
 } from '../engine/scoring'
 import { CONTRACT_BASE } from '../engine/types'
-import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard } from '../ai/bidding-heuristic'
+import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard, recommendAnnouncements } from '../ai/bidding-heuristic'
 import { pickNames } from '../ui/names'
 import { chooseCard, computeKnownPartner } from '../ai/play-heuristic'
 import { saveGameRecord, consumeDraftRecord } from './persistence'
@@ -36,7 +36,10 @@ function makeInitialState(): GameState {
     sessionScores: { 0: 0, 1: 0, 2: 0, 3: 0 },
     playerNames: (() => { const [a, b, c] = pickNames(); return { 0: 'You', 1: a, 2: b, 3: c } })(),
     missdealStrikes: { 0: 0, 1: 0, 2: 0, 3: 0 },
-    options: { soundEnabled: false },
+    options: {
+      soundEnabled: false,
+      botDifficulty: (localStorage.getItem('tarok-bot-difficulty') as 'easy' | 'hard') || 'easy',
+    },
     cardAppearance: (localStorage.getItem('tarok-card-appearance') as 'simple' | 'traditional') || 'simple',
     statistics: [],
     skisRoundEndSeat: null,
@@ -47,6 +50,7 @@ function makeInitialState(): GameState {
     roundId: 0,
     roundHistory: [],
     voidDealSeat: null,
+    compulsoryKlopNext: false,
   }
 }
 
@@ -58,8 +62,9 @@ type Store = GameState & {
   callKing: (suit: Suit) => void
   finishAnnouncements: (bonuses: BonusName[], kontraGame: boolean) => void
   playCardAction: (card: Card) => void
-  acknowledgeScore: () => void
+  acknowledgeScore: (logText: string) => void
   setOption: (key: keyof GameState['options'], value: boolean) => void
+  setBotDifficulty: (d: 'easy' | 'hard') => void
   setForehandContract: (contract: Contract) => void
   setPlayerName: (name: string) => void
   endGame: () => void
@@ -76,8 +81,8 @@ export const useGameStore = create<Store>((set, get) => {
   const FLAT_CONTRACTS = new Set(['beggar', 'open-beggar', 'solo-without', 'color-valat-without', 'valat-without'])
 
   const advanceToAnnouncing = () => {
-    const { biddingState, kingCall } = get()
-    if (!biddingState) return
+    const { biddingState, kingCall, dealResult, options } = get()
+    if (!biddingState || !dealResult) return
     const contract = biddingState.highestBid ?? 'klop'
 
     if (contract === 'klop') {
@@ -98,7 +103,16 @@ export const useGameStore = create<Store>((set, get) => {
       return
     }
 
-    set({ phase: 'announcing', announcementState: initAnnouncements() })
+    // Hard mode: bot declarer auto-announces bonuses before the dialog opens.
+    let ann = initAnnouncements()
+    if (options.botDifficulty === 'hard' && declarer !== HUMAN && !FLAT_CONTRACTS.has(contract)) {
+      const botHand = dealResult.hands[declarer]
+      for (const bonus of recommendAnnouncements(botHand)) {
+        ann = applyAnnouncement(ann, { kind: 'announce', seat: declarer, bonus }, declarer, partner)
+      }
+    }
+
+    set({ phase: 'announcing', announcementState: ann })
   }
 
   const advanceToPlay = () => {
@@ -116,13 +130,13 @@ export const useGameStore = create<Store>((set, get) => {
   }
 
   const botTalon = (contract: Contract, declarer: Seat) => {
-    const { dealResult, biddingState } = get()
+    const { dealResult, biddingState, options } = get()
     if (!dealResult || !biddingState) return
     const exchange = initTalonExchange(dealResult.talon, contract)
     const groupIdx = recommendTalonGroup(exchange.groups)
     const { updatedHand, exchange: updated } = selectGroup(exchange, groupIdx, dealResult.hands[declarer])
     const groupSize = talonGroupSize(contract)
-    const toDiscard = recommendDiscard(updatedHand, groupSize)
+    const toDiscard = recommendDiscard(updatedHand, groupSize, options.botDifficulty)
     const newHand = discardHand(updatedHand, toDiscard)
     const newHands = { ...dealResult.hands, [declarer]: newHand }
     const newDealResult = { ...dealResult, hands: newHands }
@@ -137,12 +151,12 @@ export const useGameStore = create<Store>((set, get) => {
   }
 
   const runBotBid = () => {
-    const { biddingState, dealResult, phase } = get()
+    const { biddingState, dealResult, phase, options } = get()
     if (phase !== 'bidding' || !biddingState || !dealResult) return
     const seat = biddingState.currentBidder
     if (seat === HUMAN) return
     const legal = legalBids(biddingState, seat)
-    const rec = recommendBid(evaluateHand(dealResult.hands[seat]), legal, biddingState.isCompulsoryKlop)
+    const rec = recommendBid(evaluateHand(dealResult.hands[seat]), legal, biddingState.isCompulsoryKlop, dealResult.hands[seat], options.botDifficulty)
     const action: BidAction = rec === 'pass' ? { kind: 'pass' } : { kind: 'bid', contract: rec as Contract }
     get().placeBid(action)
   }
@@ -153,7 +167,7 @@ export const useGameStore = create<Store>((set, get) => {
   const resolveTrickDisplay = (newState: ReturnType<typeof initPlay>, winner: Seat, handComplete: boolean) => {
     const lastTrick = newState.completedTricks[newState.completedTricks.length - 1]
     const thisRoundId = get().roundId
-    set({ playState: newState, pendingTrick: { cards: lastTrick.cards, winner } })
+    set({ playState: newState, pendingTrick: { cards: lastTrick.cards, winner, vitamin: lastTrick.vitamin } })
     setTimeout(() => {
       if (get().roundId !== thisRoundId) return  // new round started during the pause
       set({ pendingTrick: null })
@@ -166,7 +180,7 @@ export const useGameStore = create<Store>((set, get) => {
   }
 
   const runBotPlay = () => {
-    const { playState, phase } = get()
+    const { playState, phase, options } = get()
     if (phase !== 'playing' || !playState) return
     if (isHandComplete(playState)) return  // stale timer fired during 1200ms trick-display pause
     const playedSeats = new Set(playState.currentTrick.cards.map(c => c.seat))
@@ -174,7 +188,7 @@ export const useGameStore = create<Store>((set, get) => {
     const order: Seat[] = [ledSeat, ((ledSeat+1)%4) as Seat, ((ledSeat+2)%4) as Seat, ((ledSeat+3)%4) as Seat]
     const seat = order.find(s => !playedSeats.has(s))
     if (!seat || seat === HUMAN) return
-    const card = chooseCard(playState, seat, { difficultyBias: 0.5, knownPartner: computeKnownPartner(playState) })
+    const card = chooseCard(playState, seat, { difficultyBias: 0.5, difficulty: options.botDifficulty, knownPartner: computeKnownPartner(playState) })
     const { newState, trickComplete, trickWinner, handComplete } = playCard(playState, seat, card)
     set({ playState: newState })
     if (trickComplete && trickWinner !== null) {
@@ -208,7 +222,7 @@ export const useGameStore = create<Store>((set, get) => {
         'klop', 'three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one',
         'beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without',
       ]
-      const rec = recommendBid(eval_, allContracts, biddingState.isCompulsoryKlop)
+      const rec = recommendBid(eval_, allContracts, biddingState.isCompulsoryKlop, botHand, get().options.botDifficulty)
       const pickedContract: Contract = rec === 'pass' ? 'klop' : rec
       set({ biddingState: applyBid(biddingState, { kind: 'bid', contract: pickedContract }) })
       afterBidResolved()
@@ -242,14 +256,16 @@ export const useGameStore = create<Store>((set, get) => {
     ...makeInitialState(),
 
     startNewGame: () => {
-      const { dealerSeat, sessionScores, statistics, playerNames, radliState, roundId, roundHistory } = get()
+      const { dealerSeat, sessionScores, statistics, playerNames, radliState, roundId, roundHistory, compulsoryKlopNext } = get()
       let outcome = deal(dealerSeat)
       let voidDealSeat: Seat | null = null
       while (outcome.kind === 'void-deal') {
         if (voidDealSeat === null) voidDealSeat = outcome.zeroTrumpSeat
         outcome = deal(dealerSeat)
       }
-      const biddingState = initBidding(dealerSeat, voidDealSeat !== null)
+      // Compulsory klop triggers from: void-deal redeal, OR a player's score hitting exactly 0
+      const isCompulsoryKlop = voidDealSeat !== null || compulsoryKlopNext
+      const biddingState = initBidding(dealerSeat, isCompulsoryKlop)
       set({
         ...makeInitialState(),
         phase: 'bidding',
@@ -363,7 +379,7 @@ export const useGameStore = create<Store>((set, get) => {
       }
     },
 
-    acknowledgeScore: () => {
+    acknowledgeScore: (logText) => {
       const { playState, announcementState, radliState, sessionScores, statistics, dealerSeat, roundId, roundHistory } = get()
       const nextDealer = ((dealerSeat + 3) % 4) as Seat
 
@@ -378,19 +394,19 @@ export const useGameStore = create<Store>((set, get) => {
       const ann = announcementState ?? initAnnouncements()
       const effectiveCaptured = adjustCapturedForTalon(capturedCards, talonRemainder, declarer, partner, kingInTalonCaptured)
 
-      // Determine win for radli bookkeeping
+      // Determine win for radli bookkeeping (must match computeHandScore's internal logic)
       const declarerPts = countDeclarerPoints(effectiveCaptured, declarer, partner)
+      const isValatContract = contract === 'valat-without' || contract === 'color-valat-without'
       const declarerWon = (contract === 'beggar' || contract === 'open-beggar')
         ? effectiveCaptured[declarer].length === 0
-        : declarerPts >= 36
-
-      // Update radli: cancel one on win, then add new ones for klop/beggar+
-      const { newRadliState: afterCancel } = applyRadli(0, radliState, declarer, declarerWon)
-      const newRadliState = updateRadliAfterHand(afterCancel, contract, declarerWon)
+        : isValatContract
+          ? completedTricks.every(t => t.winner === declarer)
+          : declarerPts >= 36
 
       // Compute per-seat score deltas
       const delta: Record<Seat, number> = { 0: 0, 1: 0, 2: 0, 3: 0 }
       let newStats = statistics
+      let valatBonusAchieved = false
 
       if (contract === 'klop') {
         const klopScores = scoreKlop(capturedCards)
@@ -411,7 +427,12 @@ export const useGameStore = create<Store>((set, get) => {
           if (s !== declarer && s !== partner) delta[s] = handScore.opponentScores[s]
         }
         newStats = [...statistics, handScore]
+        valatBonusAchieved = handScore.bonusBreakdown.some(b => b.bonus === 'valat' && b.achieved)
       }
+
+      // Update radli: cancel one on win, then add new ones for klop/beggar+/valat-bonus
+      const { newRadliState: afterCancel } = applyRadli(0, radliState, declarer, declarerWon)
+      const newRadliState = updateRadliAfterHand(afterCancel, contract, declarerWon, valatBonusAchieved)
 
       const newScores: Record<Seat, number> = {
         0: sessionScores[0] + delta[0],
@@ -420,11 +441,18 @@ export const useGameStore = create<Store>((set, get) => {
         3: sessionScores[3] + delta[3],
       }
 
+      // Compulsory klop trigger: a player whose score was non-zero lands on exactly zero.
+      // Players who never scored (always at 0) do not trigger it.
+      const compulsoryKlopNext = ([0, 1, 2, 3] as Seat[]).some(
+        s => sessionScores[s] !== 0 && newScores[s] === 0,
+      )
+
       const newRoundRecord: RoundRecord = {
         roundNumber: roundId,
         contract,
         declarer,
         scoreDelta: { 0: delta[0], 1: delta[1], 2: delta[2], 3: delta[3] },
+        logText,
       }
 
       set({
@@ -441,11 +469,17 @@ export const useGameStore = create<Store>((set, get) => {
         dealResult: null,
         talonExchange: null,
         kingCall: null,
+        compulsoryKlopNext,
       })
     },
 
     setOption: (key, value) => {
       set(s => ({ options: { ...s.options, [key]: value } }))
+    },
+
+    setBotDifficulty: (d) => {
+      localStorage.setItem('tarok-bot-difficulty', d)
+      set(s => ({ options: { ...s.options, botDifficulty: d } }))
     },
 
     setPlayerName: (name) => {
@@ -471,9 +505,12 @@ export const useGameStore = create<Store>((set, get) => {
           for (const s of [0, 1, 2, 3] as Seat[]) delta[s] = klopScores[s]
         } else {
           const declarerPts = countDeclarerPoints(effectiveCaptured, declarer, partner)
+          const isValatContract = contract === 'valat-without' || contract === 'color-valat-without'
           const declarerWon = (contract === 'beggar' || contract === 'open-beggar')
             ? effectiveCaptured[declarer].length === 0
-            : declarerPts >= 36
+            : isValatContract
+              ? playState.completedTricks.every(t => t.winner === declarer)
+              : declarerPts >= 36
           const handScore = computeHandScore({
             contract, declarer, partner, capturedCards: effectiveCaptured, talonRemainder,
             mondCapturedWithSkis, mondPlayedBySeat: mondCapturedBy,
@@ -505,6 +542,7 @@ export const useGameStore = create<Store>((set, get) => {
         playerNames: { ...playerNames },
         finalScores,
         rounds: roundId,
+        difficulty: get().options.botDifficulty,
       })
       consumeDraftRecord()
 
@@ -519,7 +557,7 @@ export const useGameStore = create<Store>((set, get) => {
     },
 
     endGameFromMenu: () => {
-      const { sessionScores, playerNames, roundId, phase, dealerSeat, statistics } = get()
+      const { sessionScores, playerNames, roundId, phase, dealerSeat, statistics, options } = get()
       const nextDealer = ((dealerSeat + 3) % 4) as Seat
 
       // Completed rounds = roundId when between rounds (setup), roundId-1 when mid-round
@@ -532,6 +570,7 @@ export const useGameStore = create<Store>((set, get) => {
           playerNames: { ...playerNames },
           finalScores: { ...sessionScores },
           rounds: completedRounds,
+          difficulty: options.botDifficulty,
         })
       }
       consumeDraftRecord()

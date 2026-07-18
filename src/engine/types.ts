@@ -74,6 +74,7 @@ export interface Announcement {
 export interface Trick {
   cards: { seat: Seat; card: Card }[]
   winner: Seat | null
+  vitamin?: Card  // klop T1–T6: talon card gifted to the trick winner
 }
 
 export type BidAction =
@@ -149,6 +150,7 @@ export interface PlayState {
   openBeggarRevealed: boolean
   talonRemainder: Card[]
   talonDiscard: Card[]
+  klopTalon: Card[]  // klop only: remaining talon cards to be dealt as vitamins
   kingCall: KingCall | null
   kingInTalonCaptured: boolean
 }
@@ -209,6 +211,7 @@ export interface GameRecord {
   playerNames: Record<Seat, string>
   finalScores: Record<Seat, number>
   rounds: number
+  difficulty?: 'easy' | 'hard'
 }
 
 export interface RoundRecord {
@@ -216,6 +219,7 @@ export interface RoundRecord {
   contract: Contract
   declarer: Seat
   scoreDelta: Record<Seat, number>
+  logText: string
 }
 
 export interface SessionState {

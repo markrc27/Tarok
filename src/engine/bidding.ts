@@ -43,11 +43,8 @@ export function legalBids(state: BiddingState, seat: Seat): Contract[] {
   const forehand = ((state.dealer + 3) % 4) as Seat
   const available = availableContracts(state.isCompulsoryKlop)
 
-  // Forehand-only contracts are only available when all others have passed (handled in resolve)
-  // During normal bidding, klop and three cannot be bid by any player
-  const biddable = state.highestBid === null
-    ? available.filter(c => !isForehandOnlyContract(c))
-    : available.filter(c => !isForehandOnlyContract(c))
+  // Forehand-only contracts (klop, three) cannot be bid during normal bidding
+  const biddable = available.filter(c => !isForehandOnlyContract(c))
 
   if (state.highestBid === null) {
     // First bid — anyone can bid from two upward (or solo-without in compulsory klop)
@@ -132,7 +129,7 @@ export function resolveBidding(state: BiddingState): BiddingResult | null {
     // Forehand must choose klop or three (or higher) — engine returns forehand as declarer
     // with klop as default; the UI dialog lets forehand pick
     return {
-      contract: state.isCompulsoryKlop ? 'klop' : 'klop',
+      contract: 'klop',
       declarer: forehand,
       isCompulsoryKlop: state.isCompulsoryKlop,
     }

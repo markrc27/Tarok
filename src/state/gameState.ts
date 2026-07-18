@@ -6,7 +6,6 @@ import type {
 export type GamePhase =
   | 'setup'
   | 'idle'
-  | 'dealing'
   | 'bidding'
   | 'forehand-choice'   // all others passed; forehand picks klop or higher
   | 'talon'
@@ -14,7 +13,6 @@ export type GamePhase =
   | 'announcing'
   | 'playing'
   | 'scoring'
-  | 'skis-round'
 
 export interface GameState {
   phase: GamePhase
@@ -28,15 +26,16 @@ export interface GameState {
   sessionScores: Record<Seat, number>
   playerNames: Record<Seat, string>
   missdealStrikes: Record<Seat, number>
-  options: { soundEnabled: boolean }
+  options: { soundEnabled: boolean; botDifficulty: 'easy' | 'hard' }
   cardAppearance: 'simple' | 'traditional'
   statistics: HandScore[]
   skisRoundEndSeat: Seat | null
   dealerSeat: Seat
   pendingDiscardCount: number
   forehandChoiceContract: Contract | null
-  pendingTrick: { cards: { seat: Seat; card: Card }[]; winner: Seat } | null
+  pendingTrick: { cards: { seat: Seat; card: Card }[]; winner: Seat; vitamin?: Card } | null
   roundId: number
   roundHistory: RoundRecord[]
   voidDealSeat: Seat | null
+  compulsoryKlopNext: boolean
 }

@@ -18,10 +18,7 @@ import AnnouncementsDialog from './dialogs/AnnouncementsDialog'
 import HistoryDialog from './dialogs/HistoryDialog'
 import HelpDialog from './dialogs/HelpDialog'
 import RoundHistoryDialog from './dialogs/RoundHistoryDialog'
-const BONUS_LABEL: Record<string, string> = {
-  trula: 'Trula', kings: 'Kings',
-  'king-ultimo': 'King Ultimo', 'pagat-ultimo': 'Pagat Ultimo', valat: 'Valat',
-}
+import { BONUS_LABEL } from './labels'
 
 const AI_SEATS: { seat: Seat; pos: string; dir: 'h' | 'v'; flip?: boolean }[] = [
   { seat: 2, pos: 'seat-top', dir: 'h' },
@@ -40,7 +37,7 @@ export default function App() {
     phase, dealResult, biddingState, talonExchange, kingCall,
     announcementState, playState, sessionScores, playerNames,
     radliState, pendingDiscardCount, roundId, roundHistory, cardAppearance,
-    voidDealSeat,
+    voidDealSeat, options,
   } = store
 
   // On mount: load from OPFS file (merges into localStorage), then recover any draft
@@ -142,7 +139,7 @@ export default function App() {
             <h1>Tarok</h1>
             <p>Slovenian card game — 4 players</p>
             <p style={{ fontSize: 13, marginTop: -8 }}>v{__APP_VERSION__}</p>
-            <div style={{ margin: '14px 0 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <div style={{ margin: '14px 0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <label style={{ color: '#aaa', fontSize: 13 }}>Your name</label>
               <input
                 type="text"
@@ -158,6 +155,26 @@ export default function App() {
                   textAlign: 'center', width: 180, outline: 'none',
                 }}
               />
+            </div>
+            <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderRadius: 4, overflow: 'hidden', border: '1px solid #555' }}>
+              {(['easy', 'hard'] as const).map(d => {
+                const selected = options.botDifficulty === d
+                return (
+                  <button
+                    key={d}
+                    onClick={() => store.setBotDifficulty(d)}
+                    style={{
+                      background: selected ? '#0078d4' : '#555',
+                      border: 'none',
+                      color: selected ? '#fff' : '#ccc',
+                      padding: '6px 24px', cursor: 'pointer', fontSize: 13,
+                      fontWeight: selected ? 'bold' : 'normal',
+                    }}
+                  >
+                    {d.charAt(0).toUpperCase() + d.slice(1)}
+                  </button>
+                )
+              })}
             </div>
             <button className="btn" style={{ fontSize: 16, padding: '10px 30px' }} onClick={() => { const n = nameInput.trim(); store.setPlayerName(n); store.startNewGame() }}>
               New Game
@@ -319,7 +336,7 @@ export default function App() {
           radliState={radliState}
           playerNames={playerNames}
           roundId={roundId}
-          onNewRound={() => { store.acknowledgeScore(); store.startNewGame() }}
+          onNewRound={(logText) => { store.acknowledgeScore(logText); store.startNewGame() }}
           onEndGame={() => { setShowRoundHistory(false); store.endGame() }}
         />
       )}

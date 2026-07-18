@@ -1,4 +1,13 @@
-import type { Contract } from '../engine/types'
+import type { Contract, BonusName } from '../engine/types'
+
+export const BONUS_LABEL: Record<BonusName, string> = {
+  trula: 'Trula', kings: 'Kings', 'king-ultimo': 'King Ultimo',
+  'pagat-ultimo': 'Pagat Ultimo', valat: 'Valat',
+}
+
+export const SUIT_SYM: Record<string, string> = {
+  clubs: '♣', spades: '♠', hearts: '♥', diamonds: '♦',
+}
 
 export const CONTRACT_LABEL: Record<Contract, string> = {
   'klop':                'Klop',

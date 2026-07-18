@@ -73,6 +73,7 @@ function makeState(opts: {
     openBeggarRevealed: opts.openBeggarRevealed ?? false,
     talonRemainder: [],
     talonDiscard: [],
+    klopTalon: [],
     kingCall: opts.kingCall ?? null,
     kingInTalonCaptured: false,
   }
@@ -587,5 +588,48 @@ describe('no-cheat king discovery — partner plays as opponent until king is re
     const card = chooseCard(state, 2, cfg(2 as Seat))
     // As declarer-side: ally winning → dump lowest (T10)
     expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })
+  })
+})
+
+// ── BOT-004: secret partner guards the called king ─────────────────────────
+
+describe('secret partner does not lead called king (BOT-004)', () => {
+  it('partner bot avoids leading called king when it has other non-trumps', () => {
+    // seat0 is the secret partner (holds K♣, the called king). It leads.
+    // It also holds Q♣ and a trump. Should lead Q♣ not K♣.
+    const kClubs = suit('clubs', 'K', 5)
+    const qClubs = suit('clubs', 'Q', 4)
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 0 as Seat,
+      hand0: [kClubs, qClubs, trump(5)],
+      kingCall: kingCall('clubs', 0 as Seat),
+    })
+    const card = chooseCard(state, 0, cfg(null)) // knownPartner still null (king not yet played)
+    expect(card).not.toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'Q' })
+  })
+
+  it('partner bot leads called king only when it is the sole non-trump', () => {
+    // Forced: K♣ is the only non-trump, so it must be led.
+    const kClubs = suit('clubs', 'K', 5)
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 0 as Seat,
+      hand0: [kClubs, trump(5)],
+      kingCall: kingCall('clubs', 0 as Seat),
+    })
+    const card = chooseCard(state, 0, cfg(null))
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })
+  })
+
+  it('bot with no king call is unaffected — still leads highest non-trump', () => {
+    const kClubs = suit('clubs', 'K', 5)
+    const qSpades = suit('spades', 'Q', 4)
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: null,
+      hand0: [kClubs, qSpades, trump(5)],
+      kingCall: null,
+    })
+    const card = chooseCard(state, 0, cfg(null))
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })
   })
 })

@@ -153,6 +153,7 @@ body {
 .trick-slot-left   { top: 50%;    left: 0;  transform: translateY(-50%); }
 .trick-slot-right  { top: 50%;    right: 0; transform: translateY(-50%); }
 .trick-slot-bottom { bottom: 20px; left: 50%; transform: translateX(-50%); }
+.trick-slot-center { top: 50%; left: calc(50% + 80px); transform: translate(-50%, -50%); }
 
 .trick-winner-card .card { outline: 3px solid #facc15; box-shadow: 0 0 12px #facc15; }
 .trick-winner-banner {

@@ -1,6 +1,7 @@
 import React from 'react'
 import type { Card, SuitCard, TrumpCard } from '../engine/types'
 import { useGameStore } from '../state/store'
+import { SUIT_SYM } from './labels'
 
 interface Props {
   card?: Card
@@ -9,10 +10,6 @@ interface Props {
   onClick?: () => void
   selected?: boolean
   className?: string
-}
-
-const SUIT_SYMBOL: Record<string, string> = {
-  clubs: '♣', spades: '♠', hearts: '♥', diamonds: '♦',
 }
 
 function rankLabel(rank: SuitCard['rank']): string {
@@ -85,7 +82,7 @@ export default function CardSprite({ card, faceUp = true, dimmed, onClick, selec
   }
 
   const s = card as SuitCard
-  const sym = SUIT_SYMBOL[s.suit]
+  const sym = SUIT_SYM[s.suit]
   const isRed = s.suit === 'hearts' || s.suit === 'diamonds'
   const rank = rankLabel(s.rank)
 

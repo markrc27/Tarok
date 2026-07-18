@@ -64,10 +64,7 @@ export function selectTalonGroup(
 export function applyDiscard(
   exchange: TalonExchange,
   discard: Card[],
-  hand: Card[],
 ): TalonExchange {
-  const updatedHand = hand.filter(c => !discard.some(d => cardsEqual(c, d)))
-  void updatedHand // hand is returned by caller after this
   return { ...exchange, discard }
 }
 

@@ -3,7 +3,18 @@ import {
   initBidding, applyBid, resolveBidding, legalBids,
   biddingOrder, contractStrength, availableContracts,
 } from '../src/engine/bidding'
-import type { Seat, BidAction } from '../src/engine/types'
+import { evaluateHand, recommendBid } from '../src/ai/bidding-heuristic'
+import type { Seat, BidAction, Card, SuitCard, TrumpCard } from '../src/engine/types'
+
+function trump(ordinal: number): TrumpCard {
+  const pts: 1 | 5 = (ordinal === 1 || ordinal === 21 || ordinal === 22) ? 5 : 1
+  return { kind: 'trump', ordinal: ordinal as TrumpCard['ordinal'], points: pts }
+}
+
+function suit(s: SuitCard['suit'], rank: SuitCard['rank']): SuitCard {
+  const pts: 1 | 2 | 3 | 4 | 5 = rank === 'K' ? 5 : rank === 'Q' ? 4 : rank === 'Kn' ? 3 : rank === 'J' ? 2 : 1
+  return { kind: 'suit', suit: s, rank, points: pts }
+}
 
 function passAll(state: ReturnType<typeof initBidding>, except?: Seat) {
   let s = state
@@ -195,5 +206,49 @@ describe('availableContracts', () => {
     expect(c).not.toContain('beggar')
     expect(c).not.toContain('three')
     expect(c[0]).toBe('solo-without')
+  })
+})
+
+describe('recommendBid — all four kings (BOT-001)', () => {
+  const allKings = [
+    suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'K'), suit('diamonds', 'K'),
+  ]
+
+  it('6 trumps + all 4 kings → solo-two (not partner two)', () => {
+    const hand: Card[] = [
+      ...Array.from({ length: 6 }, (_, i) => trump(i + 2)),
+      ...allKings,
+      suit('clubs', 'Q'), suit('clubs', 'J'),
+    ]
+    const legal: import('../src/engine/types').Contract[] = [
+      'two', 'one', 'solo-three', 'solo-two', 'solo-one',
+    ]
+    const rec = recommendBid(evaluateHand(hand), legal, false, hand)
+    expect(contractStrength(rec as import('../src/engine/types').Contract)).toBeGreaterThanOrEqual(contractStrength('solo-two'))
+    expect(rec).not.toBe('two')
+  })
+
+  it('5 trumps + all 4 kings → bids solo-three', () => {
+    const hand: Card[] = [
+      ...Array.from({ length: 5 }, (_, i) => trump(i + 2)),
+      ...allKings,
+      suit('clubs', 'Q'), suit('clubs', 'J'), suit('spades', 'Q'),
+    ]
+    const legal: import('../src/engine/types').Contract[] = [
+      'three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one',
+    ]
+    const rec = recommendBid(evaluateHand(hand), legal, false, hand)
+    expect(rec).toBe('solo-three')
+  })
+
+  it('4 trumps + all 4 kings → passes (ceiling is null)', () => {
+    const hand: Card[] = [
+      ...Array.from({ length: 4 }, (_, i) => trump(i + 2)),
+      ...allKings,
+      suit('clubs', 'Q'), suit('clubs', 'J'), suit('spades', 'Q'), suit('spades', 'J'),
+    ]
+    const legal: import('../src/engine/types').Contract[] = ['two', 'one', 'solo-three']
+    const rec = recommendBid(evaluateHand(hand), legal, false, hand)
+    expect(rec).toBe('pass')
   })
 })

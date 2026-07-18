@@ -159,8 +159,9 @@ A positive contract is won by taking at least 36 of the 70 points.
 
 Dealt anticlockwise in packets of six, starting with a packet to the
 **talon** (6 cards, face down, untouched until exchange), then six-card
-packets to each player until each has 16 cards. Turn to deal rotates
-anticlockwise each hand.
+packets to each player until each has 12 cards. Turn to deal rotates
+anticlockwise each hand. (16 cards each is the 3-player variant, not this
+game — 48 played cards / 4 players = 12, hence 12 tricks per hand.)
 
 Special case: if a player is dealt **zero trumps**, they must show their
 hand; the deal is voided, reshuffled, redealt by the same dealer, and the
@@ -292,7 +293,10 @@ they aren't kontra'ing their own side.
 - `klop`: every player scores individually. A player taking >35 points
   scores −70; a player taking zero tricks scores +70. If neither extreme
   occurs, each player's actual points (rounded to nearest 5) are simply
-  subtracted from their score.
+  subtracted from their score. During klop play, one talon card is turned
+  face up before each of the first six tricks and is taken by that trick's
+  winner (the "vitamin") — so in klop all 70 points end up in players'
+  piles with no talon remainder.
 - Declarer's side shares one fate: a win credits both partners the same
   amount, a loss debits both the same amount (klop and the mond penalty
   are the exceptions — those are scored per-individual).

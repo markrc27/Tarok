@@ -48,11 +48,6 @@ export function nextKontraLevel(current: KontraLevel, byDeclarerSide: boolean): 
   return null // already at max or wrong side
 }
 
-function getKontraTarget(action: AnnounceAction): 'game' | BonusName | null {
-  if (action.kind === 'announce') return null
-  return action.target
-}
-
 function isDeclarerSide(seat: Seat, declarer: Seat, partner: Seat | null): boolean {
   return seat === declarer || seat === partner
 }
@@ -119,7 +114,8 @@ export function evaluateBonusForSeats(
     const lastTrick = completedTricks[completedTricks.length - 1]
     if (!lastTrick || lastTrick.winner === null) return false
     if (!seats.includes(lastTrick.winner)) return false
-    return lastTrick.cards.some(({ card }) => isPagat(card))
+    const winnerEntry = lastTrick.cards.find(e => e.seat === lastTrick.winner)
+    return winnerEntry !== undefined && isPagat(winnerEntry.card)
   }
 
   if (bonus === 'king-ultimo') {
@@ -127,7 +123,8 @@ export function evaluateBonusForSeats(
     const lastTrick = completedTricks[completedTricks.length - 1]
     if (!lastTrick || lastTrick.winner === null) return false
     if (!seats.includes(lastTrick.winner)) return false
-    return lastTrick.cards.some(({ card }) => cardsEqual(card, calledKing))
+    const winnerEntry = lastTrick.cards.find(e => e.seat === lastTrick.winner)
+    return winnerEntry !== undefined && cardsEqual(winnerEntry.card, calledKing)
   }
 
   if (bonus === 'valat') {

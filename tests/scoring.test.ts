@@ -246,6 +246,58 @@ describe('scoreFlatContract', () => {
   })
 })
 
+describe('computeHandScore mond penalty isolation (ENG-005)', () => {
+  function makeTrick(winner: Seat, cards: Card[]): Trick {
+    return { cards: cards.map((card, i) => ({ seat: ((winner + i) % 4) as Seat, card })), winner }
+  }
+
+  function queen(s: 'clubs'|'spades'|'hearts'|'diamonds'): SuitCard {
+    return { kind: 'suit', suit: s, rank: 'Q', points: 4 } as SuitCard
+  }
+  // 10 high-value cards giving 39 counted pts (>36 → won hand).
+  // No Pagat → no trula. All 4 kings → kings bonus +10 (but constant across all three test calls).
+  function wonCaptured(): Record<Seat, Card[]> {
+    return {
+      0: [trump(22), trump(21), king('clubs'), king('spades'), king('hearts'), king('diamonds'),
+          queen('clubs'), queen('spades'), queen('hearts'), queen('diamonds')],
+      1: [], 2: [], 3: [],
+    }
+  }
+  // Opponent wins one trick so valat=false; avoids scoreNormalContract returning 250.
+  function tricks12OpponentWins1(): Trick[] {
+    return [
+      makeTrick(2, [low(), low(), low(), low()]),
+      ...Array.from({ length: 11 }, () => makeTrick(0, [low(), low(), low(), low()])),
+    ]
+  }
+  const radliWith1 = { uncancelled: { 0: 1, 1: 0, 2: 0, 3: 0 } }
+  const baseParams = {
+    contract: 'three' as const, declarer: 0 as Seat, partner: 1 as Seat,
+    talonRemainder: [], announcementState: initAnnouncements(),
+    completedTricks: tricks12OpponentWins1(),
+    calledKing: null, radliState: radliWith1,
+    contractBase: CONTRACT_BASE['three'], won: true,
+  }
+
+  it('declarer loses Mond + has radl: partner gets full doubled game, declarer gets -20 less', () => {
+    const caps = wonCaptured()
+    const hsClean = computeHandScore({ ...baseParams, capturedCards: caps, mondCapturedWithSkis: false, mondPlayedBySeat: null })
+    const hsMond  = computeHandScore({ ...baseParams, capturedCards: caps, mondCapturedWithSkis: true,  mondPlayedBySeat: 0 })
+    expect(hsMond.partnerScore).toBe(hsClean.partnerScore)
+    expect(hsMond.declarerScore).toBe(hsClean.declarerScore - 20)
+  })
+
+  it('partner loses Mond: declarer unaffected, partnerScore unchanged (store adds penalty)', () => {
+    const caps = wonCaptured()
+    const hsClean = computeHandScore({ ...baseParams, capturedCards: caps, mondCapturedWithSkis: false, mondPlayedBySeat: null })
+    const hsMond  = computeHandScore({ ...baseParams, capturedCards: caps, mondCapturedWithSkis: true,  mondPlayedBySeat: 1 })
+    expect(hsMond.declarerScore).toBe(hsClean.declarerScore)
+    expect(hsMond.partnerScore).toBe(hsClean.partnerScore)
+    expect(hsMond.mondPenalties[1]).toBe(-20)
+    expect(hsMond.mondPenalties[0]).toBe(0)
+  })
+})
+
 describe('computeHandScore valat win condition', () => {
   function makeTrick(winner: Seat, cards: Card[]): Trick {
     return { cards: cards.map((card, i) => ({ seat: ((winner + i) % 4) as Seat, card })), winner }

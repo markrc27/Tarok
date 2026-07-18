@@ -1,11 +1,12 @@
 import type { Card, Seat, PlayState, TrumpCard, SuitCard, Suit } from '../engine/types'
 import { legalCards } from '../engine/play'
 import { cardPoints, isTrump, isPagat, trumpStrength, suitStrength } from '../engine/deck'
+import type { BotDifficulty } from './bidding-heuristic'
 
 export interface BotConfig {
-  difficultyBias: number // 0.0–1.0
+  difficultyBias: number // 0.0–1.0 (legacy; kept for test compat)
+  difficulty?: BotDifficulty
   // Set to the partner seat only once the called king has been played publicly.
-  // Defaults to null — bots don't know the partnership until it's revealed.
   knownPartner?: Seat | null
 }
 
@@ -13,19 +14,16 @@ function isDeclarerSide(seat: Seat, declarer: Seat, partner: Seat | null): boole
   return seat === declarer || seat === partner
 }
 
-// True if the winning seat is on the same team as `seat`.
 function onMySide(winner: Seat, seat: Seat, declarer: Seat, partner: Seat | null): boolean {
   const meOnDeclarerSide = isDeclarerSide(seat, declarer, partner)
   if (meOnDeclarerSide) return isDeclarerSide(winner, declarer, partner)
   return !isDeclarerSide(winner, declarer, partner)
 }
 
-// In colour valat, taroks are not trumps — they're their own plain suit.
 function effectiveIsTrump(c: Card, isColourValat: boolean): boolean {
   return c.kind === 'trump' && !isColourValat
 }
 
-// True if `candidate` beats `current` as the trick's leading card in context.
 function cardBeatsCard(
   candidate: Card,
   current: Card,
@@ -56,14 +54,11 @@ function cardBeatsCard(
   return suitStrength(candidate as SuitCard) > suitStrength(current as SuitCard)
 }
 
-// Single comparable strength: trumps (1000+ordinal) always beat suit cards.
 function cardStrength(c: Card): number {
   if (c.kind === 'trump') return 1000 + trumpStrength(c as TrumpCard)
   return suitStrength(c as SuitCard)
 }
 
-// Returns the partner seat only once the called king has appeared in a visible
-// trick (completed or the current one on the table). Until then returns null.
 export function computeKnownPartner(state: PlayState): Seat | null {
   const { kingCall, partner, completedTricks, currentTrick } = state
   if (!kingCall || partner === null) return null
@@ -77,8 +72,6 @@ export function computeKnownPartner(state: PlayState): Seat | null {
   return null
 }
 
-// Points captured by the declarer team as far as the bot can tell.
-// Uses knownPartner (publicly revealed) rather than state.partner (engine ground truth).
 function declarerTeamPoints(state: PlayState, knownPartner: Seat | null): number {
   const { capturedCards, declarer } = state
   const seats: Seat[] = knownPartner !== null ? [declarer, knownPartner] : [declarer]
@@ -86,12 +79,10 @@ function declarerTeamPoints(state: PlayState, knownPartner: Seat | null): number
     sum + capturedCards[s].reduce<number>((ps, c) => ps + c.points, 0), 0)
 }
 
-// Points already played into the current trick.
 function currentTrickPoints(state: PlayState): number {
   return state.currentTrick.cards.reduce((sum, e) => sum + e.card.points, 0)
 }
 
-// Returns the seat currently winning the trick, or null if trick not started.
 function currentWinner(state: PlayState): Seat | null {
   const { currentTrick, isColourValat } = state
   const trickCards = currentTrick.cards
@@ -124,9 +115,6 @@ function currentWinner(state: PlayState): Seat | null {
   return bestEntry.seat
 }
 
-// Open beggar: choose best lead for an opponent who can see the declarer's hand.
-// Strategy: find a suit where the declarer's weakest card still beats our best
-// (forced win for them). Fallback: lead the suit where declarer has fewest cards.
 function openBeggarOpponentLead(candidates: Card[], declarerHand: Card[]): Card | null {
   const ourSuitCards = candidates.filter((c): c is SuitCard => c.kind === 'suit')
   if (ourSuitCards.length === 0) return null
@@ -136,17 +124,14 @@ function openBeggarOpponentLead(candidates: Card[], declarerHand: Card[]): Card 
   for (const s of suits) {
     const ourInSuit = ourSuitCards.filter(c => c.suit === s)
     const declInSuit = declarerHand.filter((c): c is SuitCard => c.kind === 'suit' && c.suit === s)
-    if (declInSuit.length === 0) continue // declarer void — they discard freely
+    if (declInSuit.length === 0) continue
     const ourMax = Math.max(...ourInSuit.map(c => suitStrength(c)))
     const declMin = Math.min(...declInSuit.map(c => suitStrength(c)))
     if (declMin > ourMax) {
-      // Every card declarer holds in this suit beats our best — forced win for them.
       return ourInSuit.sort((a, b) => suitStrength(b) - suitStrength(a))[0]
     }
   }
 
-  // No forced-win suit: prefer a suit where declarer has the fewest cards
-  // (least flexibility to choose a low duck card).
   const suitsWithDeclCards = suits
     .filter(s => declarerHand.some(c => c.kind === 'suit' && (c as SuitCard).suit === s))
     .sort((a, b) => {
@@ -163,15 +148,47 @@ function openBeggarOpponentLead(candidates: Card[], declarerHand: Card[]): Card 
   return null
 }
 
+// ── Hard mode helpers ─────────────────────────────────────────────────────
+
+// Set of trump ordinals that have appeared in completed tricks or the current trick.
+function playedTrumpOrdinals(state: PlayState): Set<number> {
+  const played = new Set<number>()
+  for (const t of state.completedTricks) {
+    for (const e of t.cards) {
+      if (e.card.kind === 'trump') played.add((e.card as TrumpCard).ordinal)
+    }
+  }
+  for (const e of state.currentTrick.cards) {
+    if (e.card.kind === 'trump') played.add((e.card as TrumpCard).ordinal)
+  }
+  return played
+}
+
+// Cheapest trump in `myTrumps` that beats the highest unseen trump an opponent might hold.
+// If no safe trump exists, returns lowest trump.
+function cheapestSafeHoldingTrump(myTrumps: TrumpCard[], played: Set<number>): TrumpCard {
+  const myOrdinals: Set<number> = new Set(myTrumps.map(c => c.ordinal))
+  let highestThreat = 0
+  for (let o = 22; o >= 1; o--) {
+    if (!myOrdinals.has(o) && !played.has(o)) { highestThreat = o; break }
+  }
+  if (highestThreat === 0) {
+    // No unseen trumps remain outside our hand — any trump holds
+    return myTrumps.sort((a, b) => a.ordinal - b.ordinal)[0]
+  }
+  const safe = myTrumps.filter(c => c.ordinal > highestThreat)
+  if (safe.length === 0) return myTrumps.sort((a, b) => a.ordinal - b.ordinal)[0]
+  return safe.sort((a, b) => a.ordinal - b.ordinal)[0]
+}
+
 export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Card {
   const candidates = legalCards(state, seat)
   if (candidates.length === 0) throw new Error(`chooseCard: no legal cards for seat ${seat}`)
   if (candidates.length === 1) return candidates[0]
 
   const { contract, declarer, currentTrick, isColourValat } = state
+  const difficulty = _config.difficulty ?? 'easy'
   const isLeading = currentTrick.cards.length === 0
-  // Use knownPartner (publicly observed) rather than state.partner (engine ground truth)
-  // so bots only coordinate once the called king has been played.
   const knownPartner = _config.knownPartner ?? null
   const onDeclarerSide = isDeclarerSide(seat, declarer, knownPartner)
 
@@ -190,8 +207,6 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
     if (seat === declarer) {
       return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
     }
-    // Open beggar: opponents can see the declarer's hand once revealed.
-    // Use that information to lead suits that force the declarer to win.
     if (isLeading && contract === 'open-beggar' && state.openBeggarRevealed) {
       const smartLead = openBeggarOpponentLead(candidates, state.hands[declarer])
       if (smartLead) return smartLead
@@ -211,26 +226,42 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
   // ── Standard positive contracts ───────────────────────────────────────────
   const { ledSuit } = currentTrick
   const declarerPts = declarerTeamPoints(state, knownPartner)
-  // In valat contracts the declarer must win every trick — opponents must always
-  // fight and cannot afford the point-counting fold.
   const isValatContract = contract === 'valat-without' || contract === 'color-valat-without'
+
+  const calledKingCard = state.kingCall?.calledKing ?? null
+  function isCalledKingCard(c: Card): boolean {
+    if (!calledKingCard || calledKingCard.kind !== 'suit') return false
+    return c.kind === 'suit' &&
+      (c as SuitCard).suit === (calledKingCard as SuitCard).suit &&
+      (c as SuitCard).rank === 'K'
+  }
 
   // ── Leading ──────────────────────────────────────────────────────────────
   if (isLeading) {
     if (onDeclarerSide) {
-      // Lead highest effective trump (taroks are not special in colour valat).
       const trumps = candidates.filter(c => effectiveIsTrump(c, isColourValat))
       if (trumps.length > 0) {
-        const usable = trumps.length > 1 ? trumps.filter(c => !isPagat(c)) : trumps
+        let usable = trumps.length > 1 ? trumps.filter(c => !isPagat(c)) : trumps
+
+        // Hard mode: protect Mond when Škis is still unseen and we don't hold it.
+        if (difficulty === 'hard' && usable.length > 1 && !isColourValat) {
+          const weHoldSkis = candidates.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 22)
+          const skisPlayed = playedTrumpOrdinals(state).has(22)
+          if (!weHoldSkis && !skisPlayed) {
+            const noMond = usable.filter(c => !(c.kind === 'trump' && (c as TrumpCard).ordinal === 21))
+            if (noMond.length > 0) usable = noMond
+          }
+        }
+
         return usable.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
       }
       return candidates.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
     } else {
-      // Opponent leading: lead non-effective-trump first to force declarer to follow
-      // suit or spend a trump. In colour valat, taroks count as non-trump here.
       const nonTrumps = candidates.filter(c => !effectiveIsTrump(c, isColourValat))
       if (nonTrumps.length > 0) {
-        return nonTrumps.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
+        const safeNonTrumps = nonTrumps.filter(c => !isCalledKingCard(c))
+        const pool = safeNonTrumps.length > 0 ? safeNonTrumps : nonTrumps
+        return pool.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
       }
       const trumps = candidates.filter(c => effectiveIsTrump(c, isColourValat))
       const usable = trumps.length > 1 ? trumps.filter(c => !isPagat(c)) : trumps
@@ -239,18 +270,33 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
   }
 
   // ── Following ─────────────────────────────────────────────────────────────
-  // Bail out if ledSuit somehow unset (shouldn't happen when following).
   if (!ledSuit) return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
 
   const winner = currentWinner(state)
 
-  // Partner/ally awareness: if my side is already winning, don't double-cover —
-  // dump lowest to save strong cards for tricks we actually need to fight for.
+  // Forced to trump: void in led suit and all candidates are trumps
+  const forcedToTrump = ledSuit !== 'trump' && candidates.every(c => effectiveIsTrump(c, isColourValat))
+  const isLastToPlay = currentTrick.cards.length === 3
+
   if (winner !== null && onMySide(winner, seat, declarer, knownPartner)) {
+    if (difficulty === 'hard') {
+      // If forced to trump over partner's trick, use cheapest safe trump rather than lowest
+      if (forcedToTrump && !isLastToPlay) {
+        const myTrumps = candidates.filter(c => c.kind === 'trump') as TrumpCard[]
+        if (myTrumps.length > 0) {
+          return cheapestSafeHoldingTrump(myTrumps, playedTrumpOrdinals(state))
+        }
+      }
+      // Partner winning: slough highest-point suit card to maximise their pile
+      const suitCards = candidates.filter(c => !effectiveIsTrump(c, isColourValat))
+      if (suitCards.length > 0) {
+        return suitCards.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
+      }
+    }
     return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
   }
 
-  // Enemy is winning (or no winner resolved — safe fallback). Try to beat them.
+  // Enemy is winning — try to beat them.
   const winnerEntry = winner !== null
     ? currentTrick.cards.find(e => e.seat === winner) ?? null
     : null
@@ -262,20 +308,10 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
 
   if (beaters.length > 0) {
     if (onDeclarerSide) {
-      // Commit strongly: play highest beater to ensure we take the trick even if
-      // a later player in the trick could also beat the current winner.
       return beaters.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
     } else {
-      // Opponent: use lowest beater by default (efficient — preserve Mond/Škis
-      // for tricks that are actually worth fighting for).
       const lowestBeater = beaters.sort((a, b) => cardStrength(a) - cardStrength(b))[0]
 
-      // Point-counting fold: don't spend a 5-pt card (Mond/Škis) on a near-empty
-      // trick unless we're last to play or the declarer team is close to winning
-      // (28+ pts = they can cross 35 in two more tricks → opponents must fight).
-      // Disabled in valat contracts — declarer must win every trick, so every
-      // trick is worth fighting for.
-      const isLastToPlay = currentTrick.cards.length === 3
       const declarerNearWin = declarerPts >= 28
       const trickPts = currentTrickPoints(state)
       if (!isValatContract && !isLastToPlay && !declarerNearWin && trickPts <= 1 && cardPoints(lowestBeater) >= 5) {
@@ -286,7 +322,13 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
     }
   }
 
-  // Can't beat the current winner: dump lowest value card to minimise the
-  // points the enemy captures from this trick.
+  // Can't beat: dump lowest, unless forced to trump in hard mode
+  if (difficulty === 'hard' && forcedToTrump && !isLastToPlay) {
+    const myTrumps = candidates.filter(c => c.kind === 'trump') as TrumpCard[]
+    if (myTrumps.length > 0) {
+      return cheapestSafeHoldingTrump(myTrumps, playedTrumpOrdinals(state))
+    }
+  }
+
   return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
 }

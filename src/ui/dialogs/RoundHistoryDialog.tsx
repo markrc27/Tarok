@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import type { RoundRecord, Seat } from '../../engine/types'
 import { CONTRACT_LABEL } from '../labels'
 
@@ -11,6 +11,9 @@ interface Props {
 const SEATS: Seat[] = [0, 1, 2, 3]
 
 export default function RoundHistoryDialog({ roundHistory, playerNames, onClose }: Props) {
+  const [selectedLog, setSelectedLog] = useState<RoundRecord | null>(null)
+  const [copied, setCopied] = useState(false)
+
   return (
     <div style={{
       position: 'fixed',
@@ -47,7 +50,11 @@ export default function RoundHistoryDialog({ roundHistory, playerNames, onClose 
               const maxDelta = Math.max(...SEATS.map(s => r.scoreDelta[s]))
               return (
                 <tr key={i} style={{ borderBottom: '1px solid #222' }}>
-                  <td style={td}>{r.roundNumber}</td>
+                  <td style={{ ...td, cursor: 'pointer', color: '#7af', textDecoration: 'underline' }}
+                      onClick={() => setSelectedLog(selectedLog?.roundNumber === r.roundNumber ? null : r)}
+                      title="Click to view game log">
+                    {r.roundNumber}
+                  </td>
                   <td style={td}>{CONTRACT_LABEL[r.contract]}</td>
                   <td style={td}>{isKlop ? '—' : playerNames[r.declarer]}</td>
                   {SEATS.map(s => {
@@ -68,6 +75,33 @@ export default function RoundHistoryDialog({ roundHistory, playerNames, onClose 
             })}
           </tbody>
         </table>
+        </div>
+      )}
+
+      {selectedLog && (
+        <div style={{ marginTop: 10, padding: '10px 12px', background: '#111', borderRadius: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ color: '#aaa', fontSize: 12, fontWeight: 'bold' }}>
+              Round {selectedLog.roundNumber} log
+            </span>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: 11, padding: '2px 8px' }}
+              onClick={() => {
+                navigator.clipboard.writeText(selectedLog.logText)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 2000)
+              }}
+            >
+              {copied ? '✓ Copied' : 'Copy log'}
+            </button>
+          </div>
+          <pre style={{
+            margin: 0, fontSize: 11, color: '#ccc', whiteSpace: 'pre-wrap',
+            maxHeight: 220, overflowY: 'auto', fontFamily: 'monospace',
+          }}>
+            {selectedLog.logText}
+          </pre>
         </div>
       )}
 
