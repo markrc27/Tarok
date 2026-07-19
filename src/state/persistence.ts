@@ -1,5 +1,7 @@
 import type { GameRecord } from '../engine/types'
 
+const IS_ELECTRON = typeof navigator !== 'undefined' && /Electron/.test(navigator.userAgent)
+
 const HISTORY_KEY = 'tarok-game-history'
 const DRAFT_KEY = 'tarok-game-draft'
 const OPFS_FILE = 'tarok-history.json'
@@ -65,6 +67,23 @@ async function opfsSave(records: GameRecord[]): Promise<void> {
     await writable.write(JSON.stringify(records))
     await writable.close()
   } catch {}
+}
+
+// Fire-and-forget: posts seat-0's result to the Cloudflare backend. Skipped in Electron.
+export function postGameToApi(record: GameRecord, playerName: string, finalScore: number): void {
+  if (IS_ELECTRON) return
+  fetch('/api/games', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: record.id,
+      playedAt: record.playedAt,
+      playerName,
+      finalScore,
+      rounds: record.rounds,
+      difficulty: record.difficulty ?? 'easy',
+    }),
+  }).catch(() => {})
 }
 
 // Called once on app startup. Reads the OPFS file and merges into localStorage.

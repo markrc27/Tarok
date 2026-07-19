@@ -3,13 +3,14 @@ import React, { useState } from 'react'
 interface Props {
   onEndGame: () => void
   onHistory: () => void
+  onLeaderboard: () => void
   onHelp: () => void
   onAbout: () => void
   cardAppearance: 'simple' | 'traditional'
   onSetCardAppearance: (a: 'simple' | 'traditional') => void
 }
 
-export default function MenuBar({ onEndGame, onHistory, onHelp, onAbout, cardAppearance, onSetCardAppearance }: Props) {
+export default function MenuBar({ onEndGame, onHistory, onLeaderboard, onHelp, onAbout, cardAppearance, onSetCardAppearance }: Props) {
   const [open, setOpen] = useState<string | null>(null)
 
   const toggle = (menu: string) => setOpen(o => o === menu ? null : menu)
@@ -35,6 +36,7 @@ export default function MenuBar({ onEndGame, onHistory, onHelp, onAbout, cardApp
         { label: 'End Game', onClick: onEndGame },
         { label: '', onClick: () => {}, sep: true },
         { label: 'History', onClick: onHistory },
+        { label: 'Leaderboard', onClick: onLeaderboard },
       ])}
       {item('options', 'Options', [
         { label: 'Card Appearance', onClick: () => {}, disabled: true },

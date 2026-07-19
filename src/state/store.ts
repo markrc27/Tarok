@@ -17,7 +17,7 @@ import { CONTRACT_BASE } from '../engine/types'
 import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard, recommendAnnouncements } from '../ai/bidding-heuristic'
 import { pickNames } from '../ui/names'
 import { chooseCard, computeKnownPartner } from '../ai/play-heuristic'
-import { saveGameRecord, consumeDraftRecord } from './persistence'
+import { saveGameRecord, consumeDraftRecord, postGameToApi } from './persistence'
 import type { RoundRecord } from '../engine/types'
 
 const BOT_DELAY = 400
@@ -536,14 +536,16 @@ export const useGameStore = create<Store>((set, get) => {
         3: sessionScores[3] + delta[3],
       }
 
-      saveGameRecord({
-        id: String(Date.now()),
+      const gameRecord = {
+        id: crypto.randomUUID(),
         playedAt: Date.now(),
         playerNames: { ...playerNames },
         finalScores,
         rounds: roundId,
         difficulty: get().options.botDifficulty,
-      })
+      }
+      saveGameRecord(gameRecord)
+      postGameToApi(gameRecord, playerNames[0], finalScores[0])
       consumeDraftRecord()
 
       const [a, b, c] = pickNames()
@@ -564,14 +566,16 @@ export const useGameStore = create<Store>((set, get) => {
       const completedRounds = phase === 'setup' ? roundId : Math.max(0, roundId - 1)
 
       if (completedRounds > 0) {
-        saveGameRecord({
-          id: String(Date.now()),
+        const gameRecord = {
+          id: crypto.randomUUID(),
           playedAt: Date.now(),
           playerNames: { ...playerNames },
           finalScores: { ...sessionScores },
           rounds: completedRounds,
           difficulty: options.botDifficulty,
-        })
+        }
+        saveGameRecord(gameRecord)
+        postGameToApi(gameRecord, playerNames[0], sessionScores[0])
       }
       consumeDraftRecord()
 

@@ -16,6 +16,7 @@ import CallKingDialog from './dialogs/CallKingDialog'
 import ScoreDialog from './dialogs/ScoreDialog'
 import AnnouncementsDialog from './dialogs/AnnouncementsDialog'
 import HistoryDialog from './dialogs/HistoryDialog'
+import LeaderboardDialog from './dialogs/LeaderboardDialog'
 import HelpDialog from './dialogs/HelpDialog'
 import RoundHistoryDialog from './dialogs/RoundHistoryDialog'
 import { BONUS_LABEL } from './labels'
@@ -29,6 +30,7 @@ const AI_SEATS: { seat: Seat; pos: string; dir: 'h' | 'v'; flip?: boolean }[] = 
 export default function App() {
   const store = useGameStore()
   const [showHistory, setShowHistory] = useState(false)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [showRoundHistory, setShowRoundHistory] = useState(false)
@@ -126,6 +128,7 @@ export default function App() {
           }
         }}
         onHistory={() => setShowHistory(true)}
+        onLeaderboard={() => setShowLeaderboard(true)}
         onHelp={() => setShowHelp(true)}
         onAbout={() => setShowAbout(true)}
         cardAppearance={cardAppearance}
@@ -343,6 +346,10 @@ export default function App() {
 
       {showHistory && (
         <HistoryDialog onClose={() => setShowHistory(false)} />
+      )}
+
+      {showLeaderboard && (
+        <LeaderboardDialog onClose={() => setShowLeaderboard(false)} />
       )}
 
       {showHelp && (
