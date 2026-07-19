@@ -5,3 +5,9 @@ release
 .env.local
 coverage
 *.local
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
