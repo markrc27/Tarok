@@ -6,10 +6,17 @@ rules: **pagat.com is authoritative**. Rationale for the process rules:
 
 ## What this is
 
-Single-player 4-player Slovenian Tarok vs three AI bots. Vite SPA, no
-backend; state in memory, session history in `localStorage`. Ships as a
-browser app (`npm run dev`) and a Windows Electron installer
-(`npm run electron:build` → `C:\TarokBuild\`). Look and feel mimics the
+Single-player 4-player Slovenian Tarok vs three AI bots. Vite SPA; game
+state lives in memory, session history in `localStorage`. Ships two ways:
+- **Web** (primary): Cloudflare Pages at **tarok.pages.dev**, auto-deploys
+  on push to `master`. Has a real backend — a Cloudflare D1 database
+  (`tarok-db`) storing one row per finished game, served by a Pages
+  Function so players see a shared leaderboard. See "Cloudflare backend".
+- **Electron** (`npm run electron:build` → `C:\TarokBuild\`): Windows
+  installer, **local-only** — never calls the backend, keeps history in
+  `localStorage`/OPFS. Detected via `navigator.userAgent`; skips the API.
+
+Look and feel mimics the
 old Microsoft Hearts app: minimal chrome, green felt, modal dialogs for
 decisions, status bar, plain Statistics scoreboard. In-game info panels
 are floating dark panels — no full-screen dimming, no redundant close
@@ -34,17 +41,46 @@ symbols / roman numerals. The rules engine is the real product; the UI just pres
 
 ```
 1. Bump version in package.json (patch = x.x.+1)
-2. npm test && npm run build   (both must pass)
-3. git add / commit / push origin master
-4. npm run electron:build      → C:\TarokBuild\Tarok Setup x.x.x.exe
-5. GitHub release: tag V{version}, target master, upload the .exe only
+2. Add an entry to CHANGELOG.md (top of file, same version, brief bullet per change)
+3. npm test && npm run build   (both must pass)
+4. git add / commit / push origin master
+5. npm run electron:build      → C:\TarokBuild\Tarok Setup x.x.x.exe
+6. GitHub release: tag V{version}, target master, upload the .exe only
 ```
+
+Pushing to `master` also triggers the Cloudflare Pages web deploy automatically.
+
+## Cloudflare backend (web build)
+
+The web leaderboard is Cloudflare **Pages + D1 + Pages Functions**. The
+project MUST be a Pages project, not a Worker — it was originally
+mis-created as a Worker, which broke the deploy *and* meant `functions/`
+routes never registered (`/api/games` returned the SPA's HTML). If deploys
+fail or `/api/games` serves HTML instead of JSON, verify that first.
+
+- **Pages project** `tarok`, GitHub `markrc27/Tarok` @ `master`, build
+  `npm run build`, output `dist`, root = repo root.
+- **D1** database `tarok-db`; table `games` (see `schema.sql`). Apply schema
+  with `npx wrangler d1 execute tarok-db --file=schema.sql`.
+- **Binding**: variable name **exactly `DB`** → `tarok-db`, on **both**
+  Production and Preview (Preview is easy to forget). Auto-detected from
+  `wrangler.toml`; confirm in dashboard → Settings → Bindings.
+- **Endpoints** (`functions/api/games.ts`): `POST /api/games` writes one
+  finished game (strict validation: v4 UUID id, `INSERT OR IGNORE`, 2 KB
+  cap); `GET /api/games` returns the 100 most recent. Only seat 0 (the
+  human) is meaningful; bots aren't recorded.
+- **Health check**: `GET https://tarok.pages.dev/api/games` should return
+  HTTP 200 + JSON (`[]` when empty). HTML or 500 = binding/routing broken.
+- Roadmap: future live multiplayer builds on this via Durable Objects —
+  keep the D1 schema and endpoints extensible, don't replace them.
 
 ## Stack and layout
 
 TypeScript (strict) · React 19 · Vite · Vitest · Zustand · Electron ·
-Node 20+. Cards are absolutely-positioned DOM nodes with CSS transforms —
-no Canvas, no animation library. No env vars, no secrets.
+Cloudflare Pages/D1 · Node 20+. Cards are absolutely-positioned DOM nodes
+with CSS transforms — no Canvas, no animation library. No secrets or env
+vars in the repo; the D1 binding is wired by `wrangler.toml` + the Pages
+dashboard, not code.
 
 ```
 /src/engine   pure rules, zero UI/React/DOM imports:
@@ -52,10 +88,15 @@ no Canvas, no animation library. No env vars, no secrets.
               pointcount (implement/test FIRST — everything is downstream)
 /src/ai       bot heuristics — legality always via /engine, no shortcuts
 /src/ui       React components (Table, Hand, dialogs, StatusBar, MenuBar)
-/src/state    Zustand store wiring UI → engine
+/src/state    Zustand store wiring UI → engine; persistence.ts (localStorage
+              + fire-and-forget POST /api/games on the web build)
 /tests        one suite per engine module + integration tests
 /electron     main.cjs
+/functions    Cloudflare Pages Functions — api/games.ts (GET/POST /api/games)
+wrangler.toml D1 binding (name DB → tarok-db); schema.sql is the table DDL
 ```
+Note: `worker.ts` at the repo root is a dead standalone-Worker relic from
+the original mis-created project — Pages ignores it. Candidate for deletion.
 
 Imports flow one direction: `ui` → `state` → `engine`. No rule logic in
 React components — extract to a pure function, test it, then wire it in.
