@@ -90,6 +90,114 @@ _Settings:_
 
 ---
 
+## AI Coach
+
+### AI-001 — In-game AI coach chat panel
+**Added:** 2026-07-22
+**Fixed:** —
+**Version:** —
+
+**Problem:** New players have no way to get contextual help during a hand. The rules are complex and the right move often depends on the exact current state (hand, contract, tricks so far). A static help dialog can't answer "what should I do right now?"
+
+**Design:**
+- A persistent **"Coach"** button in the menu bar, always visible.
+- Clicking it opens a floating dark chat panel (consistent with existing panel style — no full-screen overlay, no dimming).
+- Player types free-form questions: "what card should I play?", "should I have bid higher?", "what is a radl?", "why did I lose the Mond?", etc.
+- The AI has full awareness of the current game state and answers in plain language, explaining the reasoning.
+- Conversation is multi-turn within a hand; it resets at the start of each new hand.
+- No proactive hints — the AI only speaks when asked.
+
+**Architecture:**
+
+_Model — Cloudflare Workers AI (free tier):_
+- Use a capable open-source model available on Cloudflare Workers AI (e.g. Llama 3 8B Instruct or Meta Llama 3.1 8B). No separate API key or billing — covered by the Workers AI free tier (daily neuron budget).
+- If quality proves insufficient, the endpoint can swap to Claude (Anthropic API key stored as a Worker secret) with no frontend changes.
+
+_Backend — new `/api/hint` Worker endpoint (`functions/api/hint.ts`):_
+- Accepts `POST /api/hint` with `{ messages: ChatMessage[], gameState: GameSnapshot }`.
+- Loads `coach-context.md` as the static system prompt (rules + strategy — see below).
+- Appends the current `gameState` as a second system block so it's always fresh.
+- Calls Cloudflare Workers AI with the full message history (capped at last 10 exchanges).
+- Returns the assistant reply as plain text.
+- Rate limit: max 20 messages per hand per IP (WAF rule).
+
+_Frontend — chat panel component (`src/ui/dialogs/CoachPanel.tsx`):_
+- Floating dark panel, positioned bottom-right.
+- Conversation history in local React state; cleared on `newHand` in store.
+- `GameSnapshot` selector reads from Zustand: serialised as human-readable text (e.g. `"Your hand: Škis, Mond, K♥, Q♠, 7♣, …"`) so the model can reason about it naturally.
+- Shows a loading indicator while awaiting response.
+- "Coach" button in `MenuBar.tsx` toggles panel open/closed.
+
+_`coach-context.md` — dedicated AI rules file (project root):_
+Written specifically for AI reasoning, not player reading. Target ~1,000 tokens. Should cover:
+- **Pack & card values**: 54 cards; Škis/Mond/Pagat/Kings=5, Q=4, Kn=3, J=2, all others=1; pack total=70; point counting in groups of 3 (sum−2 per group).
+- **Contracts quick-ref**: each contract's talon size, partner/solo, win condition (≥36 pts / 0 tricks / all tricks), and base score.
+- **Bidding**: forehand priority, when to hold vs. raise, klop/three forehand-only, all-pass rule.
+- **Talon & discard**: never discard kings or trula; trumps only if unavoidable and declared.
+- **Play rules**: follow suit, must trump if void, must beat in negative contracts (klop/beggar), emperor trick (Škis+Mond+Pagat → Pagat wins).
+- **Scoring formula**: base + round5(|pts−35|) for normal; flat ±base for beggar/valat/etc.; bonuses (trula 10, kings 10, pagat-ultimo 25, valat 250); mond penalty −20 to the individual; radli double the hand score.
+- **Key beginner mistakes to flag**: leading Mond when Škis unseen; playing Pagat early; discarding into a trick partner is winning; overbidding without kings; ignoring radli risk.
+- **Klop**: avoid taking tricks; vitamins (T1–T6 talon card goes to trick winner); scoring formula.
+- **Beggar/Open Beggar**: must take zero tricks; lead your lowest; opponents try to force wins.
+
+_Prompt structure per request:_
+1. System: contents of `coach-context.md`
+2. System: current game state snapshot (phase, hand, contract, called king, partner if revealed, current trick, last 3 completed tricks, score, radli count)
+3. Messages: conversation history (last 10 exchanges)
+4. User: player's latest message
+
+**Files to create/modify:**
+- `coach-context.md` — new AI rules/strategy file
+- `functions/api/hint.ts` — new Worker endpoint (Cloudflare Workers AI)
+- `src/ui/dialogs/CoachPanel.tsx` — new chat panel component
+- `src/ui/MenuBar.tsx` — add Coach toggle button
+- `src/state/store.ts` — add `clearCoachHistory` on new hand
+
+**Out of scope for first pass:**
+- Persisting chat history across hands or sessions
+- Voice / text-to-speech
+- The coach playing cards on behalf of the player
+- Any proactive / unsolicited advice
+
+---
+
+## UI
+
+### UI-002 — Leaderboard difficulty tabs (Easy / Hard)
+**Added:** 2026-07-22
+**Fixed:** —
+**Version:** —
+
+**Problem:** Easy and Hard scores are mixed in the leaderboard, making it impossible to compare like-for-like. A player on Hard shouldn't be competing against Easy scores.
+
+**Fix direction:** Add an Easy / Hard tab selector at the top of the Leaderboard dialog. Each tab filters the results to that difficulty only — the underlying `GET /api/games` endpoint already returns the `difficulty` field, so this is a client-side filter. Default to the tab that matches the player's current difficulty setting. Remove the difficulty column from the table (it's redundant once tabs separate the two lists).
+
+---
+
+### UI-001 — Show difficulty level in the top banner
+**Added:** 2026-07-22
+**Fixed:** —
+**Version:** —
+
+**Problem:** There is no visible indicator of the current difficulty setting during play. Players have to open the Options dialog to check.
+
+**Fix direction:** Display the current difficulty ("Easy" / "Hard") in the menu bar or status bar area at the top of the screen, alongside the existing version/menu items. Should update immediately if the player changes difficulty mid-session via Options.
+
+---
+
+### UI-003 — Mobile responsive layout
+**Added:** 2026-07-23
+**Fixed:** —
+**Version:** —
+
+**Problem:** The game is unplayable on phone-sized screens. Cards are fixed at 90×135px, the human hand container is hardcoded to 640px, and the trick area is 480px wide — all overflow a 375px viewport. The menu bar (24px) is below the 44px touch-target floor.
+
+**Scope:** CSS/layout pass only. No logic, state, or backend changes.
+
+**Fix direction:** Introduce a `useCardLayout()` hook (continuous clamp math from viewport width) that returns fluid `cardW/cardH/handStep/aiStep` values, sets `--card-w`/`--card-h` CSS custom properties, and is wired through `Hand.tsx` and `App.tsx`. CSS-only fixes for: trick area width (`clamp`), card font scaling (derive from `--card-w`), menu bar height (44px on mobile), status bar (nowrap + horizontal scroll), bid panel (centered, max-height leaves hand visible), seat margins. Primary test device: iPhone 13 mini (375×812). Also verify on iPad (no change expected above 640px breakpoint).
+
+---
+
 ## Game Variants
 
 ### VAR-001 — 3-player variant

@@ -20,6 +20,7 @@ import LeaderboardDialog from './dialogs/LeaderboardDialog'
 import HelpDialog from './dialogs/HelpDialog'
 import RoundHistoryDialog from './dialogs/RoundHistoryDialog'
 import { BONUS_LABEL } from './labels'
+import { useCardLayout } from './useCardLayout'
 
 const AI_SEATS: { seat: Seat; pos: string; dir: 'h' | 'v'; flip?: boolean }[] = [
   { seat: 2, pos: 'seat-top', dir: 'h' },
@@ -85,6 +86,7 @@ export default function App() {
     urls.forEach(url => { fetch(url).catch(() => {}) })
   }, [cardAppearance])
 
+  const cardLayout = useCardLayout()
   const [nameInput, setNameInput] = useState('')
 
   // Compute legal cards for human
@@ -191,7 +193,14 @@ export default function App() {
             <div className="seat-label">{playerNames[seat]}</div>
             {phase !== 'idle' && phase !== 'setup' && phase !== 'scoring' && (
               <div style={flip ? { transform: 'rotate(180deg)', marginTop: 20 } : undefined}>
-                <Hand cards={(phase === 'playing' && playState ? playState.hands[seat] : dealResult.hands[seat])} faceUp={false} vertical={dir === 'v'} />
+                <Hand
+                  cards={(phase === 'playing' && playState ? playState.hands[seat] : dealResult.hands[seat])}
+                  faceUp={false}
+                  vertical={dir === 'v'}
+                  cardW={cardLayout.cardW}
+                  cardH={cardLayout.cardH}
+                  aiStep={cardLayout.aiStep}
+                />
               </div>
             )}
           </div>
@@ -206,6 +215,9 @@ export default function App() {
               faceUp
               legalCards={isHumanPlaying ? humanLegal : []}
               onPlay={isHumanPlaying ? (c) => store.playCardAction(c) : undefined}
+              cardW={cardLayout.cardW}
+              cardH={cardLayout.cardH}
+              handStep={cardLayout.handStep}
             />
           </div>
         )}

@@ -1,6 +1,6 @@
 {
   "name": "tarok",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "test:coverage": "vitest run --coverage",
     "electron:dev": "npm run build && electron .",
     "electron:build": "npm run build && electron-builder --win --config.directories.output=C:\\TarokBuild",
-    "electron:build:mac": "npm run build && electron-builder --mac --config.directories.output=release"
+    "electron:build:mac": "npm run build && electron-builder --mac --config.directories.output=release",
+    "deploy": "wrangler pages deploy"
   },
   "type": "module",
   "dependencies": {
@@ -33,7 +34,8 @@
     "png-to-ico": "^3.0.1",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "wrangler": "^4.112.0"
   },
   "build": {
     "appId": "com.tarok.app",

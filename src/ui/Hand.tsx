@@ -22,24 +22,37 @@ interface Props {
   legalCards?: Card[]
   onPlay?: (card: Card) => void
   vertical?: boolean
+  cardW?: number
+  cardH?: number
+  handStep?: number
+  aiStep?: number
 }
 
-export default function Hand({ cards, faceUp = true, legalCards = [], onPlay, vertical = false }: Props) {
+export default function Hand({
+  cards,
+  faceUp = true,
+  legalCards = [],
+  onPlay,
+  vertical = false,
+  cardW = 90,
+  cardH = 135,
+  handStep = 50,
+  aiStep = 14,
+}: Props) {
   if (!faceUp) {
     const n = cards.length
     if (vertical) {
-      // Side seats: each card rotated 90°, stacked top-to-bottom with overlap.
       return (
-        <div style={{ position: 'relative', width: 90, height: (n - 1) * 14 + 90 }}>
+        <div style={{ position: 'relative', width: cardH, height: (n - 1) * aiStep + cardW }}>
           {cards.map((_, i) => (
             <div
               key={i}
               style={{
                 position: 'absolute',
-                top: i * 14,
-                left: 15,
+                top: i * aiStep,
+                left: (cardH - cardW) / 2,
                 transform: 'rotate(90deg)',
-                transformOrigin: '30px 45px',
+                transformOrigin: `${cardW / 2}px ${cardH / 2}px`,
               }}
             >
               <CardSprite faceUp={false} />
@@ -48,11 +61,10 @@ export default function Hand({ cards, faceUp = true, legalCards = [], onPlay, ve
         </div>
       )
     }
-    // Top seat: horizontal stack with overlap
     return (
-      <div style={{ position: 'relative', width: (n - 1) * 14 + 90, height: 135 }}>
+      <div style={{ position: 'relative', width: (n - 1) * aiStep + cardW, height: cardH }}>
         {cards.map((_, i) => (
-          <div key={i} style={{ position: 'absolute', left: i * 14, top: 0 }}>
+          <div key={i} style={{ position: 'absolute', left: i * aiStep, top: 0 }}>
             <CardSprite faceUp={false} />
           </div>
         ))}
@@ -61,11 +73,10 @@ export default function Hand({ cards, faceUp = true, legalCards = [], onPlay, ve
   }
 
   const legalIds = new Set(legalCards.map(cardId))
-  const overlap = 50
   const sorted = sortHand(cards)
 
   return (
-    <div className="hand" style={{ width: '640px' }}>
+    <div className="hand" style={{ width: `${(sorted.length - 1) * handStep + cardW}px`, height: `${cardH + 20}px` }}>
       {sorted.map((card, i) => {
         const id = cardId(card)
         const isLegal = legalIds.has(id)
@@ -75,7 +86,7 @@ export default function Hand({ cards, faceUp = true, legalCards = [], onPlay, ve
           <div
             key={id}
             className={`hand-card${canPlay && !isLegal ? ' dimmed' : ''}${playable ? ' playable' : ''}`}
-            style={{ left: `${i * overlap}px` }}
+            style={{ left: `${i * handStep}px` }}
             onClick={playable ? () => onPlay(card) : undefined}
           >
             <CardSprite card={card} faceUp dimmed={canPlay && !isLegal} />

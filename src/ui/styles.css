@@ -117,13 +117,11 @@ body {
 /* ── Hand ─────────────────────────────────────────────────────────────── */
 .hand {
   position: relative;
-  height: 170px;
-  min-width: 300px;
 }
 .hand-card {
   position: absolute;
-  width: 90px;
-  height: 135px;
+  width: var(--card-w, 90px);
+  height: var(--card-h, 135px);
   cursor: default;
   transition: top 0.15s;
   top: 0;
@@ -143,7 +141,7 @@ body {
   top: calc(50% + 12px);
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 480px;
+  width: clamp(240px, 85vw, 480px);
   height: min(300px, calc(100% - 395px));
 }
 .trick-slot {
@@ -153,7 +151,8 @@ body {
 .trick-slot-left   { top: 50%;    left: 0;  transform: translateY(-50%); }
 .trick-slot-right  { top: 50%;    right: 0; transform: translateY(-50%); }
 .trick-slot-bottom { bottom: 20px; left: 50%; transform: translateX(-50%); }
-.trick-slot-center { top: 50%; left: calc(50% + 80px); transform: translate(-50%, -50%); }
+/* center slot (vitamin card): offset scales with trick area so it doesn't clip */
+.trick-slot-center { top: 50%; left: calc(50% + min(80px, 16%)); transform: translate(-50%, -50%); }
 
 .trick-winner-card .card { outline: 3px solid #facc15; box-shadow: 0 0 12px #facc15; }
 .trick-winner-banner {
@@ -191,13 +190,13 @@ body {
 /* ── Card sprite ──────────────────────────────────────────────────────── */
 .card {
   position: relative;
-  width: 90px;
-  height: 135px;
+  width: var(--card-w, 90px);
+  height: var(--card-h, 135px);
   border-radius: 8px;
   border: 1px solid #333;
   background: white;
   font-weight: bold;
-  font-size: 20px;
+  font-size: calc(var(--card-w, 90px) * 0.22);  /* scales with card in symbol mode */
   box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
   flex-shrink: 0;
   overflow: hidden;
@@ -229,7 +228,7 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 33px;
+  font-size: 1.67em;  /* relative to .card font-size, which scales with --card-w */
 }
 
 /* ── Status bar ───────────────────────────────────────────────────────── */
@@ -404,3 +403,39 @@ body {
 .suit-btn:hover { background: #555; }
 .suit-btn.clubs, .suit-btn.spades { color: #111; background: #eee; }
 .suit-btn.hearts, .suit-btn.diamonds { color: #c00; background: #eee; }
+
+/* ── Mobile overrides (≤ 640px) ───────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Menu bar: taller touch target */
+  .menu-bar { height: 44px; }
+  .menu-item > button { height: 44px; font-size: 15px; padding: 0 14px; }
+  .menu-dropdown { top: 44px; }
+
+  /* Status bar: single scrollable row so it never steals table height */
+  .status-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px 14px;
+    font-size: 11px;
+    scrollbar-width: none;  /* hide scrollbar on Firefox */
+  }
+  .status-bar::-webkit-scrollbar { display: none; }
+
+  /* Bid panel: centred, height-capped so hand stays visible below */
+  .bid-panel {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: min(320px, 90vw);
+    max-width: 90vw;
+    top: 50px;
+    max-height: calc(100dvh - 220px);
+    overflow-y: auto;
+  }
+
+  /* Seat positions: tighten side margins, push top past taller menu bar */
+  .seat-left  { left: 4px; }
+  .seat-right { right: 4px; }
+  .seat-top   { top: 52px; }
+}
