@@ -1,6 +1,6 @@
 import type { GameRecord } from '../engine/types'
 
-const IS_ELECTRON = typeof navigator !== 'undefined' && /Electron/.test(navigator.userAgent)
+export const IS_ELECTRON = typeof navigator !== 'undefined' && /Electron/.test(navigator.userAgent)
 
 const HISTORY_KEY = 'tarok-game-history'
 const DRAFT_KEY = 'tarok-game-draft'

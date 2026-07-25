@@ -43,8 +43,9 @@ export default function App() {
     voidDealSeat, options,
   } = store
 
-  // On mount: load from OPFS file (merges into localStorage), then recover any draft
+  // On mount: re-trigger bot if a page reload happened mid-game, then restore OPFS history
   useEffect(() => {
+    store.resumeAfterReload()
     opfsLoad().then(() => {
       const draft = consumeDraftRecord()
       if (draft && draft.rounds > 0) saveGameRecord(draft)

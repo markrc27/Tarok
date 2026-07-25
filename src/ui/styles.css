@@ -6,12 +6,14 @@ body {
   background: #1a5c2a;
   color: #f0f0f0;
   height: 100vh;
+  height: 100dvh;  /* track the *visible* area on mobile so the hand stays above the browser toolbar */
   overflow: hidden;
   user-select: none;
 }
 
 #root {
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -411,7 +413,9 @@ body {
   .menu-item > button { height: 44px; font-size: 15px; padding: 0 14px; }
   .menu-dropdown { top: 44px; }
 
-  /* Status bar: single scrollable row so it never steals table height */
+  /* Status bar: single scrollable row so it never steals table height.
+     Items must NOT shrink/wrap — otherwise their text wraps vertically and
+     the bar balloons (was ~79px), shoving the hand up under the bid panel. */
   .status-bar {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -421,6 +425,7 @@ body {
     scrollbar-width: none;  /* hide scrollbar on Firefox */
   }
   .status-bar::-webkit-scrollbar { display: none; }
+  .status-bar > * { flex-shrink: 0; white-space: nowrap; }
 
   /* Bid panel: centred, height-capped so hand stays visible below */
   .bid-panel {
@@ -438,4 +443,14 @@ body {
   .seat-left  { left: 4px; }
   .seat-right { right: 4px; }
   .seat-top   { top: 52px; }
+
+  /* Trick area: the desktop reserve (395px) collapses this to ~130px on a
+     phone, so the top and bottom cards land on top of each other. Reserve
+     less and floor the height at two card-heights + a gap so opposite cards
+     always separate. */
+  .trick-area {
+    height: clamp(calc(var(--card-h, 80px) * 2 + 24px), calc(100% - 300px), 300px);
+  }
+  .trick-slot-top    { top: 8px; }
+  .trick-slot-bottom { bottom: 8px; }
 }

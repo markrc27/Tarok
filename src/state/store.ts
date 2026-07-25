@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { GameState, GamePhase } from './gameState'
 import type { Seat, BidAction, Contract, Suit, Card, PlayState, BonusName } from '../engine/types'
 import { deal } from '../engine/deal'
@@ -70,9 +71,10 @@ type Store = GameState & {
   endGame: () => void
   endGameFromMenu: () => void
   setCardAppearance: (appearance: 'simple' | 'traditional') => void
+  resumeAfterReload: () => void
 }
 
-export const useGameStore = create<Store>((set, get) => {
+export const useGameStore = create<Store>()(persist((set, get) => {
   // ── helpers ─────────────────────────────────────────────────────────────
 
   const botDelay = (fn: () => void) => setTimeout(fn, BOT_DELAY)
@@ -593,5 +595,38 @@ export const useGameStore = create<Store>((set, get) => {
       localStorage.setItem('tarok-card-appearance', appearance)
       set({ cardAppearance: appearance })
     },
+
+    resumeAfterReload: () => {
+      const { phase, biddingState, playState } = get()
+      // Hand complete but lost the scoring transition during the trick-display pause
+      if (phase === 'playing' && playState && isHandComplete(playState)) {
+        set({ phase: 'scoring', pendingTrick: null })
+        return
+      }
+      // Bot needs to bid
+      if (phase === 'bidding' && biddingState && !biddingState.done && biddingState.currentBidder !== HUMAN) {
+        botDelay(runBotBid)
+        return
+      }
+      // Bot needs to play
+      if (phase === 'playing' && playState) {
+        const playedSeats = new Set(playState.currentTrick.cards.map(c => c.seat))
+        const ledSeat = playState.currentTrick.ledSeat
+        const order: Seat[] = [ledSeat, ((ledSeat+1)%4) as Seat, ((ledSeat+2)%4) as Seat, ((ledSeat+3)%4) as Seat]
+        const nextSeat = order.find(s => !playedSeats.has(s))
+        if (nextSeat !== undefined && nextSeat !== HUMAN) {
+          botDelay(runBotPlay)
+        }
+      }
+    },
   }
-})
+}, {
+  name: 'tarok-game-state',
+  version: 1,
+  partialize: (state) => {
+    // Exclude pendingTrick: it's transient animation state tied to a setTimeout
+    // that won't survive a page reload.
+    const { pendingTrick: _pt, ...rest } = state
+    return rest
+  },
+}))

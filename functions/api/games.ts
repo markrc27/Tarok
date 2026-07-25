@@ -1,5 +1,6 @@
 // Cloudflare Pages Function — /api/games
-// GET  → top 100 results ordered by most recent
+// GET ?view=leaderboard → top 10 by final_score DESC
+// GET (default/history)  → all games by played_at DESC, limit 500
 // POST → save a completed game (human player seat 0 only)
 
 interface D1PreparedStatement {
@@ -48,11 +49,17 @@ function validate(body: unknown): body is PostBody {
   )
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
-  const { results } = await env.DB.prepare(
-    `SELECT id, played_at, player_name, final_score, rounds, difficulty
-     FROM games ORDER BY played_at DESC LIMIT 100`
-  ).all<GameRow>()
+export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+  const url = new URL(request.url)
+  const view = url.searchParams.get('view')
+
+  const sql = view === 'leaderboard'
+    ? `SELECT id, played_at, player_name, final_score, rounds, difficulty
+       FROM games ORDER BY final_score DESC LIMIT 10`
+    : `SELECT id, played_at, player_name, final_score, rounds, difficulty
+       FROM games ORDER BY played_at DESC LIMIT 500`
+
+  const { results } = await env.DB.prepare(sql).all<GameRow>()
   return Response.json(results, { headers: { 'Cache-Control': 'no-store' } })
 }
 
