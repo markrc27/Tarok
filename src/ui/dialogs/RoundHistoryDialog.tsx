@@ -26,8 +26,10 @@ export default function RoundHistoryDialog({ roundHistory, playerNames, onClose 
       padding: '14px 20px 12px',
       zIndex: 200,
       boxShadow: '0 4px 24px rgba(0,0,0,0.7)',
-      minWidth: 560,
-      maxWidth: 720,
+      minWidth: 'min(560px, calc(100vw - 16px))',
+      maxWidth: 'calc(100vw - 16px)',
+      maxHeight: 'calc(100dvh - 60px)',
+      overflowY: 'auto',
     }}>
       {roundHistory.length === 0 ? (
         <p style={{ color: '#888', textAlign: 'center', padding: '8px 0' }}>No completed rounds yet.</p>

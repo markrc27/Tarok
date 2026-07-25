@@ -52,7 +52,11 @@ const SECTIONS: Section[] = [
             ))}
           </tbody>
         </table>
-        <p style={{ color: '#888', fontSize: 12, marginTop: 6 }}>The total card points in the pack is 70. Card points are counted in groups of three (two cards + one "empty" = value of the two minus 1).</p>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Counting card points</h4>
+        <p>Card points are counted across your <strong>whole captured pile</strong> at the end of the hand, in groups of three. Each group of three is worth the sum of the face values <em>minus 2</em>. The pack total is always 70.</p>
+        <p>Example: capturing Škis (5) + Queen (4) + a small card (1) → 5+4+1−2 = <strong>8 points</strong> for that group.</p>
+        <p><strong>Why small taroks seem to score nothing:</strong> Non-trula trumps (II–XX) and other plain cards are all worth 1 point each. With the groups-of-three rule, three of these together produce only 1+1+1−2 = <strong>1 point</strong>. Fewer than three together produce 0. A whole trick of four small taroks is just one group of 3 (1 pt) plus one leftover (0 pt) = <strong>1 point total</strong> for the trick. The real scoring weight is in the honour cards — Škis, Mond, Pagat, Kings, and court cards.</p>
+        <p style={{ color: '#888', fontSize: 12, marginTop: 6 }}>This is the same counting used in traditional Tarok — the numbers come out identically. The pagat.com page below explains why several different-looking counting methods all produce the same result: <a href="https://www.pagat.com/tarot/counting.html" target="_blank" rel="noreferrer" style={{ color: '#7ab8e8' }}>pagat.com/tarot/counting.html ↗</a></p>
       </>
     ),
   },
@@ -226,14 +230,15 @@ const SECTIONS: Section[] = [
         <p>The declarer's side must capture <strong>≥ 35 card points</strong> to win (or in Beggar/Valat, meet their specific objective).</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Score formula</h4>
         <p style={{ background: '#1a1a1a', padding: '8px 12px', borderRadius: 4, fontFamily: 'monospace', fontSize: 13 }}>
-          score = (base_value + |card_pts − 35|) + bonuses
+          score = base_value + round5(|card_pts − 35|) + bonuses
         </p>
         <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
           <li>On a <strong>win</strong>: the declarer (and partner, if any) each gain this amount.</li>
           <li>On a <strong>loss</strong>: the declarer (and partner, if any) each lose this amount.</li>
-          <li>The <strong>difference</strong> is how many card points the declaring side scored above or below 35, rounded to the nearest 5. It is added on a win and subtracted on a loss.</li>
-          <li>The partner receives the same score as the declarer.</li>
+          <li>The <strong>difference</strong> is how many card points the declaring side scored above or below 35, rounded to the nearest 5. A margin of 1–2 points rounds to 0 (no bonus); you need ≥3 extra points to see a +5 difference. This means winning by a handful of small taroks looks the same as winning exactly — the real bonus comes from capturing honour cards.</li>
+          <li>The partner always receives the same score as the declarer.</li>
         </ul>
+        <p style={{ color: '#888', fontSize: 12, marginTop: 4 }}>The card-point counting in this app is the same as the traditional method — the numbers are identical. The pagat.com page linked in the Cards section explains the counting in more depth.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Bonuses</h4>
         <p>Bonuses (trula, kings, pagat-ultimo, king-ultimo) always flow through the <strong>declarer's score</strong>:</p>
         <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>

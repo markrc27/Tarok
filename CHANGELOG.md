@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.5.4 — 2026-07-25
+
+### UI / UX
+- **Mobile CSS pass (8 items)**: `viewport-fit=cover` added to index.html for safe-area support; status bar padded past `env(safe-area-inset-bottom)` so the Called King line isn't hidden by the iOS home indicator; menu bar raised to `z-index:300` and dropdowns to `301` so they render above bid panel and score dialogs; hover-lift on cards gated to `@media (hover: hover)` so touch devices don't get a card popping up on your turn; bid panel is now a flex column so the contract list scrolls internally while Pass/Bid stays pinned; all `.modal` dialogs capped to `calc(100vw - 16px)` / `calc(100dvh - 16px)` on mobile so nothing overflows; `RoundHistoryDialog` min-width made fluid; start screen condensed and scroll-safe on narrow viewports.
+- **Help dialog**: Improved card-point-counting explanation with worked example; score formula corrected to show `round5(|pts − 35|)`; clarification that small taroks score almost nothing individually.
+
 ## v1.5.3 — 2026-07-25
 
 ### UI / UX

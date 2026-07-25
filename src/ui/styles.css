@@ -26,6 +26,10 @@ body {
   padding: 0;
   flex-shrink: 0;
   height: 24px;
+  /* Sit above modal overlays / bid panel (z 200) so the menu stays clickable
+     and its dropdowns can be read over the bid or score windows. */
+  position: relative;
+  z-index: 300;
 }
 
 .menu-item {
@@ -52,7 +56,8 @@ body {
   background: #222;
   border: 1px solid #555;
   min-width: 150px;
-  z-index: 100;
+  max-width: calc(100vw - 8px);
+  z-index: 301;
   display: none;
 }
 .menu-item.open .menu-dropdown {
@@ -129,7 +134,12 @@ body {
   top: 0;
 }
 .hand-card.playable { cursor: pointer; }
-.hand-card.playable:hover { top: -18px; }
+/* Only lift on hover for devices with a real pointer. On touch screens the
+   :hover state sticks to whichever card was last tapped, making a random card
+   pop up on your turn and appear pre-selected — misleading. */
+@media (hover: hover) {
+  .hand-card.playable:hover { top: -18px; }
+}
 .hand-card.dimmed { opacity: 0.45; }
 
 .ai-cards {
@@ -427,16 +437,30 @@ body {
   .status-bar::-webkit-scrollbar { display: none; }
   .status-bar > * { flex-shrink: 0; white-space: nowrap; }
 
-  /* Bid panel: centred, height-capped so hand stays visible below */
+  /* Bid panel: centred, height-capped so the hand stays fully visible below.
+     Flex column so the (long) contract list scrolls internally while the
+     heading and the Pass/Bid buttons stay pinned and never get cut off. */
   .bid-panel {
     right: auto;
     left: 50%;
     transform: translateX(-50%);
-    min-width: min(320px, 90vw);
-    max-width: 90vw;
+    min-width: min(340px, 94vw);
+    max-width: 94vw;
     top: 50px;
     max-height: calc(100dvh - 220px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .bid-panel .bid-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
     overflow-y: auto;
+  }
+  .bid-panel .modal-actions {
+    flex-shrink: 0;
+    margin-top: 12px;
   }
 
   /* Seat positions: tighten side margins, push top past taller menu bar */
@@ -453,4 +477,40 @@ body {
   }
   .trick-slot-top    { top: 8px; }
   .trick-slot-bottom { bottom: 8px; }
+
+  /* Status bar sits at the very bottom, where iOS Safari's URL bar / home
+     indicator overlaps it — pad past the safe area so the "Called King" line
+     stays readable. */
+  .status-bar {
+    padding-bottom: calc(3px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Every modal dialog fits the screen — no side-to-side scrolling. The
+     inline min/max-widths on each dialog need !important to be overridden.
+     Covers Leaderboard, Round Result (score), History, Rules, Statistics… */
+  .modal-overlay { padding: 8px; }
+  .modal {
+    min-width: 0 !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    overflow-y: auto;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  /* Compact score / leaderboard tables so their columns fit without scroll. */
+  .score-table th, .score-table td { padding: 4px 5px; font-size: 11px; }
+
+  /* Menu dropdowns: keep within the screen, roomier touch targets. */
+  .menu-dropdown { max-width: calc(100vw - 8px); }
+
+  /* Start screen: condense so the banner, name field, difficulty and New Game
+     button all fit; allow scroll as a safety net if the keyboard shrinks the
+     viewport. */
+  .idle-screen {
+    justify-content: flex-start;
+    padding: 24px 12px calc(24px + env(safe-area-inset-bottom, 0px));
+    gap: 12px;
+    overflow-y: auto;
+  }
+  .idle-screen h1 { font-size: 26px; }
 }
