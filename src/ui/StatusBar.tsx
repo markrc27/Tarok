@@ -1,5 +1,6 @@
 import React from 'react'
 import type { PlayState, BiddingState, Seat, SuitCard } from '../engine/types'
+import { countPoints } from '../engine/pointcount'
 import { CONTRACT_LABEL } from './labels'
 
 const SUIT_NAME: Record<string, string> = { clubs: 'Clubs', spades: 'Spades', hearts: 'Hearts', diamonds: 'Diamonds' }
@@ -38,6 +39,19 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
     ? SUIT_NAME[playState.kingCall.calledKing.suit] ?? playState.kingCall.calledKing.suit
     : null
 
+  // Running progress toward the 36-point win threshold, for point contracts only
+  // (klop/beggar/valat are decided differently, so a points gauge would mislead).
+  const isPointContract = !!playState && playState.contract !== 'klop'
+    && playState.contract !== 'beggar' && playState.contract !== 'open-beggar'
+    && playState.contract !== 'valat-without' && playState.contract !== 'color-valat-without'
+  let declarerPts = 0
+  if (playState && isPointContract) {
+    const cards = ([0, 1, 2, 3] as Seat[])
+      .filter(s => s === playState.declarer || s === playState.partner)
+      .flatMap(s => playState.capturedCards[s])
+    declarerPts = countPoints(cards)
+  }
+
   // Hint when human must follow a specific suit/trump
   let followHint = ''
   if (playState && playState.currentTrick.cards.length > 0) {
@@ -55,7 +69,7 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
   return (
     <div className="status-bar">
       <div className="status-item">Contract: <span>{contractLabel}</span></div>
-      <div className="status-item">Declarer: <span>{declarer}</span></div>
+      <div className="status-item">Declarer: <span>{declarer}</span>{isPointContract && <span style={{ color: '#aaa', fontWeight: 'normal' }}> · {declarerPts} / 36</span>}</div>
       <div className="status-item">Partner: <span>{partnerLabel}</span></div>
       {calledKingSuit && (
         <div className="status-item">Called King: <span>{calledKingSuit}</span></div>

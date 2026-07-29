@@ -20,12 +20,12 @@ function cardText(card: Card): string {
 
 // Group a captured pile into threes and score it the common way: each group of
 // three is the sum of its cards' face values minus 2 (a leftover of 1–2 cards
-// loses 1). Sorted high-to-low only for a readable display — the total is the
-// same no matter how the cards are grouped.
+// loses 1). Cards are left in capture order (roughly chronological, as they
+// were won) rather than sorted — grouping order doesn't affect the total, and
+// keeping the natural order makes the count traceable against the trick list.
 function pileInThrees(cards: Card[]): { chunks: Card[][]; values: number[]; total: number } {
-  const sorted = [...cards].sort((a, b) => b.points - a.points)
   const chunks: Card[][] = []
-  for (let i = 0; i < sorted.length; i += 3) chunks.push(sorted.slice(i, i + 3))
+  for (let i = 0; i < cards.length; i += 3) chunks.push(cards.slice(i, i + 3))
   const values = chunks.map(ch => ch.reduce((sum, c) => sum + c.points, 0) - (ch.length === 3 ? 2 : 1))
   const total = values.reduce((sum, v) => sum + v, 0)
   return { chunks, values, total }
@@ -44,7 +44,8 @@ interface Props {
 
 export default function ScoreDialog({ playState, announcementState, sessionScores, radliState, playerNames, roundId, onNewRound, onEndGame }: Props) {
   const [confirmEnd, setConfirmEnd] = useState(false)
-  const [showLog, setShowLog] = useState(false)
+  const [showGameLog, setShowGameLog] = useState(false)
+  const [showPointLog, setShowPointLog] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showRadliInfo, setShowRadliInfo] = useState(false)
 
@@ -181,7 +182,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
           const cards = side.flatMap(s => effectiveCaptured[s])
           const { chunks, values, total } = pileInThrees(cards)
           lines.push(`${side.map(s => playerNames[s]).join(' + ')} — ${cards.length} cards:`)
-          chunks.forEach((ch, gi) => lines.push(`  [${ch.map(cardText).join(' ')}] = ${values[gi]}`))
+          chunks.forEach((ch, gi) => lines.push(`  [${ch.map(cardText).join('   ')}] ${ch.map(c => c.points).join(' + ')} − ${ch.length === 3 ? 2 : 1} = ${values[gi]}`))
           lines.push(`  Total: ${total} card points`)
         }
         lines.push('Total: 70')
@@ -343,15 +344,16 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
           </div>
         )}
 
-        {/* Expandable game log */}
+        {/* Two independent logs: play record and point count */}
         <div style={{ marginTop: 12 }}>
+          {/* Game log — the play record */}
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               className="btn btn-ghost"
               style={{ fontSize: 12, padding: '4px 10px', flex: 1 }}
-              onClick={() => setShowLog(v => !v)}
+              onClick={() => setShowGameLog(v => !v)}
             >
-              {showLog ? '▲ Hide game log' : '▼ Show game log'}
+              {showGameLog ? '▲ Hide game log' : '▼ Show game log'}
             </button>
             <button
               className="btn btn-ghost"
@@ -366,7 +368,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             </button>
           </div>
 
-          {showLog && (
+          {showGameLog && (
             <div style={{ marginTop: 8, fontSize: 12, color: '#ccc', maxHeight: 340, overflowY: 'auto' }}>
 
               {/* Talon discard */}
@@ -427,10 +429,22 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                   )
                 })}
               </div>
+            </div>
+          )}
 
-              {/* Card points — counted the common way: whole pile in threes,
-                  face values minus 2 per group. Only for card-point contracts. */}
-              {contract !== 'klop' && handScore && (() => {
+          {/* Point count — its own collapsible */}
+          {contract !== 'klop' && handScore && (
+            <>
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: 12, padding: '4px 10px', width: '100%', marginTop: 8 }}
+                onClick={() => setShowPointLog(v => !v)}
+              >
+                {showPointLog ? '▲ Hide point count' : '▼ Show point count'}
+              </button>
+              {showPointLog && (
+                <div style={{ marginTop: 8, fontSize: 12, color: '#ccc', maxHeight: 340, overflowY: 'auto' }}>
+                  {(() => {
                 const decSide: Seat[] = partner !== null ? [declarer, partner] : [declarer]
                 const oppSide = seats.filter(s => !decSide.includes(s))
                 const decTricks = completedTricks.filter(t => t.winner === declarer || (partner !== null && t.winner === partner)).length
@@ -452,7 +466,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                               <div style={{ color: '#aaa' }}>{side.map(s => playerNames[s]).join(' + ')} ({cards.length} cards):</div>
                               {chunks.map((ch, gi) => (
                                 <div key={gi} style={{ color: '#bbb', paddingLeft: 10, whiteSpace: 'nowrap' }}>
-                                  [{ch.map(cardText).join(' ')}]<span style={{ color: '#f0c040' }}> = {values[gi]}</span>
+                                  [{ch.map((c, ci) => <span key={ci} style={{ marginRight: ci < ch.length - 1 ? '0.9em' : 0 }}>{cardText(c)}</span>)}] <span style={{ color: '#888' }}>{ch.map(c => c.points).join(' + ')} − {ch.length === 3 ? 2 : 1}</span><span style={{ color: '#f0c040' }}> = {values[gi]}</span>
                                 </div>
                               ))}
                               <div style={{ color: '#ccc', fontWeight: 'bold', paddingLeft: 10 }}>Total: {total}</div>
@@ -464,9 +478,10 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                     )}
                   </div>
                 )
-              })()}
-
-            </div>
+                  })()}
+                </div>
+              )}
+            </>
           )}
         </div>
 

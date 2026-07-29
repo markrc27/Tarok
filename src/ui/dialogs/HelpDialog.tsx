@@ -35,7 +35,7 @@ const SECTIONS: Section[] = [
           <thead>
             <tr style={{ color: '#aaa' }}>
               <th style={{ textAlign: 'left', padding: '3px 8px' }}>Card</th>
-              <th style={{ textAlign: 'right', padding: '3px 8px' }}>Value</th>
+              <th style={{ textAlign: 'center', padding: '3px 8px' }}>Value</th>
             </tr>
           </thead>
           <tbody>
@@ -48,7 +48,7 @@ const SECTIONS: Section[] = [
             ].map(([label, val]) => (
               <tr key={label} style={{ borderTop: '1px solid #333' }}>
                 <td style={{ padding: '3px 8px' }}>{label}</td>
-                <td style={{ padding: '3px 8px', textAlign: 'right', color: '#f0c040', fontWeight: 'bold' }}>{val}</td>
+                <td style={{ padding: '3px 8px', textAlign: 'center', color: '#f0c040', fontWeight: 'bold' }}>{val}</td>
               </tr>
             ))}
           </tbody>
@@ -65,7 +65,7 @@ const SECTIONS: Section[] = [
             <tr style={{ color: '#aaa' }}>
               <th style={{ textAlign: 'left', padding: '3px 8px' }}>Group of three</th>
               <th style={{ textAlign: 'left', padding: '3px 8px' }}>Total − 2</th>
-              <th style={{ textAlign: 'right', padding: '3px 8px' }}>Points</th>
+              <th style={{ textAlign: 'center', padding: '3px 8px' }}>Points</th>
             </tr>
           </thead>
           <tbody>
@@ -79,7 +79,7 @@ const SECTIONS: Section[] = [
               <tr key={group} style={{ borderTop: '1px solid #333' }}>
                 <td style={{ padding: '3px 8px' }}>{group}</td>
                 <td style={{ padding: '3px 8px', color: '#888' }}>{calc}</td>
-                <td style={{ padding: '3px 8px', textAlign: 'right', color: '#f0c040', fontWeight: 'bold' }}>{pts}</td>
+                <td style={{ padding: '3px 8px', textAlign: 'center', color: '#f0c040', fontWeight: 'bold' }}>{pts}</td>
               </tr>
             ))}
           </tbody>
@@ -131,8 +131,8 @@ const SECTIONS: Section[] = [
           <thead>
             <tr style={{ color: '#aaa' }}>
               <th style={{ textAlign: 'left', padding: '3px 8px' }}>Bonus</th>
-              <th style={{ textAlign: 'right', padding: '3px 8px' }}>Unannounced</th>
-              <th style={{ textAlign: 'right', padding: '3px 8px' }}>Announced</th>
+              <th style={{ textAlign: 'center', padding: '3px 8px' }}>Unannounced</th>
+              <th style={{ textAlign: 'center', padding: '3px 8px' }}>Announced</th>
               <th style={{ textAlign: 'left', padding: '3px 8px' }}>Condition</th>
             </tr>
           </thead>
@@ -146,8 +146,8 @@ const SECTIONS: Section[] = [
             ].map(([name, una, ann, cond]) => (
               <tr key={name} style={{ borderTop: '1px solid #2a2a2a' }}>
                 <td style={{ padding: '4px 8px', fontWeight: 'bold', color: '#e0e0e0' }}>{name}</td>
-                <td style={{ padding: '4px 8px', textAlign: 'right' }}>{una}</td>
-                <td style={{ padding: '4px 8px', textAlign: 'right', color: '#f0c040' }}>{ann}</td>
+                <td style={{ padding: '4px 8px', textAlign: 'center' }}>{una}</td>
+                <td style={{ padding: '4px 8px', textAlign: 'center', color: '#f0c040' }}>{ann}</td>
                 <td style={{ padding: '4px 8px', color: '#aaa', fontSize: 11 }}>{cond}</td>
               </tr>
             ))}

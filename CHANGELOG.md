@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.5.6 — 2026-07-28
+
+### UI / UX
+- **Two separate score logs**: the Round Result dialog now has independent "Show game log" (play record) and "Show point count" collapsibles, each with its own toggle bar and arrow.
+- **Groups shown in capture order**: the card-point groups of three are listed in the order the cards were won (roughly chronological) rather than sorted by value, so the count is traceable against the trick list. Grouping order never changes the total.
+- **Per-group arithmetic**: each group now spells out the math, e.g. `[J♦ 3♥ Škis] 2 + 1 + 5 − 2 = 6`, in both the on-screen breakdown and the Copy-Log — so beginners can follow exactly how each group's value is reached. Cards within a group are spaced out for readability.
+- **Running "Declarer" gauge restored**: the status bar's Declarer chip shows the declaring side's progress toward the win threshold during point contracts, e.g. `Declarer: Petra · 28 / 36`. Hidden for klop/beggar/valat, which aren't decided by card points.
+- **Rules tables centered**: numeric columns in the Rules tables are center-aligned instead of right-aligned for easier reading.
+
 ## v1.5.5 — 2026-07-28
 
 ### UI / UX
