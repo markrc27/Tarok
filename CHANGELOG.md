@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.5.5 — 2026-07-28
+
+### UI / UX
+- **Game log — one group per line**: the "Card points (whole pile in threes)" section now prints each group of three on its own line (in both the Copy-Log text and the on-screen breakdown) instead of packing several per line, so it's easy to read.
+
 ## v1.5.4 — 2026-07-25
 
 ### UI / UX

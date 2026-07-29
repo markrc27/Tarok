@@ -180,10 +180,9 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
         for (const side of [decSide, oppSide]) {
           const cards = side.flatMap(s => effectiveCaptured[s])
           const { chunks, values, total } = pileInThrees(cards)
-          const groupStrs = chunks.map((ch, gi) => `[${ch.map(cardText).join(' ')}] ${values[gi]}`)
           lines.push(`${side.map(s => playerNames[s]).join(' + ')} — ${cards.length} cards:`)
-          for (let i = 0; i < groupStrs.length; i += 4) lines.push('  ' + groupStrs.slice(i, i + 4).join('   '))
-          lines.push(`  = ${total} card points`)
+          chunks.forEach((ch, gi) => lines.push(`  [${ch.map(cardText).join(' ')}] = ${values[gi]}`))
+          lines.push(`  Total: ${total} card points`)
         }
         lines.push('Total: 70')
       }
@@ -449,14 +448,14 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                           const cards = side.flatMap(s => effectiveCaptured[s])
                           const { chunks, values, total } = pileInThrees(cards)
                           return (
-                            <div key={si} style={{ marginBottom: 4, lineHeight: '1.6' }}>
-                              <span style={{ color: '#aaa' }}>{side.map(s => playerNames[s]).join(' + ')} ({cards.length}): </span>
+                            <div key={si} style={{ marginBottom: 6, lineHeight: '1.6' }}>
+                              <div style={{ color: '#aaa' }}>{side.map(s => playerNames[s]).join(' + ')} ({cards.length} cards):</div>
                               {chunks.map((ch, gi) => (
-                                <span key={gi} style={{ color: '#bbb', marginRight: 8, whiteSpace: 'nowrap' }}>
-                                  [{ch.map(cardText).join(' ')}]<span style={{ color: '#f0c040' }}>={values[gi]}</span>
-                                </span>
+                                <div key={gi} style={{ color: '#bbb', paddingLeft: 10, whiteSpace: 'nowrap' }}>
+                                  [{ch.map(cardText).join(' ')}]<span style={{ color: '#f0c040' }}> = {values[gi]}</span>
+                                </div>
                               ))}
-                              <span style={{ color: '#ccc', fontWeight: 'bold' }}>= {total}</span>
+                              <div style={{ color: '#ccc', fontWeight: 'bold', paddingLeft: 10 }}>Total: {total}</div>
                             </div>
                           )
                         })}
