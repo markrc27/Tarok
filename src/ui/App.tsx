@@ -45,6 +45,9 @@ export default function App() {
 
   // On mount: re-trigger bot if a page reload happened mid-game, then restore OPFS history
   useEffect(() => {
+    // Rendered successfully — allow the error boundary to auto-recover again if a
+    // future load ever crashes on stale persisted state.
+    try { sessionStorage.removeItem('tarok-auto-recovered') } catch { /* ignore */ }
     store.resumeAfterReload()
     opfsLoad().then(() => {
       const draft = consumeDraftRecord()

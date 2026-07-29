@@ -13,7 +13,7 @@ const SECTIONS: Section[] = [
     content: (
       <>
         <p>Slovenian Tarok is a 4-player trick-taking card game. Players bid to become the <strong>declarer</strong>, who then tries to win enough card points — together with a partner in most contracts — to beat the other side.</p>
-        <p>Play proceeds <strong>anticlockwise</strong>. The player to the right of the dealer is called <strong>forehand</strong> and leads the first trick.</p>
+        <p>Play proceeds <strong>counterclockwise</strong>. The player to the right of the dealer is called <strong>forehand</strong> and leads the first trick.</p>
         <p>For the full authoritative rules, see: <a href="https://www.pagat.com/tarot/sltarok.html" target="_blank" rel="noreferrer" style={{ color: '#7ab8e8' }}>www.pagat.com/tarot/sltarok.html</a></p>
       </>
     ),
@@ -27,36 +27,64 @@ const SECTIONS: Section[] = [
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Trumps (highest → lowest)</h4>
         <p><strong>Škis</strong> (highest) › <strong>Mond</strong> (XXI) › XX › XIX › … › II › <strong>Pagat</strong> (I, lowest trump)</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Suit cards (highest → lowest)</h4>
-        <p>Red suits (hearts, diamonds): K › Q › Kn › J › 4 › 3 › 2 › 1</p>
-        <p>Black suits (clubs, spades): K › Q › Kn › J › 10 › 9 › 8 › 7</p>
+        <p>Red suits (hearts, diamonds): K › Q › C › J › 4 › 3 › 2 › 1</p>
+        <p>Black suits (clubs, spades): K › Q › C › J › 10 › 9 › 8 › 7</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Card point values</h4>
+        <p>Each card is worth:</p>
         <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
           <thead>
             <tr style={{ color: '#aaa' }}>
-              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Cards</th>
-              <th style={{ textAlign: 'right', padding: '3px 8px' }}>Points each</th>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Card</th>
+              <th style={{ textAlign: 'right', padding: '3px 8px' }}>Value</th>
             </tr>
           </thead>
           <tbody>
             {[
-              ['Škis, Mond, Pagat; all Kings', '5'],
+              ['Škis, Mond, Pagat, Kings', '5'],
               ['Queens', '4'],
               ['Knights (Cavaliers)', '3'],
               ['Jacks', '2'],
               ['All other cards', '1'],
-            ].map(([label, pts]) => (
+            ].map(([label, val]) => (
               <tr key={label} style={{ borderTop: '1px solid #333' }}>
                 <td style={{ padding: '3px 8px' }}>{label}</td>
-                <td style={{ padding: '3px 8px', textAlign: 'right' }}>{pts}</td>
+                <td style={{ padding: '3px 8px', textAlign: 'right', color: '#f0c040', fontWeight: 'bold' }}>{val}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Counting card points</h4>
-        <p>Card points are counted across your <strong>whole captured pile</strong> at the end of the hand, in groups of three. Each group of three is worth the sum of the face values <em>minus 2</em>. The pack total is always 70.</p>
-        <p>Example: capturing Škis (5) + Queen (4) + a small card (1) → 5+4+1−2 = <strong>8 points</strong> for that group.</p>
-        <p><strong>Why small taroks seem to score nothing:</strong> Non-trula trumps (II–XX) and other plain cards are all worth 1 point each. With the groups-of-three rule, three of these together produce only 1+1+1−2 = <strong>1 point</strong>. Fewer than three together produce 0. A whole trick of four small taroks is just one group of 3 (1 pt) plus one leftover (0 pt) = <strong>1 point total</strong> for the trick. The real scoring weight is in the honour cards — Škis, Mond, Pagat, Kings, and court cards.</p>
-        <p style={{ color: '#888', fontSize: 12, marginTop: 6 }}>This is the same counting used in traditional Tarok — the numbers come out identically. The pagat.com page below explains why several different-looking counting methods all produce the same result: <a href="https://www.pagat.com/tarot/counting.html" target="_blank" rel="noreferrer" style={{ color: '#7ab8e8' }}>pagat.com/tarot/counting.html ↗</a></p>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>How points are counted</h4>
+        <p style={{ background: '#12233a', borderLeft: '3px solid #0078d4', padding: '8px 12px', borderRadius: '0 4px 4px 0', color: '#cde' }}>
+          <strong>You don't need to learn any of this to play</strong> — the app counts every card and keeps the running score for you. This is here only if you'd like to understand where the numbers come from.
+        </p>
+        <p>At the end of the hand, take every card your side captured and sort it into <strong>groups of three</strong>. Each group scores the total of its cards' values <strong>minus 2</strong>. Add the groups together for your card-point total. (This is exactly how the score log breaks it down.)</p>
+        <p>The whole pack always totals <strong>70 points</strong>. To win an ordinary hand, your side needs more than half — at least <strong>36</strong>. If a few cards are left over at the end, they count as one last small group, losing 1 instead of 2.</p>
+        <p style={{ margin: '4px 0 6px', color: '#ccc' }}>A few example groups of three:</p>
+        <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
+          <thead>
+            <tr style={{ color: '#aaa' }}>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Group of three</th>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Total − 2</th>
+              <th style={{ textAlign: 'right', padding: '3px 8px' }}>Points</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['Škis + King + empty card', '5 + 5 + 1 − 2', '9'],
+              ['King + Queen + empty card', '5 + 4 + 1 − 2', '8'],
+              ['Three Cavaliers', '3 + 3 + 3 − 2', '7'],
+              ['King + two empty cards', '5 + 1 + 1 − 2', '5'],
+              ['Three empty cards', '1 + 1 + 1 − 2', '1'],
+            ].map(([group, calc, pts]) => (
+              <tr key={group} style={{ borderTop: '1px solid #333' }}>
+                <td style={{ padding: '3px 8px' }}>{group}</td>
+                <td style={{ padding: '3px 8px', color: '#888' }}>{calc}</td>
+                <td style={{ padding: '3px 8px', textAlign: 'right', color: '#f0c040', fontWeight: 'bold' }}>{pts}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ color: '#888', fontSize: 12, marginTop: 6 }}>There is more detail — including other counting methods that reach the same totals — at <a href="https://www.pagat.com/tarot/counting.html" target="_blank" rel="noreferrer" style={{ color: '#7ab8e8' }}>pagat.com/tarot/counting.html ↗</a>.</p>
       </>
     ),
   },
@@ -66,37 +94,30 @@ const SECTIONS: Section[] = [
     content: (
       <>
         <p>The contract determines how many talon cards the declarer may pick up, whether they have a partner, and the base point value. Contracts are listed from lowest to highest bid.</p>
-        <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
-          <thead>
-            <tr style={{ color: '#aaa' }}>
-              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Contract</th>
-              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Score</th>
-              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            {([
-              ['Klop (sometimes called klopecki)', 'points taken, or 70', 'Avoid taking points; all players play individually; no bonuses; available to forehand only'],
-              ['Three (tri or trojka)', '10 + difference', 'Call a king; take 3 cards from the talon; win at least 36 card points; available to forehand only'],
-              ['Two (dva or dve or dvojka)', '20 + difference', 'Call a king; take 2 cards from the talon; win at least 36 card points'],
-              ['One (ena or enka or enica)', '30 + difference', 'Call a king; take 1 card from the talon; win at least 36 card points'],
-              ['Solo Three (solo tri)', '40 + difference', 'Play alone; take 3 cards from the talon; win at least 36 card points'],
-              ['Solo Two (solo dva)', '50 + difference', 'Play alone; take 2 cards from the talon; win at least 36 card points'],
-              ['Solo One (solo ena)', '60 + difference', 'Play alone; take 1 card from the talon; win at least 36 card points'],
-              ['Beggar (berač)', '70', 'Play alone; take no tricks; no bonuses'],
-              ['Solo Without (solo brez or brez talona)', '80', 'Play alone; no cards from the talon; win at least 36 card points; no bonuses'],
-              ['Open Beggar (odprti berač)', '90', "Play alone; take no tricks; declarer's cards are exposed face-up; no bonuses"],
-              ['Colour Valat Without (barvni valat brez)', '125', 'Play alone; no cards from the talon; taroks are not trumps; win all tricks; no bonuses'],
-              ['Valat Without (valat brez)', '500', 'Play alone; no cards from the talon; win all tricks; no bonuses'],
-            ] as [string, string, string][]).map(([name, score, desc]) => (
-              <tr key={name} style={{ borderTop: '1px solid #2a2a2a' }}>
-                <td style={{ padding: '4px 8px', fontWeight: 'bold', color: '#e0e0e0', whiteSpace: 'nowrap' }}>{name}</td>
-                <td style={{ padding: '4px 8px', color: '#f0c040', whiteSpace: 'nowrap' }}>{score}</td>
-                <td style={{ padding: '4px 8px', color: '#aaa', fontSize: 11 }}>{desc}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div>
+          {([
+            ['Klop (sometimes called klopecki)', 'points taken, or 70', 'Avoid taking points; all players play individually; no bonuses; available to forehand only'],
+            ['Three (tri or trojka)', '10 + difference', 'Call a king; take 3 cards from the talon; win at least 36 card points; available to forehand only'],
+            ['Two (dva or dve or dvojka)', '20 + difference', 'Call a king; take 2 cards from the talon; win at least 36 card points'],
+            ['One (ena or enka or enica)', '30 + difference', 'Call a king; take 1 card from the talon; win at least 36 card points'],
+            ['Solo Three (solo tri)', '40 + difference', 'Play alone; take 3 cards from the talon; win at least 36 card points'],
+            ['Solo Two (solo dva)', '50 + difference', 'Play alone; take 2 cards from the talon; win at least 36 card points'],
+            ['Solo One (solo ena)', '60 + difference', 'Play alone; take 1 card from the talon; win at least 36 card points'],
+            ['Beggar (berač)', '70', 'Play alone; take no tricks; no bonuses'],
+            ['Solo Without (solo brez or brez talona)', '80', 'Play alone; no cards from the talon; win at least 36 card points; no bonuses'],
+            ['Open Beggar (odprti berač)', '90', "Play alone; take no tricks; declarer's cards are exposed face-up; no bonuses"],
+            ['Color Valat Without (barvni valat brez)', '125', 'Play alone; no cards from the talon; taroks are not trumps; win all tricks; no bonuses'],
+            ['Valat Without (valat brez)', '500', 'Play alone; no cards from the talon; win all tricks; no bonuses'],
+          ] as [string, string, string][]).map(([name, score, desc]) => (
+            <div key={name} style={{ borderTop: '1px solid #2a2a2a', padding: '8px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+                <strong style={{ color: '#e0e0e0' }}>{name}</strong>
+                <span style={{ color: '#f0c040', whiteSpace: 'nowrap', flexShrink: 0, fontSize: 12 }}>{score}</span>
+              </div>
+              <div style={{ color: '#aaa', fontSize: 12, marginTop: 2 }}>{desc}</div>
+            </div>
+          ))}
+        </div>
       </>
     ),
   },
@@ -141,8 +162,8 @@ const SECTIONS: Section[] = [
     title: 'Deal',
     content: (
       <>
-        <p>The dealer deals <strong>anticlockwise</strong>, starting with forehand (the player to the dealer's right). Each player receives <strong>12 cards</strong>; the remaining <strong>6 cards</strong> form the <strong>talon</strong>, dealt face-down to the centre.</p>
-        <p>Cards are dealt in batches: typically 6 to each player and 6 to the talon. The dealer role rotates anticlockwise each round.</p>
+        <p>The dealer deals <strong>counterclockwise</strong>, starting with forehand (the player to the dealer's right). Each player receives <strong>12 cards</strong>; the remaining <strong>6 cards</strong> form the <strong>talon</strong>, dealt face-down to the center.</p>
+        <p>Cards are dealt in batches: typically 6 to each player and 6 to the talon. The dealer role rotates counterclockwise each round.</p>
         <p>If a player has too few card points (a <strong>missdeal</strong> — no face cards), they may ask for a redeal. House rules vary on the exact threshold.</p>
       </>
     ),
@@ -152,7 +173,7 @@ const SECTIONS: Section[] = [
     title: 'Bidding',
     content: (
       <>
-        <p>Bidding proceeds <strong>anticlockwise</strong> starting with forehand. Each player must either <strong>pass</strong> or bid a contract <em>higher</em> than the current highest bid.</p>
+        <p>Bidding proceeds <strong>counterclockwise</strong> starting with forehand. Each player must either <strong>pass</strong> or bid a contract <em>higher</em> than the current highest bid.</p>
         <p><strong>Klop</strong> and <strong>Three</strong> are only available to forehand when all other players have passed and forehand has not yet bid.</p>
         <p>When three players have passed, the highest bidder becomes the declarer. If all four players pass (including forehand declining klop/three), <strong>klop</strong> is played with no declarer.</p>
         <p>The <strong>forehand</strong> has priority: if a non-forehand player bids a contract, forehand may "hold" the same contract to take it over (forehand wins ties).</p>
@@ -202,7 +223,7 @@ const SECTIONS: Section[] = [
     title: 'The Play',
     content: (
       <>
-        <p>Tricks are played <strong>anticlockwise</strong>. Forehand leads the first trick; thereafter the winner of each trick leads the next.</p>
+        <p>Tricks are played <strong>counterclockwise</strong>. Forehand leads the first trick; thereafter the winner of each trick leads the next.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Follow-suit rules</h4>
         <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
           <li>Players must <strong>follow the led suit</strong> if they have cards of that suit.</li>
@@ -235,7 +256,7 @@ const SECTIONS: Section[] = [
         <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
           <li>On a <strong>win</strong>: the declarer (and partner, if any) each gain this amount.</li>
           <li>On a <strong>loss</strong>: the declarer (and partner, if any) each lose this amount.</li>
-          <li>The <strong>difference</strong> is how many card points the declaring side scored above or below 35, rounded to the nearest 5. A margin of 1–2 points rounds to 0 (no bonus); you need ≥3 extra points to see a +5 difference. This means winning by a handful of small taroks looks the same as winning exactly — the real bonus comes from capturing honour cards.</li>
+          <li>The <strong>difference</strong> is how many card points the declaring side scored above or below 35, rounded to the nearest 5. A margin of 1–2 points rounds to 0 (no bonus); you need ≥3 extra points to see a +5 difference. This means winning by a handful of small taroks looks the same as winning exactly — the real bonus comes from capturing honor cards.</li>
           <li>The partner always receives the same score as the declarer.</li>
         </ul>
         <p style={{ color: '#888', fontSize: 12, marginTop: 4 }}>The card-point counting in this app is the same as the traditional method — the numbers are identical. The pagat.com page linked in the Cards section explains the counting in more depth.</p>
@@ -264,8 +285,8 @@ const SECTIONS: Section[] = [
           <li>A contract of <em>Beggar</em> or higher is played</li>
           <li>Any kind of <em>valat</em> is won or lost</li>
         </ul>
-        <p>When scoring, if the declarer holds outstanding radli, their score (and the partner's, if any) is <strong>doubled</strong> and one radlc is annulled — but <em>only on a win</em>. On a loss the score is still doubled but the radlc is not cancelled.</p>
-        <p>Uncancelled radli at the end of the session cost <strong>100 points each</strong>.</p>
+        <p>When scoring, if the declarer holds outstanding radli, their score (and the partner's, if any) is <strong>doubled</strong> and one radl is annulled — but <em>only on a win</em>. On a loss the score is still doubled but the radl is not canceled.</p>
+        <p>Uncanceled radli at the end of the session cost <strong>100 points each</strong>.</p>
       </>
     ),
   },
@@ -282,6 +303,9 @@ const SECTIONS: Section[] = [
           <li><strong>Money games:</strong> Many groups play for stakes, converting points to currency at an agreed rate.</li>
           <li><strong>3- and 5-player variants:</strong> Modified contracts and rules for different player counts.</li>
         </ul>
+        <p style={{ background: '#12233a', borderLeft: '3px solid #0078d4', padding: '8px 12px', borderRadius: '0 4px 4px 0', color: '#cde' }}>
+          <strong>This app plays one standard ruleset</strong> — none of the variations above are built in. If you play in person with a real deck, though, you and your group are free to try any of them.
+        </p>
         <p>For the complete official variations, visit the full rules page.</p>
       </>
     ),

@@ -1,6 +1,5 @@
 import React from 'react'
 import type { PlayState, BiddingState, Seat, SuitCard } from '../engine/types'
-import { countPoints } from '../engine/pointcount'
 import { CONTRACT_LABEL } from './labels'
 
 const SUIT_NAME: Record<string, string> = { clubs: 'Clubs', spades: 'Spades', hearts: 'Hearts', diamonds: 'Diamonds' }
@@ -39,13 +38,6 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
     ? SUIT_NAME[playState.kingCall.calledKing.suit] ?? playState.kingCall.calledKing.suit
     : null
 
-  let pts = 0
-  if (playState) {
-    const declarerSide = ([0, 1, 2, 3] as Seat[]).filter(s => s === playState.declarer || s === playState.partner)
-    const cards = declarerSide.flatMap(s => playState.capturedCards[s])
-    pts = countPoints(cards)
-  }
-
   // Hint when human must follow a specific suit/trump
   let followHint = ''
   if (playState && playState.currentTrick.cards.length > 0) {
@@ -68,9 +60,8 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
       {calledKingSuit && (
         <div className="status-item">Called King: <span>{calledKingSuit}</span></div>
       )}
-      <div className="status-item">Points: <span>{pts} / 70</span></div>
       {followHint && <div className="status-item" style={{ color: '#facc15' }}>{followHint}</div>}
-      <div style={{ flex: 1 }} />
+      <div className="status-spacer" style={{ flex: 1 }} />
       {roundsPlayed > 0 && (
         <>
           <button

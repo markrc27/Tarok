@@ -423,21 +423,21 @@ body {
   .menu-item > button { height: 44px; font-size: 15px; padding: 0 14px; }
   .menu-dropdown { top: 44px; }
 
-  /* Status bar: single scrollable row so it never steals table height.
-     Items must NOT shrink/wrap — otherwise their text wraps vertically and
-     the bar balloons (was ~79px), shoving the hand up under the bid panel. */
+  /* Status bar: wrap onto multiple tidy rows so every field (incl. the Round
+     history button and the session scores) is visible at once — no side-to-side
+     scrolling. Each item keeps its own line (white-space: nowrap) and never
+     shrinks, so text doesn't wrap mid-item (that was the old ~79px balloon).
+     The flex:1 spacer is hidden on mobile so items pack left-to-right. */
   .status-bar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap: 4px 14px;
+    flex-wrap: wrap;
+    gap: 3px 12px;
     font-size: 11px;
-    scrollbar-width: none;  /* hide scrollbar on Firefox */
+    row-gap: 3px;
   }
-  .status-bar::-webkit-scrollbar { display: none; }
   .status-bar > * { flex-shrink: 0; white-space: nowrap; }
+  .status-spacer { display: none; }
 
-  /* Bid panel: centred, height-capped so the hand stays fully visible below.
+  /* Bid panel: centered, height-capped so the hand stays fully visible below.
      Flex column so the (long) contract list scrolls internally while the
      heading and the Pass/Bid buttons stay pinned and never get cut off. */
   .bid-panel {
@@ -447,7 +447,9 @@ body {
     min-width: min(340px, 94vw);
     max-width: 94vw;
     top: 50px;
-    max-height: calc(100dvh - 220px);
+    /* Reserve enough at the bottom for the hand + the (now multi-row) status
+       bar so the hand stays fully visible below the panel, even on a 12 mini. */
+    max-height: calc(100dvh - 240px);
     display: flex;
     flex-direction: column;
     overflow: hidden;

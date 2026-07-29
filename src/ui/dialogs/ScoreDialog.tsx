@@ -18,6 +18,19 @@ function cardText(card: Card): string {
   return `${RANK_LABEL[s.rank as string] ?? s.rank}${SUIT_SYM[s.suit]}`
 }
 
+// Group a captured pile into threes and score it the common way: each group of
+// three is the sum of its cards' face values minus 2 (a leftover of 1–2 cards
+// loses 1). Sorted high-to-low only for a readable display — the total is the
+// same no matter how the cards are grouped.
+function pileInThrees(cards: Card[]): { chunks: Card[][]; values: number[]; total: number } {
+  const sorted = [...cards].sort((a, b) => b.points - a.points)
+  const chunks: Card[][] = []
+  for (let i = 0; i < sorted.length; i += 3) chunks.push(sorted.slice(i, i + 3))
+  const values = chunks.map(ch => ch.reduce((sum, c) => sum + c.points, 0) - (ch.length === 3 ? 2 : 1))
+  const total = values.reduce((sum, v) => sum + v, 0)
+  return { chunks, values, total }
+}
+
 interface Props {
   playState: PlayState
   announcementState: AnnouncementState
@@ -105,7 +118,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
         lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base (flat)${gameKontraStrLog} = ${won ? '+' : '-'}${CONTRACT_BASE[contract] * gameKontraLog}`)
       } else {
         const gameNetLog = (CONTRACT_BASE[contract] + Math.abs(difference)) * gameKontraLog
-        lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base ${difference >= 0 ? '+' : ''}${difference} over threshold${gameKontraStrLog} = ${won ? '+' : '-'}${gameNetLog}`)
+        lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base + ${Math.abs(difference)} ${won ? 'over' : 'under'} threshold${gameKontraStrLog} = ${won ? '+' : '-'}${gameNetLog}`)
       }
       for (const b of handScore.bonusBreakdown) {
         const net = b.value * b.kontraLevel
@@ -138,17 +151,43 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       lines.push(`  ${playerNames[s]}: ${sessionScores[s] + delta[s] >= 0 ? '+' : ''}${sessionScores[s] + delta[s]} (this round: ${delta[s] >= 0 ? '+' : ''}${delta[s]})`)
     }
     lines.push('')
-    lines.push(`--- Tricks (${completedTricks.length}) ---`)
+    lines.push(`--- Tricks played (${completedTricks.length}) ---`)
     completedTricks.forEach((trick, i) => {
       const ledSeat = trick.cards[0]?.seat
       const order = [ledSeat, ((ledSeat+1)%4), ((ledSeat+2)%4), ((ledSeat+3)%4)] as Seat[]
       const ordered = [...trick.cards].sort((a, b) => order.indexOf(a.seat) - order.indexOf(b.seat))
       const plays = ordered.map(({ seat, card }) => `${playerNames[seat]}:${cardText(card)}`).join('  ')
       const vitaminStr = trick.vitamin ? `  [vitamin: ${cardText(trick.vitamin)}]` : ''
-      const allCards = trick.vitamin ? [...trick.cards.map(c => c.card), trick.vitamin] : trick.cards.map(c => c.card)
-      const trickPts = countPoints(allCards)
-      lines.push(`T${i+1}: ${plays}${vitaminStr}  -> ${playerNames[trick.winner ?? ledSeat]} (${trickPts} pts)`)
+      lines.push(`T${i+1}: ${plays}${vitaminStr}  -> ${playerNames[trick.winner ?? ledSeat]}`)
     })
+
+    // Part 2 — card points, counted the common way (whole pile in threes,
+    // face values minus 2 per group). Only shown for contracts decided by
+    // card points; klop is per-individual and beggar/valat are decided by
+    // tricks, so the per-side point count would just mislead.
+    if (contract !== 'klop' && handScore) {
+      const decSide: Seat[] = partner !== null ? [declarer, partner] : [declarer]
+      const decTricks = completedTricks.filter(t => t.winner === declarer || (partner !== null && t.winner === partner)).length
+      const decNames = decSide.map(s => playerNames[s]).join(' + ')
+      lines.push(`Tricks won — ${decNames}: ${decTricks}   others: ${completedTricks.length - decTricks}`)
+
+      const cardPointContract = contract !== 'beggar' && contract !== 'open-beggar'
+        && contract !== 'valat-without' && contract !== 'color-valat-without'
+      if (cardPointContract) {
+        const oppSide = seats.filter(s => !decSide.includes(s))
+        lines.push('')
+        lines.push('--- Card points (whole pile in threes) ---')
+        for (const side of [decSide, oppSide]) {
+          const cards = side.flatMap(s => effectiveCaptured[s])
+          const { chunks, values, total } = pileInThrees(cards)
+          const groupStrs = chunks.map((ch, gi) => `[${ch.map(cardText).join(' ')}] ${values[gi]}`)
+          lines.push(`${side.map(s => playerNames[s]).join(' + ')} — ${cards.length} cards:`)
+          for (let i = 0; i < groupStrs.length; i += 4) lines.push('  ' + groupStrs.slice(i, i + 4).join('   '))
+          lines.push(`  = ${total} card points`)
+        }
+        lines.push('Total: 70')
+      }
+    }
     return lines
   }
 
@@ -179,7 +218,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
 
         {contract !== 'klop' && !isFlat && (
           <p style={{ color: '#666', margin: '-10px 0 14px', fontSize: 12 }}>
-            {declarerPts} pts → rounds to {Math.round(declarerPts / 5) * 5} (nearest 5) → {Math.round(declarerPts / 5) * 5} − 35 = {difference >= 0 ? '+' : ''}{difference} {won ? 'over' : 'under'} threshold
+            {declarerPts} pts → rounds to {Math.round(declarerPts / 5) * 5} (nearest 5) → {Math.abs(Math.round(declarerPts / 5) * 5 - 35)} {won ? 'over' : 'under'} the 35 threshold
           </p>
         )}
 
@@ -228,9 +267,9 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             &bull; a contract of <em>Beggar</em> or higher was played<br />
             &bull; any kind of <em>valat</em> was won or lost<br />
             <br />
-            When scoring, if the declarer holds outstanding radli, the declarer's score (and the partner's, if any) is <strong style={{ color: '#f0f0f0' }}>doubled</strong> and one radlc is annulled — but only on a <em>win</em>. On a loss the score is still doubled but the radlc is not cancelled.<br />
+            When scoring, if the declarer holds outstanding radli, the declarer's score (and the partner's, if any) is <strong style={{ color: '#f0f0f0' }}>doubled</strong> and one radl is annulled — but only on a <em>win</em>. On a loss the score is still doubled but the radl is not canceled.<br />
             <br />
-            Uncancelled radli at the end of the session cost <strong style={{ color: '#f0f0f0' }}>100 points each</strong>.
+            Uncanceled radli at the end of the session cost <strong style={{ color: '#f0f0f0' }}>100 points each</strong>.
           </div>
         )}
 
@@ -255,7 +294,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
               const gameNet = (CONTRACT_BASE[contract] + Math.abs(difference)) * gk
               return (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base {difference >= 0 ? '+' : ''}{difference} over threshold{gkStr}</span>
+                  <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base + {Math.abs(difference)} {won ? 'over' : 'under'} threshold{gkStr}</span>
                   <span style={{ color: '#f0f0f0' }}>{won ? '+' : '−'}{gameNet}</span>
                 </div>
               )
@@ -353,10 +392,11 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                 </div>
               )}
 
-              {/* Trick log */}
+              {/* Trick log — play record only; no per-trick points (they group
+                  each 4-card trick alone and never add up to the real total) */}
               <div style={{ padding: '8px 10px', background: '#1a1a1a', borderRadius: 4 }}>
                 <div style={{ color: '#aaa', marginBottom: 4, fontWeight: 'bold' }}>
-                  Tricks ({completedTricks.length})
+                  Tricks played ({completedTricks.length})
                 </div>
                 {completedTricks.map((trick, i) => {
                   const ledSeat = trick.cards[0]?.seat
@@ -364,9 +404,6 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                     const order = [ledSeat, ((ledSeat+1)%4), ((ledSeat+2)%4), ((ledSeat+3)%4)]
                     return order.indexOf(a.seat) - order.indexOf(b.seat)
                   })
-                  const allCards = trick.vitamin
-                    ? [...trick.cards.map(c => c.card), trick.vitamin]
-                    : trick.cards.map(c => c.card)
                   return (
                     <div key={i} style={{ marginBottom: 2, lineHeight: '1.5' }}>
                       <span style={{ color: '#666', marginRight: 4 }}>T{i + 1}</span>
@@ -387,11 +424,48 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                         </span>
                       )}
                       <span style={{ color: '#aaa' }}>→ {playerNames[trick.winner ?? ledSeat]}</span>
-                      <span style={{ color: '#666', marginLeft: 6 }}>({countPoints(allCards)} pts)</span>
                     </div>
                   )
                 })}
               </div>
+
+              {/* Card points — counted the common way: whole pile in threes,
+                  face values minus 2 per group. Only for card-point contracts. */}
+              {contract !== 'klop' && handScore && (() => {
+                const decSide: Seat[] = partner !== null ? [declarer, partner] : [declarer]
+                const oppSide = seats.filter(s => !decSide.includes(s))
+                const decTricks = completedTricks.filter(t => t.winner === declarer || (partner !== null && t.winner === partner)).length
+                const cardPointContract = contract !== 'beggar' && contract !== 'open-beggar'
+                  && contract !== 'valat-without' && contract !== 'color-valat-without'
+                return (
+                  <div style={{ marginTop: 8, padding: '8px 10px', background: '#1a1a1a', borderRadius: 4 }}>
+                    <div style={{ color: '#888', marginBottom: cardPointContract ? 6 : 0 }}>
+                      Tricks won — {decSide.map(s => playerNames[s]).join(' + ')}: <span style={{ color: '#ccc' }}>{decTricks}</span>{' '}others: <span style={{ color: '#ccc' }}>{completedTricks.length - decTricks}</span>
+                    </div>
+                    {cardPointContract && (
+                      <>
+                        <div style={{ color: '#aaa', marginBottom: 4, fontWeight: 'bold' }}>Card points (whole pile in threes)</div>
+                        {[decSide, oppSide].map((side, si) => {
+                          const cards = side.flatMap(s => effectiveCaptured[s])
+                          const { chunks, values, total } = pileInThrees(cards)
+                          return (
+                            <div key={si} style={{ marginBottom: 4, lineHeight: '1.6' }}>
+                              <span style={{ color: '#aaa' }}>{side.map(s => playerNames[s]).join(' + ')} ({cards.length}): </span>
+                              {chunks.map((ch, gi) => (
+                                <span key={gi} style={{ color: '#bbb', marginRight: 8, whiteSpace: 'nowrap' }}>
+                                  [{ch.map(cardText).join(' ')}]<span style={{ color: '#f0c040' }}>={values[gi]}</span>
+                                </span>
+                              ))}
+                              <span style={{ color: '#ccc', fontWeight: 'bold' }}>= {total}</span>
+                            </div>
+                          )
+                        })}
+                        <div style={{ color: '#666' }}>Total: 70</div>
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
 
             </div>
           )}
