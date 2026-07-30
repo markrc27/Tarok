@@ -128,7 +128,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
         if (b.side === 'opponent') {
           lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (vs opponents, ${tag}): ACHIEVED = -${net}`)
         } else {
-          lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (${tag}): ${b.achieved ? 'ACHIEVED' : 'NOT ACHIEVED'} = ${b.achieved ? '+' : '-'}${net}`)
+          lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (${tag}): ${b.achieved ? 'Successful' : 'Unsuccessful'} = ${b.achieved ? '+' : '-'}${net}`)
         }
       }
       if (handScore.radliApplied) lines.push('Radli: score doubled')

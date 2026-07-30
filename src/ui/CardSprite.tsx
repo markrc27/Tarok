@@ -24,10 +24,24 @@ function trumpLabel(ordinal: number): string {
   return roman[ordinal] ?? String(ordinal)
 }
 
+// Cache-busting version tag for the traditional-mode PNGs. Bump when art changes.
+export const CARD_ART_VERSION = 7
+
+// Single source of truth for a card's traditional-mode image URL. Used both by
+// the sprite below and by the preloader (src/ui/preloadCards.ts) so the warmed
+// URLs always match exactly what gets rendered.
+export function cardImageSrc(card: Card): string {
+  return card.kind === 'trump'
+    ? `./cards/trump-${(card as TrumpCard).ordinal}.png?v=${CARD_ART_VERSION}`
+    : `./cards/${(card as SuitCard).suit}-${String((card as SuitCard).rank)}.png?v=${CARD_ART_VERSION}`
+}
+
+export const CARD_BACK_SRC = './LakeBled.png'
+
 function CardBack() {
   return (
     <img
-      src="./LakeBled.png"
+      src={CARD_BACK_SRC}
       style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
       alt=""
       draggable={false}
@@ -51,9 +65,7 @@ export default function CardSprite({ card, faceUp = true, dimmed, onClick, selec
   }
 
   if (cardAppearance === 'traditional') {
-    const src = card.kind === 'trump'
-      ? `./cards/trump-${(card as TrumpCard).ordinal}.png?v=7`
-      : `./cards/${(card as SuitCard).suit}-${String((card as SuitCard).rank)}.png?v=7`
+    const src = cardImageSrc(card)
     return (
       <div
         className={`card ${dimmed ? 'dimmed' : ''} ${selected ? 'selected-card' : ''} ${className}`}

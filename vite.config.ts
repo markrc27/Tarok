@@ -13,5 +13,9 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify(version),
+    // Captured at build time. On Cloudflare Pages the build runs on push, so this
+    // is effectively the deploy/push time. Stored as a UTC ISO instant; the UI
+    // renders it in the viewer's local timezone.
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
 })

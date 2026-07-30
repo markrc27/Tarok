@@ -10,6 +10,7 @@ import StatusBar from './StatusBar'
 import Hand from './Hand'
 import TrickArea from './TrickArea'
 import CardSprite from './CardSprite'
+import { preloadTraditionalCards } from './preloadCards'
 import BiddingDialog from './dialogs/BiddingDialog'
 import TalonDialog from './dialogs/TalonDialog'
 import CallKingDialog from './dialogs/CallKingDialog'
@@ -42,6 +43,12 @@ export default function App() {
     radliState, pendingDiscardCount, roundId, roundHistory, cardAppearance,
     voidDealSeat, options,
   } = store
+
+  // Warm the traditional-mode card images so pictures are ready before a card is
+  // dealt (they were previously fetched lazily on first render, causing flashes).
+  useEffect(() => {
+    if (cardAppearance === 'traditional') preloadTraditionalCards()
+  }, [cardAppearance])
 
   // On mount: re-trigger bot if a page reload happened mid-game, then restore OPFS history
   useEffect(() => {
@@ -385,7 +392,12 @@ export default function App() {
           <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 320 }}>
             <h2 style={{ marginBottom: 6 }}>Tarok</h2>
             <p style={{ color: '#aaa', fontSize: 13, marginBottom: 4 }}>Slovenian card game — 4 players</p>
-            <p style={{ color: '#666', fontSize: 13, marginBottom: 20 }}>v{__APP_VERSION__}</p>
+            <p style={{ color: '#666', fontSize: 13, marginBottom: 4 }}>
+              v{__APP_VERSION__}
+              <span style={{ color: '#555', marginLeft: 8 }}>
+                · {(() => { try { return new Date(__BUILD_TIME__).toLocaleString() } catch { return __BUILD_TIME__ } })()}
+              </span>
+            </p>
             <p style={{ color: '#888', fontSize: 12, marginBottom: 20 }}>Built with Claude</p>
             <div className="modal-actions" style={{ justifyContent: 'center' }}>
               <button className="btn" onClick={() => setShowAbout(false)}>Close</button>

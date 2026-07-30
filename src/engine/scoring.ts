@@ -265,7 +265,10 @@ export function computeHandScore(params: {
   }
 
   // Unannounced ultimo failures: card played to last trick by declarer side but beaten.
-  // Only on normal contracts (flat contracts have no bonuses).
+  // Only on normal contracts (flat contracts have no bonuses). Track which fired so
+  // they can be itemized in the breakdown below (they adjust sideScore directly).
+  let pagatUltimoFailed = false
+  let kingUltimoFailed = false
   if (!isFlat && completedTricks.length > 0) {
     const lastTrick = completedTricks[completedTricks.length - 1]
     const declarerSeats = ([0, 1, 2, 3] as Seat[]).filter(s => s === declarer || s === partner)
@@ -276,6 +279,7 @@ export function computeHandScore(params: {
       const pagatByDeclSide = lastTrick.cards.find(e => declarerSeats.includes(e.seat) && isPagat(e.card))
       if (pagatByDeclSide && winnerCard && !isPagat(winnerCard)) {
         sideScore -= bonusBaseValue('pagat-ultimo', false)
+        pagatUltimoFailed = true
       }
     }
 
@@ -284,6 +288,7 @@ export function computeHandScore(params: {
       const kingByDeclSide = lastTrick.cards.find(e => declarerSeats.includes(e.seat) && cardsEqual(e.card, calledKing))
       if (kingByDeclSide && winnerCard && !cardsEqual(winnerCard, calledKing)) {
         sideScore -= bonusBaseValue('king-ultimo', false)
+        kingUltimoFailed = true
       }
     }
   }
@@ -325,6 +330,16 @@ export function computeHandScore(params: {
           bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'opponent' })
         }
       }
+    }
+
+    // Failed unannounced ultimo attempts (called king / pagat played to the last
+    // trick but beaten). These already reduced sideScore above; surface them here
+    // so the breakdown and copy log account for the deduction instead of hiding it.
+    if (pagatUltimoFailed) {
+      bonusBreakdown.push({ bonus: 'pagat-ultimo', announced: false, achieved: false, value: bonusBaseValue('pagat-ultimo', false), kontraLevel: 1, side: 'declarer' })
+    }
+    if (kingUltimoFailed) {
+      bonusBreakdown.push({ bonus: 'king-ultimo', announced: false, achieved: false, value: bonusBaseValue('king-ultimo', false), kontraLevel: 1, side: 'declarer' })
     }
   }
 

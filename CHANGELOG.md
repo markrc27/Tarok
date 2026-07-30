@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.5.7 — 2026-07-29
+
+### UI / UX
+- **Smoother traditional-mode cards**: the traditional card art (54 PNGs plus the card back) is now preloaded into the browser cache as soon as traditional appearance is active, so a card's picture is ready before it's dealt. Previously each PNG was fetched lazily on its first render, which showed as a blank/flashing card — occasionally not resolving before the trick moved on. Image-URL logic is now shared between the sprite and the preloader so warmed URLs can't drift from rendered ones.
+- **Failed ultimo attempts itemized in the score breakdown**: an unannounced King- or Pagat-Ultimo attempt (the called king / pagat played to the last trick by the declarer side but captured) deducts its base value (10 / 25). That deduction was already applied to the score but never shown, so the "Declarer net" line could look short by 10 or 25 with nothing to explain it. Both the on-screen breakdown and the Copy-Log now list the failed attempt explicitly.
+- **Clearer bonus wording**: in the copy log, a declarer-side bonus now reads `Successful` / `Unsuccessful` instead of `ACHIEVED` / `NOT ACHIEVED`.
+- **Build time in About**: the About dialog now shows the build/deploy timestamp next to the version (captured at build, which on Cloudflare Pages is the push time), rendered in the viewer's local timezone — makes it easy to confirm which build is live.
+
 ## v1.5.6 — 2026-07-28
 
 ### UI / UX
