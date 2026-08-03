@@ -162,6 +162,25 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       lines.push(`T${i+1}: ${plays}${vitaminStr}  -> ${playerNames[trick.winner ?? ledSeat]}`)
     })
 
+    // Klop: per-player point summary with vitamin attribution
+    if (contract === 'klop') {
+      lines.push('')
+      lines.push('--- Klop point summary ---')
+      for (const seat of [0, 1, 2, 3] as Seat[]) {
+        const pts = countPoints(effectiveCaptured[seat])
+        const sc = delta[seat]
+        let outcome: string
+        if (effectiveCaptured[seat].length === 0) {
+          outcome = '0 tricks taken → +70'
+        } else if (pts > 35) {
+          outcome = `${pts} pts (>35) → −70`
+        } else {
+          outcome = `${pts} pts → ${sc >= 0 ? '+' : ''}${sc}`
+        }
+        lines.push(`  ${playerNames[seat]}: ${outcome}`)
+      }
+    }
+
     // Part 2 — card points, counted the common way (whole pile in threes,
     // face values minus 2 per group). Only shown for contracts decided by
     // card points; klop is per-individual and beggar/valat are decided by
@@ -270,6 +289,21 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             When scoring, if the declarer holds outstanding radli, the declarer's score (and the partner's, if any) is <strong style={{ color: '#f0f0f0' }}>doubled</strong> and one radl is annulled — but only on a <em>win</em>. On a loss the score is still doubled but the radl is not canceled.<br />
             <br />
             Uncanceled radli at the end of the session cost <strong style={{ color: '#f0f0f0' }}>100 points each</strong>.
+          </div>
+        )}
+
+        {/* Klop vitamin assignments */}
+        {contract === 'klop' && completedTricks.some(t => t.vitamin) && (
+          <div style={{ margin: '8px 0', padding: '8px 10px', background: '#1a1a1a', borderRadius: 4, fontSize: 12, color: '#ccc' }}>
+            <div style={{ color: '#aaa', fontWeight: 'bold', marginBottom: 4 }}>Vitamins (tricks 1–6)</div>
+            {completedTricks.slice(0, 6).map((t, idx) => t.vitamin ? (
+              <div key={idx} style={{ display: 'flex', gap: 8 }}>
+                <span style={{ color: '#666', minWidth: 24 }}>T{idx + 1}:</span>
+                <span style={{ color: '#f0c040', minWidth: 40 }}>{cardText(t.vitamin)}</span>
+                <span style={{ color: '#666' }}>({t.vitamin.points} pt{t.vitamin.points !== 1 ? 's' : ''})</span>
+                <span>→ {playerNames[t.winner ?? t.cards[0].seat]}</span>
+              </div>
+            ) : null)}
           </div>
         )}
 

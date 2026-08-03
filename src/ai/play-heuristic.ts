@@ -8,6 +8,8 @@ export interface BotConfig {
   difficulty?: BotDifficulty
   // Set to the partner seat only once the called king has been played publicly.
   knownPartner?: Seat | null
+  // True when pagat-ultimo is announced in the current hand (any side).
+  pagatUltimoAnnounced?: boolean
 }
 
 function isDeclarerSide(seat: Seat, declarer: Seat, partner: Seat | null): boolean {
@@ -182,11 +184,23 @@ function cheapestSafeHoldingTrump(myTrumps: TrumpCard[], played: Set<number>): T
 }
 
 export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Card {
-  const candidates = legalCards(state, seat)
+  let candidates = legalCards(state, seat)
   if (candidates.length === 0) throw new Error(`chooseCard: no legal cards for seat ${seat}`)
   if (candidates.length === 1) return candidates[0]
 
   const { contract, declarer, currentTrick, isColourValat } = state
+
+  // BOT-005: Pagat Ultimo constraint — once announced, hold the Pagat for trick 12.
+  if ((_config.pagatUltimoAnnounced ?? false) && contract !== 'klop') {
+    const pagatEntry = candidates.find(isPagat)
+    if (pagatEntry) {
+      if (state.completedTricks.length === 11) {
+        return pagatEntry  // trick 12: play the Pagat to complete the ultimo
+      }
+      const withoutPagat = candidates.filter(c => !isPagat(c))
+      if (withoutPagat.length > 0) candidates = withoutPagat
+    }
+  }
   const difficulty = _config.difficulty ?? 'easy'
   const isLeading = currentTrick.cards.length === 0
   const knownPartner = _config.knownPartner ?? null
@@ -312,9 +326,14 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
     } else {
       const lowestBeater = beaters.sort((a, b) => cardStrength(a) - cardStrength(b))[0]
 
+      // BOT-004: never fold when Škis is the only beater — it is the sole card that
+      // can secure this trick against a potential Mond played later in the same trick.
+      const skisIsOnlyBeater = beaters.length === 1 &&
+        beaters[0].kind === 'trump' && (beaters[0] as TrumpCard).ordinal === 22
+
       const declarerNearWin = declarerPts >= 28
       const trickPts = currentTrickPoints(state)
-      if (!isValatContract && !isLastToPlay && !declarerNearWin && trickPts <= 1 && cardPoints(lowestBeater) >= 5) {
+      if (!isValatContract && !isLastToPlay && !declarerNearWin && trickPts <= 1 && cardPoints(lowestBeater) >= 5 && !skisIsOnlyBeater) {
         return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
       }
 

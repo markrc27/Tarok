@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.5.8 — 2026-08-02
+
+### Bot improvements
+- **BOT-004**: Bot (as opponent) no longer folds when the Škis is its only beater — previously the low-value-trick fold condition could cause the bot to dump a cheap card instead of playing the Škis, leaving the trick open for a Mond to swoop in on the fourth play.
+- **BOT-005**: Once Pagat Ultimo is announced, the bot now holds the Pagat until trick 12 (plays it only on the last trick, or if it is the sole legal card earlier).
+- **BOT-006**: King-call heuristic now prefers the shortest suit in the declarer's hand (fewer cards = partner king has more room to come out cleanly). Previously the tiebreaker was effectively alphabetical.
+
+### UI / Bidding
+- **UI-004**: Bidding dialog helper text corrected — was "you may bid any contract or pass" (wrong: Klop and Three are never biddable in normal play). Now reads "bid Two or higher, or pass", or "Compulsory Klop — bid Solo Without or higher, or pass" when the floor is raised.
+
+### UI / Scoring
+- **UI-005**: Klop rounds now show a **Vitamins (tricks 1–6)** panel in the Round Result dialog listing each vitamin card and which player received it. The Copy Log gains a per-player point summary for klop hands.
+
+### Rules / Help
+- **UI-006**: Added a **Vitamins** subsection under Scoring in the Help dialog explaining the klop talon rule (one talon card gifted to each of the first 6 trick winners).
+- Compulsory Klop explained in the Help dialog's Bidding section (both triggers: zero-tarok redeal and score-hits-zero).
+
+### UI / Title & notifications
+- **UI-007**: Title screen wording changed from "Slovenian card game — 4 players" to "4-Player Tarok — Play vs. Computer".
+- In-game banner now appears at the start of a compulsory klop round triggered by a player's score hitting zero (the void-deal banner already existed; this covers the second trigger).
+
 ## v1.5.7 — 2026-07-29
 
 ### UI / UX

@@ -153,7 +153,7 @@ export default function App() {
         {phase === 'setup' && (
           <div className="idle-screen">
             <h1>Tarok</h1>
-            <p>Slovenian card game — 4 players</p>
+            <p>4-Player Tarok — Play vs. Computer</p>
             <p style={{ fontSize: 13, marginTop: -8 }}>v{__APP_VERSION__}</p>
             <div style={{ margin: '14px 0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <label style={{ color: '#aaa', fontSize: 13 }}>Your name</label>
@@ -251,6 +251,19 @@ export default function App() {
           </div>
         )}
 
+        {/* Score-hits-zero compulsory klop notice */}
+        {phase === 'bidding' && biddingState?.isCompulsoryKlop && voidDealSeat === null && (
+          <div style={{
+            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+            background: '#1e1a10', border: '1px solid #6b5a20',
+            borderRadius: 6, padding: '6px 14px', fontSize: 12, color: '#c8a84a',
+            whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 5,
+            textAlign: 'center',
+          }}>
+            A player&apos;s score hit zero — compulsory klop: bidding starts at Solo Without.
+          </div>
+        )}
+
         {/* Void-deal notice — top centre */}
         {phase === 'bidding' && voidDealSeat !== null && (
           <div style={{
@@ -309,6 +322,7 @@ export default function App() {
           onBid={(action) => store.placeBid(action)}
           currentHighBid={biddingState?.highestBid ?? null}
           currentHighBidderName={biddingState?.highestBidder != null ? playerNames[biddingState.highestBidder] : null}
+          isCompulsoryKlop={biddingState?.isCompulsoryKlop}
         />
       )}
 

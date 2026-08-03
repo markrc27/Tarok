@@ -190,7 +190,8 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     const order: Seat[] = [ledSeat, ((ledSeat+1)%4) as Seat, ((ledSeat+2)%4) as Seat, ((ledSeat+3)%4) as Seat]
     const seat = order.find(s => !playedSeats.has(s))
     if (!seat || seat === HUMAN) return
-    const card = chooseCard(playState, seat, { difficultyBias: 0.5, difficulty: options.botDifficulty, knownPartner: computeKnownPartner(playState) })
+    const pagatUltimoAnnounced = !!(get().announcementState?.announcements.some(a => a.bonus === 'pagat-ultimo'))
+    const card = chooseCard(playState, seat, { difficultyBias: 0.5, difficulty: options.botDifficulty, knownPartner: computeKnownPartner(playState), pagatUltimoAnnounced })
     const { newState, trickComplete, trickWinner, handComplete } = playCard(playState, seat, card)
     set({ playState: newState })
     if (trickComplete && trickWinner !== null) {

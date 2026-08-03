@@ -177,6 +177,13 @@ const SECTIONS: Section[] = [
         <p><strong>Klop</strong> and <strong>Three</strong> are only available to forehand when all other players have passed and forehand has not yet bid.</p>
         <p>When three players have passed, the highest bidder becomes the declarer. If all four players pass (including forehand declining klop/three), <strong>klop</strong> is played with no declarer.</p>
         <p>The <strong>forehand</strong> has priority: if a non-forehand player bids a contract, forehand may "hold" the same contract to take it over (forehand wins ties).</p>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Compulsory Klop</h4>
+        <p>Two situations raise the bidding floor to <strong>Solo Without</strong> (contracts below it are removed) and force a klop if everyone passes:</p>
+        <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
+          <li>A player is dealt <strong>zero taroks</strong> (trumps). The hand is redealt, and the next round is compulsory klop.</li>
+          <li>A player's session score <strong>hits exactly zero</strong> (was negative or positive, then lands on 0 after a round).</li>
+        </ul>
+        <p>The bidding panel will say <em>"Compulsory Klop"</em> when this applies.</p>
       </>
     ),
   },
@@ -271,6 +278,8 @@ const SECTIONS: Section[] = [
         <p>If the Mond (XXI) is captured by the Škis, the player who played the Mond loses <strong>20 points</strong>. This applies to any player — declarer, partner, or opponent — and is separate from bonus scoring.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Klop scoring</h4>
         <p>Klop is the exception — all four players score individually based on the card points they captured. Taking zero cards scores +70; taking more than 35 card points scores −70; otherwise the card point total is subtracted from your score (rounded to the nearest 5).</p>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Vitamins (Klop talon rule)</h4>
+        <p>In Klop, the talon's 6 cards are dealt out one at a time as <strong>vitamins</strong>: after each of the first 6 tricks, the top talon card is revealed and added to the trick winner's captured pile. This means every talon card ends up scored — there is no unchosen talon remainder in Klop. Vitamins are shown in gold in the trick log after a Klop round.</p>
       </>
     ),
   },

@@ -168,10 +168,14 @@ export function recommendKingCall(
   legalSuits: Suit[],
   talonRemainder: Card[] = [],
 ): Suit {
+  // Score each suit: avoid calling own king (plays solo) or king in talon (no partner);
+  // prefer the shortest suit — fewer cards means the declarer can ruff in earlier,
+  // giving the partner king more room to come out cleanly.
   const score = (suit: Suit): number => {
-    if (hand.some(c => c.kind === 'suit' && c.suit === suit && c.rank === 'K')) return -2
-    if (talonRemainder.some(c => c.kind === 'suit' && c.suit === suit && c.rank === 'K')) return -1
-    return 0
+    if (hand.some(c => c.kind === 'suit' && (c as SuitCard).suit === suit && (c as SuitCard).rank === 'K')) return -100
+    if (talonRemainder.some(c => c.kind === 'suit' && (c as SuitCard).suit === suit && (c as SuitCard).rank === 'K')) return -50
+    const count = hand.filter(c => c.kind === 'suit' && (c as SuitCard).suit === suit).length
+    return -count  // fewer suit cards = higher score = preferred
   }
   return legalSuits.reduce((best, s) => score(s) > score(best) ? s : best, legalSuits[0])
 }

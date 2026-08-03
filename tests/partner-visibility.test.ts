@@ -86,8 +86,8 @@ describe('partner visibility — bot declarer, bot partner', () => {
     const finalHand = discardHand(updatedHand, toDiscard)
     hands = { ...hands, [declarer]: finalHand }
 
-    // King call
-    const calledSuit = recommendKingCall(finalHand, ['clubs', 'spades', 'hearts', 'diamonds'])
+    // King call — pass talonRemainder so the heuristic avoids calling a talon king
+    const calledSuit = recommendKingCall(finalHand, ['clubs', 'spades', 'hearts', 'diamonds'], talonRemainder)
     const kc = resolveKingCall(calledSuit, hands, dealResult.talon, declarer)
     const partner = kc.partner
 

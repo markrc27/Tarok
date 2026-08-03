@@ -16,9 +16,10 @@ interface Props {
   isForehandChoice?: boolean
   currentHighBid?: Contract | null
   currentHighBidderName?: string | null
+  isCompulsoryKlop?: boolean
 }
 
-export default function BiddingDialog({ legalBids, onBid, isForehandChoice, currentHighBid, currentHighBidderName }: Props) {
+export default function BiddingDialog({ legalBids, onBid, isForehandChoice, currentHighBid, currentHighBidderName, isCompulsoryKlop }: Props) {
   const [selected, setSelected] = useState<Contract | null>(legalBids[0] ?? null)
   const [infoFor, setInfoFor] = useState<Contract | null>(null)
 
@@ -46,7 +47,9 @@ export default function BiddingDialog({ legalBids, onBid, isForehandChoice, curr
       )}
       {!isForehandChoice && !currentHighBid && (
         <p style={{ marginBottom: 10, color: '#aaa', fontSize: 12 }}>
-          No bids yet — you may bid any contract or pass.
+          {isCompulsoryKlop
+            ? 'Compulsory Klop — bid Solo Without or higher, or pass.'
+            : 'No bids yet — bid Two or higher, or pass.'}
         </p>
       )}
 
