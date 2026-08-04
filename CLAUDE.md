@@ -41,11 +41,22 @@ symbols / roman numerals. The rules engine is the real product; the UI just pres
 
 ```
 1. Bump version in package.json (patch = x.x.+1)
+   - Use Bash (not Edit/PowerShell) to write package.json, or strip BOM after:
+     git cat-file blob HEAD:package.json | od -A x -t x1z | head -1
+     First bytes must be "7b" ({), not "ef bb bf" (UTF-8 BOM).
+     If BOM present, strip it before committing (see below*).
 2. Add an entry to CHANGELOG.md (top of file, same version, brief bullet per change)
 3. npm test && npm run build   (both must pass)
 4. git add / commit / push origin master
 5. npm run electron:build      → C:\TarokBuild\Tarok Setup x.x.x.exe
 6. GitHub release: tag V{version}, target master, upload the .exe only
+```
+
+*Strip BOM from package.json (PowerShell):
+```powershell
+$f = "package.json"
+$c = [System.IO.File]::ReadAllText($f, [System.Text.Encoding]::UTF8)
+[System.IO.File]::WriteAllText($f, $c, (New-Object System.Text.UTF8Encoding $false))
 ```
 
 Pushing to `master` also triggers the Cloudflare Pages web deploy automatically.
