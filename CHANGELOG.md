@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.5.9 — 2026-08-03
+
+### UI / Scoring
+- **Klop round result now mirrors the normal layout**: two separate collapsibles — **Show game log** (tricks played) and **Show score log** (point breakdown) — instead of everything packed into one dropdown.
+- **Klop score log shows groups-of-3 per player**: each player's captured pile is broken into groups of three with the arithmetic shown (e.g. `[K♣  Q♣  Kn♣] 5 + 4 + 3 − 2 = 8`), then the total with an explicit rounding step when applicable (e.g. `26 pts → rounds to 25 → −25`). Matches the format used in normal-contract point counts. Copy log updated to the same format.
+- **Section renamed** to "Klop Point Summary (Rounded to Nearest 5 Points)" throughout.
+
+### Rules / Help
+- **Klop scoring section expanded**: table of the three outcomes (0 tricks → +70, >35 pts → −70, 1–35 pts → −round5), plain-English explanation of the rounding with worked examples, and a pointer to the in-app score log for the step-by-step breakdown.
+
 ## v1.5.8 — 2026-08-02
 
 ### Bot improvements

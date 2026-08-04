@@ -162,22 +162,31 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       lines.push(`T${i+1}: ${plays}${vitaminStr}  -> ${playerNames[trick.winner ?? ledSeat]}`)
     })
 
-    // Klop: per-player point summary with vitamin attribution
+    // Klop: per-player point summary with groups-of-3 breakdown
     if (contract === 'klop') {
       lines.push('')
-      lines.push('--- Klop point summary ---')
+      lines.push('--- Klop Point Summary (Rounded to Nearest 5 Points) ---')
       for (const seat of [0, 1, 2, 3] as Seat[]) {
-        const pts = countPoints(effectiveCaptured[seat])
+        const cards = effectiveCaptured[seat]
         const sc = delta[seat]
-        let outcome: string
-        if (effectiveCaptured[seat].length === 0) {
-          outcome = '0 tricks taken → +70'
-        } else if (pts > 35) {
-          outcome = `${pts} pts (>35) → −70`
+        lines.push(`${playerNames[seat]}:`)
+        if (cards.length === 0) {
+          lines.push('  took no tricks → +70')
         } else {
-          outcome = `${pts} pts → ${sc >= 0 ? '+' : ''}${sc}`
+          const { chunks, values, total } = pileInThrees(cards)
+          chunks.forEach((ch, gi) => {
+            const math = `${ch.map(c => c.points).join(' + ')} − ${ch.length === 3 ? 2 : 1} = ${values[gi]}`
+            lines.push(`  [${ch.map(cardText).join('   ')}] ${math}`)
+          })
+          const rounded = Math.round(total / 5) * 5
+          if (total > 35) {
+            lines.push(`  Total: ${total} pts — exceeds 35 → −70`)
+          } else if (total !== rounded) {
+            lines.push(`  Total: ${total} pts → rounds to ${rounded} → ${sc}`)
+          } else {
+            lines.push(`  Total: ${total} pts → ${sc}`)
+          }
         }
-        lines.push(`  ${playerNames[seat]}: ${outcome}`)
       }
     }
 
@@ -463,22 +472,67 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                   )
                 })}
               </div>
+
             </div>
           )}
 
-          {/* Point count — its own collapsible */}
-          {contract !== 'klop' && handScore && (
+          {/* Score log — point count for normal contracts, klop breakdown for klop */}
+          {(contract === 'klop' || !!handScore) && (
             <>
               <button
                 className="btn btn-ghost"
                 style={{ fontSize: 12, padding: '4px 10px', width: '100%', marginTop: 8 }}
                 onClick={() => setShowPointLog(v => !v)}
               >
-                {showPointLog ? '▲ Hide point count' : '▼ Show point count'}
+                {contract === 'klop'
+                  ? (showPointLog ? '▲ Hide score log' : '▼ Show score log')
+                  : (showPointLog ? '▲ Hide point count' : '▼ Show point count')}
               </button>
               {showPointLog && (
                 <div style={{ marginTop: 8, fontSize: 12, color: '#ccc', maxHeight: 340, overflowY: 'auto' }}>
-                  {(() => {
+                  {contract === 'klop' ? (
+                    <div style={{ padding: '8px 10px', background: '#1a1a1a', borderRadius: 4 }}>
+                      <div style={{ color: '#aaa', marginBottom: 8, fontWeight: 'bold' }}>Klop Point Summary (Rounded to Nearest 5 Points)</div>
+                      {(seats as Seat[]).map(seat => {
+                        const cards = effectiveCaptured[seat]
+                        const sc = delta[seat]
+                        if (cards.length === 0) {
+                          return (
+                            <div key={seat} style={{ marginBottom: 8, lineHeight: '1.6' }}>
+                              <div style={{ color: '#aaa' }}>{playerNames[seat]}: took no tricks</div>
+                              <div style={{ paddingLeft: 10, color: '#4f4', fontWeight: 'bold' }}>+70</div>
+                            </div>
+                          )
+                        }
+                        const { chunks, values, total } = pileInThrees(cards)
+                        const rounded = Math.round(total / 5) * 5
+                        const penalty70 = total > 35
+                        return (
+                          <div key={seat} style={{ marginBottom: 10, lineHeight: '1.6' }}>
+                            <div style={{ color: '#aaa' }}>{playerNames[seat]} ({cards.length} cards):</div>
+                            {chunks.map((ch, gi) => (
+                              <div key={gi} style={{ color: '#bbb', paddingLeft: 10, whiteSpace: 'nowrap' }}>
+                                [{ch.map((c, ci) => <span key={ci} style={{ marginRight: ci < ch.length - 1 ? '0.9em' : 0 }}>{cardText(c)}</span>)}]{' '}
+                                <span style={{ color: '#888' }}>{ch.map(c => c.points).join(' + ')} − {ch.length === 3 ? 2 : 1}</span>
+                                <span style={{ color: '#f0c040' }}> = {values[gi]}</span>
+                              </div>
+                            ))}
+                            {penalty70 ? (
+                              <div style={{ paddingLeft: 10, color: '#f44', fontWeight: 'bold' }}>
+                                Total: {total} pts — exceeds 35 → −70
+                              </div>
+                            ) : (
+                              <div style={{ paddingLeft: 10, fontWeight: 'bold' }}>
+                                Total: <span style={{ color: '#ccc' }}>{total} pts</span>
+                                {total !== rounded && <span style={{ color: '#888' }}> → rounds to {rounded}</span>}
+                                <span style={{ color: '#f44' }}> → {sc}</span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (() => {
                 const decSide: Seat[] = partner !== null ? [declarer, partner] : [declarer]
                 const oppSide = seats.filter(s => !decSide.includes(s))
                 const decTricks = completedTricks.filter(t => t.winner === declarer || (partner !== null && t.winner === partner)).length

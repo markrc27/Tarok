@@ -277,7 +277,31 @@ const SECTIONS: Section[] = [
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Mond penalty</h4>
         <p>If the Mond (XXI) is captured by the Škis, the player who played the Mond loses <strong>20 points</strong>. This applies to any player — declarer, partner, or opponent — and is separate from bonus scoring.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Klop scoring</h4>
-        <p>Klop is the exception — all four players score individually based on the card points they captured. Taking zero cards scores +70; taking more than 35 card points scores −70; otherwise the card point total is subtracted from your score (rounded to the nearest 5).</p>
+        <p>Klop is the exception to normal scoring: <strong>all four players score individually</strong> — there is no declarer and no team. Everyone tries to avoid taking card points.</p>
+        <p>Card points are counted the same way as any other contract: sort your captured cards into <strong>groups of three</strong>, each group scoring the total of its cards' values minus 2 (see the Cards section for examples). The pack still totals 70.</p>
+        <p>Your individual score depends on how many card points you ended up with:</p>
+        <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%', marginBottom: 6 }}>
+          <thead>
+            <tr style={{ color: '#aaa' }}>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>What you captured</th>
+              <th style={{ textAlign: 'center', padding: '3px 8px' }}>Your score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {([
+              ['No tricks at all (0 cards)', '+70'],
+              ['More than 35 card points', '−70'],
+              ['1–35 card points', '−(total, rounded to nearest 5)'],
+            ] as [string, string][]).map(([cond, score]) => (
+              <tr key={cond} style={{ borderTop: '1px solid #333' }}>
+                <td style={{ padding: '4px 8px' }}>{cond}</td>
+                <td style={{ padding: '4px 8px', textAlign: 'center', color: '#f0c040', fontWeight: 'bold' }}>{score}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ color: '#888', fontSize: 12 }}>Rounding works the same way as the card-point difference in normal contracts: nearest multiple of 5. Examples: 13 pts → 15 → −15; 7 pts → 5 → −5; 25 pts (already a multiple) → −25; 26 pts → 25 → −25.</p>
+        <p>In the Round Result dialog, click <em>Show game log</em> after any Klop round to see the <strong>Klop Point Summary</strong> — it breaks down each player's captured pile into groups of three, shows the arithmetic, and traces the rounding step to the final score.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Vitamins (Klop talon rule)</h4>
         <p>In Klop, the talon's 6 cards are dealt out one at a time as <strong>vitamins</strong>: after each of the first 6 tricks, the top talon card is revealed and added to the trick winner's captured pile. This means every talon card ends up scored — there is no unchosen talon remainder in Klop. Vitamins are shown in gold in the trick log after a Klop round.</p>
       </>
