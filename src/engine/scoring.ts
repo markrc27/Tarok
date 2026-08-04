@@ -60,12 +60,12 @@ export function scoreNormalContract(
   // Always use |difference| for magnitude; sign determined by win/loss
   let total = (won ? 1 : -1) * (contractBase + Math.abs(difference)) * gameKontra
 
-  // Valat overrides all other bonuses (valat achieved implies won=true)
+  // Valat cancels all other bonuses but is added on top of the game score
   if (bonusResults['valat']) {
     const valatAnn = announcements.announcements.find(a => a.bonus === 'valat')
     const valAnnounced = valatAnn?.announced ?? false
     const valKontra = getKontraMultiplier(announcements, 'valat')
-    return bonusBaseValue('valat', valAnnounced) * valKontra
+    return total + bonusBaseValue('valat', valAnnounced) * valKontra
   }
 
   // Announced bonuses: achieved=+value, not achieved=-value (independent of win/loss)
@@ -243,7 +243,11 @@ export function computeHandScore(params: {
     'valat': evaluateBonus('valat', capturedCards, completedTricks, declarer, partner, calledKing),
   }
 
-  const mPenalties = mondPenalty(mondCapturedWithSkis, mondPlayedBySeat)
+  // Mond penalty applies in normal contracts and solo-without; not in beggar/valat contracts
+  const hasMondPenalty = !['beggar', 'open-beggar', 'color-valat-without', 'valat-without'].includes(contract)
+  const mPenalties = hasMondPenalty
+    ? mondPenalty(mondCapturedWithSkis, mondPlayedBySeat)
+    : ({ 0: 0, 1: 0, 2: 0, 3: 0 } as Record<Seat, number>)
 
   const opponentSeats = ([0, 1, 2, 3] as Seat[]).filter(s => s !== declarer && s !== partner)
   const opponentBonusResults: Record<BonusName, boolean> = {
@@ -320,14 +324,23 @@ export function computeHandScore(params: {
       side: 'declarer' as const,
     })))
 
+    const valatAchieved = bonusResults['valat']
+    const valatAlreadyAnnounced = announcementState.announcements.some(a => a.bonus === 'valat')
+    if (valatAchieved && !valatAlreadyAnnounced) {
+      bonusBreakdown.push({ bonus: 'valat', announced: false, achieved: true, value: bonusBaseValue('valat', false), kontraLevel: 1, side: 'declarer' })
+    }
+
+    // Other bonuses are cancelled when valat fires
     const allBonuses: BonusName[] = ['trula', 'kings', 'king-ultimo', 'pagat-ultimo']
-    for (const bonus of allBonuses) {
-      const alreadyAnnounced = announcementState.announcements.some(a => a.bonus === bonus)
-      if (!alreadyAnnounced) {
-        if (bonusResults[bonus]) {
-          bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'declarer' })
-        } else if (opponentBonusResults[bonus]) {
-          bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'opponent' })
+    if (!valatAchieved) {
+      for (const bonus of allBonuses) {
+        const alreadyAnnounced = announcementState.announcements.some(a => a.bonus === bonus)
+        if (!alreadyAnnounced) {
+          if (bonusResults[bonus]) {
+            bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'declarer' })
+          } else if (opponentBonusResults[bonus]) {
+            bonusBreakdown.push({ bonus, announced: false, achieved: true, value: bonusBaseValue(bonus, false), kontraLevel: 1, side: 'opponent' })
+          }
         }
       }
     }

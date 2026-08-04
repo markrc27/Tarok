@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.5.10 — 2026-08-04
+
+### Engine / Scoring
+- **Valat bonus in normal contracts**: the 250-pt unannounced valat bonus is now added on top of the game score instead of replacing it (e.g. Two won with 65 pts + radl now scores (50 + 250) × 2 = **+600**, not the previous 500). Other bonuses (trula, kings, etc.) are correctly cancelled by valat and no longer appear in the breakdown.
+- **Mond penalty exempted from beggar and open-beggar**: the −20 penalty for losing Mond to Škis now correctly applies only in normal contracts and solo-without, not in beggar, open-beggar, colour-valat-without, or valat-without.
+- **Copy log**: "need 35" corrected to "need 36" in the card-points summary line.
+
 ## v1.5.9 — 2026-08-03
 
 ### UI / Scoring

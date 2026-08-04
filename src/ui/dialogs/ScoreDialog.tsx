@@ -109,7 +109,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       } else if (beggarContract) {
         lines.push(`Tricks taken: ${completedTricks.filter(t => t.winner === declarer).length} (need 0) — ${won ? 'WON HAND' : 'LOST HAND'}`)
       } else {
-        lines.push(`Card points: ${declarerPts} scored (need 35, ${difference >= 0 ? '+' : ''}${difference} diff) — ${won ? 'WON HAND' : 'LOST HAND'}`)
+        lines.push(`Card points: ${declarerPts} scored (need 36, ${difference >= 0 ? '+' : ''}${difference} diff) — ${won ? 'WON HAND' : 'LOST HAND'}`)
       }
       lines.push('')
       lines.push('--- Score breakdown ---')

@@ -340,3 +340,53 @@ describe('computeHandScore valat win condition', () => {
     expect(hs.declarerScore).toBe(-500)
   })
 })
+
+describe('mond penalty not applied in beggar / open-beggar', () => {
+  function makeTrick(winner: Seat, cards: Card[]): Trick {
+    return { cards: cards.map((card, i) => ({ seat: ((winner + i) % 4) as Seat, card })), winner }
+  }
+  // Declarer (seat 0) takes no tricks = beggar win; Mond was played by seat 0 and captured by Škis
+  function beggarWonCaptured(): Record<Seat, Card[]> {
+    const deck = buildDeck()
+    return { 0: [], 1: deck, 2: [], 3: [] }
+  }
+  const tricks: Trick[] = Array.from({ length: 12 }, () => makeTrick(1, [low(), low(), low(), low()]))
+
+  it('beggar: no mond penalty even when mondCapturedWithSkis=true', () => {
+    const hs = computeHandScore({
+      contract: 'beggar', declarer: 0, partner: null,
+      capturedCards: beggarWonCaptured(), talonRemainder: [],
+      mondCapturedWithSkis: true, mondPlayedBySeat: 0,
+      announcementState: initAnnouncements(), completedTricks: tricks,
+      calledKing: null, radliState: initRadli(), contractBase: CONTRACT_BASE['beggar'], won: true,
+    })
+    expect(hs.mondPenalties[0]).toBe(0)
+    expect(hs.declarerScore).toBe(70)
+  })
+
+  it('open-beggar: no mond penalty even when mondCapturedWithSkis=true', () => {
+    const hs = computeHandScore({
+      contract: 'open-beggar', declarer: 0, partner: null,
+      capturedCards: beggarWonCaptured(), talonRemainder: [],
+      mondCapturedWithSkis: true, mondPlayedBySeat: 0,
+      announcementState: initAnnouncements(), completedTricks: tricks,
+      calledKing: null, radliState: initRadli(), contractBase: CONTRACT_BASE['open-beggar'], won: true,
+    })
+    expect(hs.mondPenalties[0]).toBe(0)
+    expect(hs.declarerScore).toBe(90)
+  })
+
+  it('solo-without: mond penalty still applies (exception among flat contracts)', () => {
+    const deck = buildDeck()
+    const capturedCards = { 0: deck, 1: [], 2: [], 3: [] } as Record<Seat, Card[]>
+    const tricksSoloWon = Array.from({ length: 12 }, () => makeTrick(0, [low(), low(), low(), low()]))
+    const hs = computeHandScore({
+      contract: 'solo-without', declarer: 0, partner: null,
+      capturedCards, talonRemainder: [],
+      mondCapturedWithSkis: true, mondPlayedBySeat: 0,
+      announcementState: initAnnouncements(), completedTricks: tricksSoloWon,
+      calledKing: null, radliState: initRadli(), contractBase: CONTRACT_BASE['solo-without'], won: true,
+    })
+    expect(hs.mondPenalties[0]).toBe(-20)
+  })
+})
