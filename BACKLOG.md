@@ -198,6 +198,78 @@ _Prompt structure per request:_
 
 ---
 
+## UI / About & Leaderboard
+
+### UI-008 — Add Mark's name to About section credits
+**Added:** 2026-08-04
+**Fixed:** —
+**Version:** —
+
+**Problem:** The About section credits Claude but not Mark.
+
+**Fix direction:** Add Mark's name alongside Claude in the About dialog credits.
+
+---
+
+### UI-009 — Silver/bronze medal icons for 2nd and 3rd place on leaderboard
+**Added:** 2026-08-04
+**Fixed:** —
+**Version:** —
+
+**Problem:** The leaderboard has gold/1st-place treatment but no visual distinction for 2nd and 3rd place.
+
+**Fix direction:** Add silver and bronze medal icons (matching the existing gold/1st-place style) to the 2nd and 3rd place rows.
+
+---
+
+### UI-010 — Leaderboard: only count sessions where player finished 1st overall
+**Added:** 2026-08-04
+**Fixed:** —
+**Version:** —
+
+**Problem:** The leaderboard currently includes all games regardless of final session placement, which incentivises stacking Radli and coasting for one big double-score hand rather than actually winning the session.
+
+**Fix direction:** Filter leaderboard entries so only sessions where the player finished 1st place overall (session-level, not per-round) count toward their score. Add a UI note near the leaderboard: "Must win the game for score to place on the leaderboard." The non-qualifying sessions remain visible in Game History.
+
+---
+
+## UI / Game History
+
+### UI-011 — Add "player final rank" column to Game History
+**Added:** 2026-08-04
+**Fixed:** —
+**Version:** —
+
+**Problem:** After the leaderboard filter (UI-010) excludes non-1st-place sessions, those hands are no longer visible on the leaderboard. Game History should still expose top scores with visibility into where the player actually finished.
+
+**Fix direction:** Add a "Final Rank" column (1st/2nd/3rd/4th) to the Game History window so non-qualifying sessions can still be reviewed in context.
+
+---
+
+### UI-012 — Game History: sortable columns
+**Added:** 2026-08-04
+**Fixed:** —
+**Version:** —
+
+**Problem:** Game History currently only supports sorting by date.
+
+**Fix direction:** Make all columns sortable (score, contract, declarer/partner, final rank once UI-011 is added) using the same click-to-sort interaction as the existing date column.
+
+---
+
+## UI / Cross-Platform Bugs
+
+### UI-013 — Scores section not expandable on mobile (touch/click handling)
+**Added:** 2026-08-04
+**Fixed:** —
+**Version:** —
+
+**Problem:** Expanding a previous round in the scores section requires clicking exactly on the "Round X" text — the hit target is too small, especially on mobile where precision tapping is harder.
+
+**Fix direction:** Widen the clickable/tappable area for the round row (e.g. make the full row the click target, not just the text label). Ensure the touch target meets the 44px minimum on mobile.
+
+---
+
 ## Game Variants
 
 ### VAR-001 — 3-player variant
