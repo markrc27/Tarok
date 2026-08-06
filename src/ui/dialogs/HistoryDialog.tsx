@@ -15,9 +15,18 @@ interface HistoryRow {
   rounds: number
   difficulty: string
   playerCount: number
+  place: number
 }
 
 type SortKey = 'playedAt' | 'finalScore'
+
+function placeLabel(n: number): string {
+  return n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`
+}
+
+function placeColor(n: number): string {
+  return n === 1 ? '#f0c040' : '#aaa'
+}
 
 function formatDate(ts: number): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -81,6 +90,7 @@ function ElectronHistory({ onClose, currentPlayerCount = 4 }: Props) {
                       {dateSortLabel}
                     </button>
                   </th>
+                  <th>Place</th>
                   <th>Rounds</th>
                   <th>Difficulty</th>
                   {seats.map(seat => (
@@ -95,9 +105,11 @@ function ElectronHistory({ onClose, currentPlayerCount = 4 }: Props) {
               <tbody>
                 {sorted.map(record => {
                   const winner = winnerSeat(record, seats)
+                  const humanPlace = seats.filter(s => record.finalScores[s] > record.finalScores[0]).length + 1
                   return (
                     <tr key={record.id}>
                       <td style={{ color: '#aaa', whiteSpace: 'nowrap', fontSize: 12 }}>{formatDate(record.playedAt)}</td>
+                      <td style={{ textAlign: 'center', color: placeColor(humanPlace), fontWeight: humanPlace === 1 ? 'bold' : undefined }}>{placeLabel(humanPlace)}</td>
                       <td style={{ textAlign: 'center' }}>{record.rounds}</td>
                       <td style={{ textAlign: 'center' }}>
                         {record.difficulty === 'hard'
@@ -137,7 +149,7 @@ function WebHistory({ onClose, currentPlayerCount = 4 }: Props) {
   useEffect(() => {
     fetch('/api/games?view=history')
       .then(r => { if (!r.ok) throw new Error(); return r.json() })
-      .then((data: { id: string; played_at: number; player_name: string; final_score: number; rounds: number; difficulty: string; player_count?: number }[]) => {
+      .then((data: { id: string; played_at: number; player_name: string; final_score: number; rounds: number; difficulty: string; player_count?: number; place?: number }[]) => {
         setRows(data.map(r => ({
           id: r.id,
           playedAt: r.played_at,
@@ -146,6 +158,7 @@ function WebHistory({ onClose, currentPlayerCount = 4 }: Props) {
           rounds: r.rounds,
           difficulty: r.difficulty,
           playerCount: r.player_count ?? 4,
+          place: r.place ?? 1,
         })))
       })
       .catch(() => setError(true))
@@ -191,6 +204,7 @@ function WebHistory({ onClose, currentPlayerCount = 4 }: Props) {
                   <th style={{ textAlign: 'left' }}><button style={colBtn('playedAt')} onClick={() => handleSort('playedAt')}>Date{arrow('playedAt')}</button></th>
                   <th style={{ textAlign: 'left' }}>Player</th>
                   <th><button style={colBtn('finalScore')} onClick={() => handleSort('finalScore')}>Score{arrow('finalScore')}</button></th>
+                  <th>Place</th>
                   <th>Rounds</th>
                   <th>Difficulty</th>
                 </tr>
@@ -203,6 +217,7 @@ function WebHistory({ onClose, currentPlayerCount = 4 }: Props) {
                     <td style={{ color: row.finalScore >= 0 ? '#4f4' : '#f44', fontWeight: 'bold', textAlign: 'center' }}>
                       {row.finalScore >= 0 ? '+' : ''}{row.finalScore}
                     </td>
+                    <td style={{ textAlign: 'center', color: placeColor(row.place ?? 1), fontWeight: (row.place ?? 1) === 1 ? 'bold' : undefined }}>{placeLabel(row.place ?? 1)}</td>
                     <td style={{ textAlign: 'center' }}>{row.rounds}</td>
                     <td style={{ textAlign: 'center' }}>
                       {row.difficulty === 'hard'

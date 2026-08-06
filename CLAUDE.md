@@ -143,7 +143,7 @@ Flat:    ±base × kontra   (no difference, no bonuses)
 
 Bonuses (normal contracts only; each has its own kontra multiplier):
   trula 10/20 · kings 10/20 · king ultimo 10/20 (King-holder announces)
-  pagat ultimo 25/50 (Pagat-holder announces) · valat 250/500 (cancels others)
+  pagat ultimo 25/50 (Pagat-holder announces) · valat 250/500 (replaces all other scoring — game base, diff, bonuses all zeroed)
   Declarer's side, unannounced+achieved: +value — even on a lost hand
   Announced: ±2×value · Opponents achieve one: −value from declarer's side
   Ultimos fail negatively: pagat/called king played to the LAST trick but beaten → −value (−2× announced), even unannounced

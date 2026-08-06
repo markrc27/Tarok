@@ -77,6 +77,7 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
       )}
       {followHint && <div className="status-item" style={{ color: '#facc15' }}>{followHint}</div>}
       <div className="status-spacer" style={{ flex: 1 }} />
+      <div className="status-item" style={{ color: '#888', fontSize: '0.85em', padding: '1px 5px', border: '1px solid #444', borderRadius: 3 }}>{playerCount}P</div>
       {roundsPlayed > 0 && (
         <>
           <button

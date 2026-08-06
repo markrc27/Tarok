@@ -5,11 +5,12 @@ CREATE TABLE IF NOT EXISTS games (
   final_score  INTEGER NOT NULL,
   rounds       INTEGER NOT NULL,
   difficulty   TEXT    NOT NULL DEFAULT 'easy',
-  player_count INTEGER NOT NULL DEFAULT 4
+  player_count INTEGER NOT NULL DEFAULT 4,
+  place        INTEGER NOT NULL DEFAULT 1
 );
 
--- Migration for existing tables (run once; safe to re-run on a fresh DB where the column
--- is already in the CREATE TABLE above — D1 returns an error which can be ignored):
---   npx wrangler d1 execute tarok-db --command "ALTER TABLE games ADD COLUMN player_count INTEGER NOT NULL DEFAULT 4"
+-- Migrations for existing tables (run once each; D1 returns ignorable error if column already exists):
+--   npx wrangler d1 execute tarok-db --remote --command "ALTER TABLE games ADD COLUMN player_count INTEGER NOT NULL DEFAULT 4"
+--   npx wrangler d1 execute tarok-db --remote --command "ALTER TABLE games ADD COLUMN place INTEGER NOT NULL DEFAULT 1"
 
 CREATE INDEX IF NOT EXISTS idx_games_played_at ON games (played_at DESC);

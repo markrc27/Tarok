@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.6.1 — 2026-08-06
+- **Place column** added to Game History dialog (both Electron and web views); 1st shown in gold, others in grey
+- **Leaderboard** posting now requires finishing in 1st place (ties count); `place` field sent in API POST
+- **D1 migration**: `place INTEGER NOT NULL DEFAULT 1` column added to `games` table
+- **Bug fix**: announcements phase was skipped after talon discard for 3-player three/two/one and 4-player solo contracts (went straight to play)
+- **Bug fix**: game options (player count, difficulty) excluded from Zustand persist state — fixes cross-tab contamination where a 3-player tab could cause a new 4-player tab to start in 3-player mode
+- **UI**: status bar now shows a **3P / 4P** mode chip so the active player count is always visible during a game
+
 ## v1.6.0 — 2026-08-05
 
 ### New Feature: 3-Player Tarok

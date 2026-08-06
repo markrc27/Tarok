@@ -374,7 +374,7 @@ export const useGameStore = create<Store>()(persist((set, get) => {
       if (needsKingCall) {
         set({ phase: 'king-call' })
       } else {
-        advanceToPlay()
+        advanceToAnnouncing()
       }
     },
 
@@ -588,7 +588,8 @@ export const useGameStore = create<Store>()(persist((set, get) => {
         playerCount: pc,
       }
       saveGameRecord(gameRecord)
-      postGameToApi(gameRecord, playerNames[0], finalScores[0])
+      const humanPlace = activeSeats(pc).filter(s => finalScores[s] > finalScores[0]).length + 1
+      if (humanPlace === 1) postGameToApi(gameRecord, playerNames[0], finalScores[0], humanPlace)
       consumeDraftRecord()
 
       const [a, b, c] = pickNames()
@@ -620,7 +621,8 @@ export const useGameStore = create<Store>()(persist((set, get) => {
           playerCount: pc,
         }
         saveGameRecord(gameRecord)
-        postGameToApi(gameRecord, playerNames[0], sessionScores[0])
+        const humanPlace = activeSeats(pc).filter(s => sessionScores[s] > sessionScores[0]).length + 1
+        if (humanPlace === 1) postGameToApi(gameRecord, playerNames[0], sessionScores[0], humanPlace)
       }
       consumeDraftRecord()
 
@@ -666,7 +668,7 @@ export const useGameStore = create<Store>()(persist((set, get) => {
   name: 'tarok-game-state',
   version: 1,
   partialize: (state) => {
-    const { pendingTrick: _pt, ...rest } = state
+    const { pendingTrick: _pt, options: _opts, ...rest } = state
     return rest
   },
 }))

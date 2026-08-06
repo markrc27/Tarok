@@ -70,7 +70,7 @@ async function opfsSave(records: GameRecord[]): Promise<void> {
 }
 
 // Fire-and-forget: posts seat-0's result to the Cloudflare backend. Skipped in Electron.
-export function postGameToApi(record: GameRecord, playerName: string, finalScore: number): void {
+export function postGameToApi(record: GameRecord, playerName: string, finalScore: number, place: number): void {
   if (IS_ELECTRON) return
   fetch('/api/games', {
     method: 'POST',
@@ -83,6 +83,7 @@ export function postGameToApi(record: GameRecord, playerName: string, finalScore
       rounds: record.rounds,
       difficulty: record.difficulty ?? 'easy',
       playerCount: record.playerCount ?? 4,
+      place,
     }),
   }).catch(() => {})
 }
