@@ -668,7 +668,7 @@ export const useGameStore = create<Store>()(persist((set, get) => {
   name: 'tarok-game-state',
   version: 1,
   partialize: (state) => {
-    const { pendingTrick: _pt, options: _opts, ...rest } = state
+    const { pendingTrick: _pt, ...rest } = state
     return rest
   },
 }))

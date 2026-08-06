@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.6.2 — 2026-08-06
+- **Hotfix**: revert options-from-persist exclusion — caused "New Game" to freeze on load; cross-tab contamination fix is deferred
+
 ## v1.6.1 — 2026-08-06
 - **Place column** added to Game History dialog (both Electron and web views); 1st shown in gold, others in grey
 - **Leaderboard** posting now requires finishing in 1st place (ties count); `place` field sent in API POST
