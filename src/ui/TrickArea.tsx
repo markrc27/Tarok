@@ -8,12 +8,14 @@ interface Props {
   playerNames: Record<Seat, string>
 }
 
-const SEAT_CLASS = ['trick-slot-bottom', 'trick-slot-left', 'trick-slot-top', 'trick-slot-right']
+const SEAT_CLASS_4P = ['trick-slot-bottom', 'trick-slot-left', 'trick-slot-top', 'trick-slot-right']
+const SEAT_CLASS_3P = ['trick-slot-bottom', 'trick-slot-top-left', 'trick-slot-top-right', 'trick-slot-right']
 
 export default function TrickArea({ playState, pendingTrick, playerNames }: Props) {
   const displayCards = pendingTrick ? pendingTrick.cards : playState.currentTrick.cards
   const winner = pendingTrick?.winner ?? null
   const vitamin = pendingTrick?.vitamin ?? null
+  const seatClass = (playState.playerCount ?? 4) === 3 ? SEAT_CLASS_3P : SEAT_CLASS_4P
 
   const calledKing = playState.kingCall?.calledKing ?? null
   const kingRevealEntry = (pendingTrick && calledKing)
@@ -29,7 +31,7 @@ export default function TrickArea({ playState, pendingTrick, playerNames }: Prop
       {displayCards.map(({ seat, card }) => (
         <div
           key={seat}
-          className={`trick-slot ${SEAT_CLASS[seat]}${pendingTrick && seat === winner ? ' trick-winner-card' : ''}`}
+          className={`trick-slot ${seatClass[seat]}${pendingTrick && seat === winner ? ' trick-winner-card' : ''}`}
         >
           <CardSprite card={card} faceUp />
         </div>

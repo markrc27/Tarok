@@ -137,7 +137,7 @@ until v1.3.1).
 ## Scoring formulas
 
 ```
-Normal:  ±(base + |roundToNearest5(declarerPts − 35)|) × kontra
+Normal:  ±(base + |declarerPts − 35|) × kontra
          (magnitude uses |difference| on a loss too — never signed)
 Flat:    ±base × kontra   (no difference, no bonuses)
 
@@ -156,16 +156,16 @@ Radl:  declarer holds ≥1 uncancelled radl → whole hand score ×2 (win or
   Session end: 100 pts per uncancelled radl.
 Mond penalty: −20 to the individual whose Mond fell to the Škis (or was
   left in the unchosen talon). Never doubled. Own line in score breakdown.
-Klop: per-individual — >35 pts → −70; 0 tricks → +70; else −round5(pts).
+Klop: per-individual — >35 pts → −70; 0 tricks → +70; else −pts (exact).
   No bonuses/kontra. Talon: one card exposed per trick T1–T6, taken by the
   trick winner ("vitamin") — NOT yet implemented, see ENG-001 in BACKLOG.
 Declarer+partner otherwise share one fate (same credit/debit each).
 ```
 
 Worked examples (encode as tests in `tests/scoring.test.ts`): solo two,
-48 pts, unannounced trula, one radl → (50+15+10)×2 = **+150**, radl
-cancelled. Two, 31 pts (loss), opponents take all kings → −(20+5)−10 =
-**−35** each. Valat without, 60 pts, one trick lost → **−500**.
+48 pts, unannounced trula, one radl → (50+13+10)×2 = **+146**, radl
+cancelled. Two, 31 pts (loss), opponents take all kings → −(20+4)−10 =
+**−34** each. Valat without, 60 pts, one trick lost → **−500**.
 
 ## Rules gotchas (full prose in AGENT.md)
 

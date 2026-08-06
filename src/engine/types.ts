@@ -31,6 +31,8 @@ export type Card = SuitCard | TrumpCard
 // 0=human/bottom, 1=left AI, 2=top AI, 3=right AI
 export type Seat = 0 | 1 | 2 | 3
 
+export type PlayerCount = 3 | 4
+
 export type Contract =
   | 'klop'
   | 'three'
@@ -153,6 +155,7 @@ export interface PlayState {
   klopTalon: Card[]  // klop only: remaining talon cards to be dealt as vitamins
   kingCall: KingCall | null
   kingInTalonCaptured: boolean
+  playerCount?: PlayerCount
 }
 
 export type PlayAction = { kind: 'play-card'; seat: Seat; card: Card }
@@ -212,6 +215,7 @@ export interface GameRecord {
   finalScores: Record<Seat, number>
   rounds: number
   difficulty?: 'easy' | 'hard'
+  playerCount?: PlayerCount
 }
 
 export interface RoundRecord {

@@ -7,6 +7,12 @@ import { bonusBaseValue, getKontraMultiplier } from '../../engine/announce'
 import { CONTRACT_LABEL, BONUS_LABEL, SUIT_SYM } from '../labels'
 const RANK_LABEL: Record<string, string> = { K: 'K', Q: 'Q', Kn: 'C', J: 'J' }
 
+function kontraLabel(n: number): string {
+  if (n <= 1) return ''
+  const name = n === 2 ? 'kontra' : n === 4 ? 'rekontra' : n === 8 ? 'subkontra' : 'mordkontra'
+  return `, ${name} ×${n}`
+}
+
 function cardText(card: Card): string {
   if (card.kind === 'trump') {
     if (card.ordinal === 22) return 'Škis'
@@ -54,7 +60,8 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
           kingInTalonCaptured } = playState
   const effectiveCaptured = adjustCapturedForTalon(capturedCards, talonRemainder, declarer, partner, kingInTalonCaptured)
 
-  const seats: Seat[] = [0, 1, 2, 3]
+  const pc = playState.playerCount ?? 4
+  const seats: Seat[] = pc === 3 ? [0, 1, 2] : [0, 1, 2, 3]
   const isFlat = ['beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without'].includes(contract)
 
   const delta: Record<Seat, number> = { 0: 0, 1: 0, 2: 0, 3: 0 }
@@ -64,7 +71,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
   let handScore = null as ReturnType<typeof computeHandScore> | null
 
   if (contract === 'klop') {
-    const klopScores = scoreKlop(effectiveCaptured)
+    const klopScores = scoreKlop(effectiveCaptured, seats)
     for (const s of seats) delta[s] = klopScores[s]
   } else {
     declarerPts = countDeclarerPoints(effectiveCaptured, declarer, partner)
@@ -81,7 +88,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       mondCapturedWithSkis, mondPlayedBySeat: mondCapturedBy,
       announcementState, completedTricks,
       calledKing: kingCall?.calledKing ?? null,
-      radliState, contractBase: CONTRACT_BASE[contract], won,
+      radliState, contractBase: CONTRACT_BASE[contract], won, playerCount: pc,
     })
 
     delta[declarer] = handScore.declarerScore
@@ -95,7 +102,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
 
   // Project radli after this hand: mirror store's acknowledgeScore logic
   const { newRadliState: afterCancel } = applyRadli(0, radliState, declarer, won)
-  const projectedRadli = updateRadliAfterHand(afterCancel, contract, won)
+  const projectedRadli = updateRadliAfterHand(afterCancel, contract, won, false, seats)
 
   function buildLogLines(): string[] {
     const lines: string[] = []
@@ -114,7 +121,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       lines.push('')
       lines.push('--- Score breakdown ---')
       const gameKontraLog = getKontraMultiplier(announcementState, 'game')
-      const gameKontraStrLog = gameKontraLog > 1 ? ` x${gameKontraLog}` : ''
+      const gameKontraStrLog = kontraLabel(gameKontraLog)
       if (isFlat) {
         lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base (flat)${gameKontraStrLog} = ${won ? '+' : '-'}${CONTRACT_BASE[contract] * gameKontraLog}`)
       } else {
@@ -155,7 +162,9 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
     lines.push(`--- Tricks played (${completedTricks.length}) ---`)
     completedTricks.forEach((trick, i) => {
       const ledSeat = trick.cards[0]?.seat
-      const order = [ledSeat, ((ledSeat+1)%4), ((ledSeat+2)%4), ((ledSeat+3)%4)] as Seat[]
+      const order = pc === 3
+        ? [ledSeat, ((ledSeat+1)%3), ((ledSeat+2)%3)] as Seat[]
+        : [ledSeat, ((ledSeat+1)%4), ((ledSeat+2)%4), ((ledSeat+3)%4)] as Seat[]
       const ordered = [...trick.cards].sort((a, b) => order.indexOf(a.seat) - order.indexOf(b.seat))
       const plays = ordered.map(({ seat, card }) => `${playerNames[seat]}:${cardText(card)}`).join('  ')
       const vitaminStr = trick.vitamin ? `  [vitamin: ${cardText(trick.vitamin)}]` : ''
@@ -166,7 +175,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
     if (contract === 'klop') {
       lines.push('')
       lines.push('--- Klop Point Summary (Rounded to Nearest 5 Points) ---')
-      for (const seat of [0, 1, 2, 3] as Seat[]) {
+      for (const seat of seats) {
         const cards = effectiveCaptured[seat]
         const sc = delta[seat]
         lines.push(`${playerNames[seat]}:`)
@@ -325,7 +334,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             </div>
             {(() => {
               const gk = getKontraMultiplier(announcementState, 'game')
-              const gkStr = gk > 1 ? ` ×${gk}` : ''
+              const gkStr = kontraLabel(gk)
               if (isFlat) {
                 return (
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>

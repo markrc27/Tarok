@@ -1,16 +1,16 @@
 import React, { useState } from 'react'
-import type { RoundRecord, Seat } from '../../engine/types'
+import type { RoundRecord, Seat, PlayerCount } from '../../engine/types'
 import { CONTRACT_LABEL } from '../labels'
 
 interface Props {
   roundHistory: RoundRecord[]
   playerNames: Record<Seat, string>
+  playerCount?: PlayerCount
   onClose: () => void
 }
 
-const SEATS: Seat[] = [0, 1, 2, 3]
-
-export default function RoundHistoryDialog({ roundHistory, playerNames, onClose }: Props) {
+export default function RoundHistoryDialog({ roundHistory, playerNames, playerCount = 4, onClose }: Props) {
+  const SEATS: Seat[] = playerCount === 3 ? [0, 1, 2] : [0, 1, 2, 3]
   const [selectedLog, setSelectedLog] = useState<RoundRecord | null>(null)
   const [copied, setCopied] = useState(false)
 

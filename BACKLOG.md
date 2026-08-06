@@ -274,8 +274,8 @@ _Prompt structure per request:_
 
 ### VAR-001 — 3-player variant
 **Added:** 2026-07-01  
-**Fixed:** —  
-**Version:** —
+**Fixed:** 2026-08-05  
+**Version:** v1.6.0
 
 **Problem:** Only the 4-player game exists. The 3-player Slovenian variant is a planned future mode (deliberately deferred until the 4-player game is solid — see CLAUDE.md *Out of scope*).
 

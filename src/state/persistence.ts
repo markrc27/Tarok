@@ -82,6 +82,7 @@ export function postGameToApi(record: GameRecord, playerName: string, finalScore
       finalScore,
       rounds: record.rounds,
       difficulty: record.difficulty ?? 'easy',
+      playerCount: record.playerCount ?? 4,
     }),
   }).catch(() => {})
 }

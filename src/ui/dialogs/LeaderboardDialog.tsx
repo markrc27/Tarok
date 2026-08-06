@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import type { PlayerCount } from '../../engine/types'
 
 interface LeaderboardRow {
   id: string
@@ -7,12 +8,14 @@ interface LeaderboardRow {
   final_score: number
   rounds: number
   difficulty: string
+  player_count?: number
 }
 
 type SortKey = 'final_score' | 'rounds' | 'played_at'
 
 interface Props {
   onClose: () => void
+  currentPlayerCount?: PlayerCount
 }
 
 function formatDate(ts: number): string {
@@ -22,11 +25,12 @@ function formatDate(ts: number): string {
   }).format(new Date(ts))
 }
 
-export default function LeaderboardDialog({ onClose }: Props) {
+export default function LeaderboardDialog({ onClose, currentPlayerCount = 4 }: Props) {
   const [rows, setRows] = useState<LeaderboardRow[] | null>(null)
   const [error, setError] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('final_score')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [filterPc, setFilterPc] = useState<PlayerCount>(currentPlayerCount)
 
   useEffect(() => {
     fetch('/api/games?view=leaderboard')
@@ -35,7 +39,9 @@ export default function LeaderboardDialog({ onClose }: Props) {
       .catch(() => setError(true))
   }, [])
 
-  const sorted = rows ? [...rows].sort((a, b) => {
+  const filtered = rows ? rows.filter(r => (r.player_count ?? 4) === filterPc) : null
+
+  const sorted = filtered ? [...filtered].sort((a, b) => {
     const diff = a[sortKey] - b[sortKey]
     return sortDir === 'desc' ? -diff : diff
   }) : []
@@ -60,6 +66,14 @@ export default function LeaderboardDialog({ onClose }: Props) {
     <div className="modal-overlay">
       <div className="modal" style={{ minWidth: 480, maxWidth: 640 }}>
         <h2>Leaderboard — Top 10</h2>
+        <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderRadius: 4, overflow: 'hidden', border: '1px solid #444', width: 'fit-content' }}>
+          {([3, 4] as PlayerCount[]).map(n => (
+            <button key={n} onClick={() => setFilterPc(n)}
+              style={{ background: filterPc === n ? '#0078d4' : '#2a2a2a', border: 'none', color: filterPc === n ? '#fff' : '#888', padding: '5px 18px', cursor: 'pointer', fontSize: 12 }}>
+              {n}P
+            </button>
+          ))}
+        </div>
 
         {error && (
           <p style={{ color: '#f88', textAlign: 'center', margin: '24px 0' }}>
@@ -71,11 +85,11 @@ export default function LeaderboardDialog({ onClose }: Props) {
           <p style={{ color: '#888', textAlign: 'center', margin: '24px 0' }}>Loading…</p>
         )}
 
-        {!error && rows !== null && rows.length === 0 && (
-          <p style={{ color: '#888', textAlign: 'center', margin: '24px 0' }}>No games recorded yet.</p>
+        {!error && rows !== null && sorted.length === 0 && (
+          <p style={{ color: '#888', textAlign: 'center', margin: '24px 0' }}>No {filterPc}-player games recorded yet.</p>
         )}
 
-        {!error && rows !== null && rows.length > 0 && (
+        {!error && rows !== null && sorted.length > 0 && (
           <div style={{ maxHeight: 340, overflowY: 'auto' }}>
             <table className="score-table">
               <thead style={{ position: 'sticky', top: 0, background: '#1e1e1e' }}>

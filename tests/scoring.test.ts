@@ -34,25 +34,19 @@ describe('calcDifference', () => {
     expect(calcDifference(35)).toBe(0)
   })
 
-  it('36 points = difference of +5 (rounds up to nearest 5)', () => {
-    // 36-35=1, round to nearest 5 = 0... wait:
-    // roundToNearest5(1) = 0, so difference = 0
-    // Actually 36 points: diff = 36-35 = 1, rounded to nearest 5 = 0
-    expect(calcDifference(36)).toBe(0)
+  it('36 points = difference of +1 (exact, no rounding)', () => {
+    expect(calcDifference(36)).toBe(1)
   })
 
-  it('38 points = difference of +5', () => {
-    // 38-35 = 3, rounded to nearest 5 = 5
-    expect(calcDifference(38)).toBe(5)
+  it('38 points = difference of +3', () => {
+    expect(calcDifference(38)).toBe(3)
   })
 
   it('20 points = difference of -15', () => {
-    // 20-35 = -15, rounded to nearest 5 = -15
     expect(calcDifference(20)).toBe(-15)
   })
 
   it('50 points = difference of +15', () => {
-    // 50-35 = 15
     expect(calcDifference(50)).toBe(15)
   })
 })
@@ -96,15 +90,14 @@ describe('scoreKlop', () => {
     }
   })
 
-  it('player taking small pile: subtracted rounded to nearest 5', () => {
-    // Give seat 0 two low cards: countPoints([low, low]) = 1
+  it('player taking small pile: subtracted exactly', () => {
+    // Give seat 0 two low cards: countPoints([low, low]) = 1 (leftover 2 = sum-1)
     const captured: Record<Seat, Card[]> = {
       0: [low(), low()],
       1: [], 2: [], 3: [],
     }
     const scores = scoreKlop(captured)
-    // pts = 1, rounded to nearest 5 = 0, so score = -0 = 0
-    expect(scores[0]).toBe(0)
+    expect(scores[0]).toBe(-1)
   })
 
   it('player taking exactly 35+ points: -70', () => {
@@ -123,7 +116,7 @@ describe('scoreKlop', () => {
     if (pts > 35) {
       expect(scores[0]).toBe(-70)
     } else {
-      expect(scores[0]).toBe(-roundToNearest5(pts))
+      expect(scores[0]).toBe(-pts)
     }
   })
 })

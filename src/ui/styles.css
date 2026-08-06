@@ -116,10 +116,13 @@ body {
   font-size: 18px;
 }
 
-.seat-top    { top: 8px;   left: 50%; transform: translateX(-50%); }
-.seat-left   { top: 50%;   left: 8px; transform: translateY(-50%); }
-.seat-right  { top: 50%;   right: 8px; transform: translateY(-50%); }
-.seat-bottom { bottom: 8px; left: 50%; transform: translateX(-50%); }
+.seat-top       { top: 8px;   left: 50%; transform: translateX(-50%); }
+.seat-left      { top: 50%;   left: 8px; transform: translateY(-50%); }
+.seat-right     { top: 50%;   right: 8px; transform: translateY(-50%); }
+.seat-bottom    { bottom: 8px; left: 50%; transform: translateX(-50%); }
+/* 3-player triangle positions */
+.seat-top-left  { top: 8px; left: 4%; }
+.seat-top-right { top: 8px; right: 4%; align-items: flex-end; }
 
 /* ── Hand ─────────────────────────────────────────────────────────────── */
 .hand {
@@ -159,10 +162,13 @@ body {
 .trick-slot {
   position: absolute;
 }
-.trick-slot-top    { top: 20px;    left: 50%; transform: translateX(-50%); }
-.trick-slot-left   { top: 50%;    left: 0;  transform: translateY(-50%); }
-.trick-slot-right  { top: 50%;    right: 0; transform: translateY(-50%); }
-.trick-slot-bottom { bottom: 20px; left: 50%; transform: translateX(-50%); }
+.trick-slot-top       { top: 20px;    left: 50%; transform: translateX(-50%); }
+.trick-slot-left      { top: 50%;    left: 0;  transform: translateY(-50%); }
+.trick-slot-right     { top: 50%;    right: 0; transform: translateY(-50%); }
+.trick-slot-bottom    { bottom: 20px; left: 50%; transform: translateX(-50%); }
+/* 3-player triangle trick slots */
+.trick-slot-top-left  { top: 20px; left: 10%; }
+.trick-slot-top-right { top: 20px; right: 10%; }
 /* center slot (vitamin card): offset scales with trick area so it doesn't clip */
 .trick-slot-center { top: 50%; left: calc(50% + min(80px, 16%)); transform: translate(-50%, -50%); }
 

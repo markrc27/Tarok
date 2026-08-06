@@ -1,6 +1,7 @@
 import type {
   Seat, DealResult, BiddingState, TalonExchange, KingCall,
   AnnouncementState, PlayState, RadliState, HandScore, Contract, Card, RoundRecord,
+  PlayerCount,
 } from '../engine/types'
 
 export type GamePhase =
@@ -26,7 +27,7 @@ export interface GameState {
   sessionScores: Record<Seat, number>
   playerNames: Record<Seat, string>
   missdealStrikes: Record<Seat, number>
-  options: { soundEnabled: boolean; botDifficulty: 'easy' | 'hard' }
+  options: { soundEnabled: boolean; botDifficulty: 'easy' | 'hard'; playerCount: PlayerCount }
   cardAppearance: 'simple' | 'traditional'
   statistics: HandScore[]
   skisRoundEndSeat: Seat | null

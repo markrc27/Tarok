@@ -1,6 +1,6 @@
 import type {
   Card, Seat, Contract, TrickState, PlayState, PlayResult, Trick, KingCall,
-  TalonExchange, DealResult, Suit,
+  TalonExchange, DealResult, Suit, PlayerCount,
 } from './types'
 import {
   isTrump, isKing, isPagat, isMond, isSkis, isTrula,
@@ -200,8 +200,8 @@ export function playCard(state: PlayState, seat: Seat, card: Card): PlayResult {
   const newHands = { ...state.hands, [seat]: newHand }
   let newState: PlayState = { ...state, hands: newHands, currentTrick: newTrick }
 
-  // Check if trick is complete (all 4 players played)
-  const trickComplete = newCards.length === 4
+  // Check if trick is complete (all active players played)
+  const trickComplete = newCards.length === (state.playerCount ?? 4)
   let trickWinner: Seat | null = null
 
   if (trickComplete) {
@@ -291,6 +291,7 @@ export function initPlay(
   isColourValat: boolean,
   kingCall: KingCall | null,
   hands: Record<Seat, Card[]>,
+  playerCount: PlayerCount = 4,
 ): PlayState {
   const leader = firstLeader(contract, declarer, dealResult.forehand)
 
@@ -325,5 +326,6 @@ export function initPlay(
     klopTalon: contract === 'klop' ? [...dealResult.talon] : [],
     kingCall,
     kingInTalonCaptured: false,
+    playerCount,
   }
 }

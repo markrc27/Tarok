@@ -291,7 +291,7 @@ const SECTIONS: Section[] = [
             {([
               ['No tricks at all (0 cards)', '+70'],
               ['More than 35 card points', '−70'],
-              ['1–35 card points', '−(total, rounded to nearest 5)'],
+              ['1–35 card points', '−(exact total)'],
             ] as [string, string][]).map(([cond, score]) => (
               <tr key={cond} style={{ borderTop: '1px solid #333' }}>
                 <td style={{ padding: '4px 8px' }}>{cond}</td>
@@ -300,7 +300,7 @@ const SECTIONS: Section[] = [
             ))}
           </tbody>
         </table>
-        <p style={{ color: '#888', fontSize: 12 }}>Rounding works the same way as the card-point difference in normal contracts: nearest multiple of 5. Examples: 13 pts → 15 → −15; 7 pts → 5 → −5; 25 pts (already a multiple) → −25; 26 pts → 25 → −25.</p>
+        <p style={{ color: '#888', fontSize: 12 }}>Card points in klop are scored exactly — no rounding. Examples: 13 pts → −13; 7 pts → −7; 25 pts → −25.</p>
         <p>In the Round Result dialog, click <em>Show game log</em> after any Klop round to see the <strong>Klop Point Summary</strong> — it breaks down each player's captured pile into groups of three, shows the arithmetic, and traces the rounding step to the final score.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Vitamins (Klop talon rule)</h4>
         <p>In Klop, the talon's 6 cards are dealt out one at a time as <strong>vitamins</strong>: after each of the first 6 tricks, the top talon card is revealed and added to the trick winner's captured pile. This means every talon card ends up scored — there is no unchosen talon remainder in Klop. Vitamins are shown in gold in the trick log after a Klop round.</p>
@@ -320,6 +320,60 @@ const SECTIONS: Section[] = [
         </ul>
         <p>When scoring, if the declarer holds outstanding radli, their score (and the partner's, if any) is <strong>doubled</strong> and one radl is annulled — but <em>only on a win</em>. On a loss the score is still doubled but the radl is not canceled.</p>
         <p>Uncanceled radli at the end of the session cost <strong>100 points each</strong>.</p>
+      </>
+    ),
+  },
+  {
+    id: 'three-player',
+    title: '3-Player Rules',
+    content: (
+      <>
+        <p>The 3-player game follows the same core rules as 4-player with the differences below. Select <strong>3 Players</strong> on the start screen to play this variant.</p>
+
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Dealing</h4>
+        <p>Each player receives <strong>16 cards</strong> dealt in two packets of 8. The talon is still 6 cards.</p>
+
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Bidding</h4>
+        <p>Bidding starts with the player to the right of the dealer (forehand) and proceeds anticlockwise. The auction ends when <strong>two players have passed</strong>. If all three pass, klop is played. The same seniority rule applies — forehand may match the highest bid rather than raise it.</p>
+
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Contracts</h4>
+        <p>The declarer always plays <strong>alone</strong> against the other two — there is no king call and no partner. Available contracts:</p>
+        <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%', marginTop: 6 }}>
+          <thead>
+            <tr style={{ color: '#aaa' }}>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Contract</th>
+              <th style={{ textAlign: 'center', padding: '3px 8px' }}>Base</th>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Win condition</th>
+            </tr>
+          </thead>
+          <tbody>
+            {([
+              ['Klop', '—', 'Individual (see Klop rules)'],
+              ['Three', '10', '≥ 36 card points, talon of 3'],
+              ['Two', '20', '≥ 36 card points, talon of 2'],
+              ['One', '30', '≥ 36 card points, talon of 1'],
+              ['Beggar', '70 (flat)', '0 tricks taken'],
+              ['Solo Without', '80 (flat)', '≥ 36 card points, no talon'],
+              ['Open Beggar', '90 (flat)', '0 tricks, hand revealed after trick 1'],
+              ['Colour Valat Without', '125 (flat)', 'All tricks, taroks treated as plain suit'],
+              ['Valat Without', '500 (flat)', 'All tricks'],
+            ] as [string, string, string][]).map(([c, b, w]) => (
+              <tr key={c} style={{ borderTop: '1px solid #333' }}>
+                <td style={{ padding: '4px 8px', fontWeight: 'bold' }}>{c}</td>
+                <td style={{ padding: '4px 8px', textAlign: 'center', color: '#f0c040' }}>{b}</td>
+                <td style={{ padding: '4px 8px', color: '#ccc' }}>{w}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Scoring differences</h4>
+        <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
+          <li>Card-point differences are scored <strong>exactly</strong> (not rounded to nearest 5).</li>
+          <li>The <strong>Mond penalty</strong> is <strong>21 points</strong> (vs 20 in 4-player).</li>
+          <li>The <strong>King Ultimo</strong> bonus is not available (no king call).</li>
+          <li>Radli and all other bonuses (trula, kings, pagat ultimo, valat) work the same as 4-player.</li>
+        </ul>
       </>
     ),
   },

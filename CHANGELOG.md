@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.6.0 — 2026-08-05
+
+### New Feature: 3-Player Tarok
+- **3-player game mode** selectable on the start screen (4 Players / 3 Players toggle, 4P default, persisted across sessions).
+- **Dealing**: 16 cards each in two 8-card packets; talon still 6 cards; seat 3 absent.
+- **Bidding**: 3-seat auction; forehand = (dealer+2)%3; only klop is forehand-only; solo-three/two/one removed (redundant); auction ends when 2 players pass; human bidding dialog correctly uses 3-player legal bids.
+- **Play**: trick completes at 3 cards; dealer rotates anticlockwise through seats 0–2; triangle layout (opponents at top-left and top-right, played cards form a triangle).
+- **Scoring**: mond penalty is −21 (not −20) in 3-player; no king call; klop/radli only iterate over active seats.
+- **UI**: seat 3 slot hidden in 3-player; status bar and all score tables show only active seats; History and Leaderboard dialogs have 3P/4P tabs.
+- **Backend**: `player_count` column recorded in D1 and sent in API POST; leaderboard/history filter by player count.
+
+### Scoring fixes (all contracts)
+- **Exact card-point differences**: normal contracts and klop now score the exact point difference, not rounded to the nearest 5 (per pagat.com).
+- **Valat bonus eliminates all other scores**: when valat is achieved as a bonus in a normal contract, the hand score is purely ±250 (unannounced) or ±500 (announced) — game base, trula, kings, etc. are cancelled (per pagat.com).
+- **Kontra label in score breakdown**: the multiplier now shows "kontra ×2", "rekontra ×4" etc. instead of a bare "×2", both on-screen and in the copy log.
+
+### Help / About
+- **3-Player Rules section** added to Help → Rules: dealing, bidding, contracts table, and scoring differences (exact points, Mond −21, no King Ultimo).
+- **Klop help text** updated to reflect exact scoring (removed "rounded to nearest 5" references).
+- **About dialog** now reads "Built by Mark Cochrane with Claude Code".
+
 ## v1.5.10 — 2026-08-04
 
 ### Engine / Scoring

@@ -1,5 +1,5 @@
 import React from 'react'
-import type { PlayState, BiddingState, Seat, SuitCard } from '../engine/types'
+import type { PlayState, BiddingState, Seat, SuitCard, PlayerCount } from '../engine/types'
 import { countPoints } from '../engine/pointcount'
 import { CONTRACT_LABEL } from './labels'
 
@@ -11,10 +11,11 @@ interface Props {
   playerNames: Record<Seat, string>
   sessionScores: Record<Seat, number>
   roundsPlayed: number
+  playerCount?: PlayerCount
   onShowRoundHistory?: () => void
 }
 
-export default function StatusBar({ playState, biddingState, playerNames, sessionScores, roundsPlayed, onShowRoundHistory }: Props) {
+export default function StatusBar({ playState, biddingState, playerNames, sessionScores, roundsPlayed, playerCount = 4, onShowRoundHistory }: Props) {
   const rawContract = biddingState?.highestBid ?? playState?.contract ?? null
   const contractLabel = rawContract ? CONTRACT_LABEL[rawContract] : '—'
   const declarer = playState ? playerNames[playState.declarer] : '—'
@@ -64,7 +65,7 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
     }
   }
 
-  const seats: Seat[] = [0, 1, 2, 3]
+  const seats: Seat[] = playerCount === 3 ? [0, 1, 2] : [0, 1, 2, 3]
 
   return (
     <div className="status-bar">

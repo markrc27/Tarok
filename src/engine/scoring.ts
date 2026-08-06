@@ -1,6 +1,6 @@
 import type {
   Card, Seat, Contract, RadliState, HandScore, BonusName, KontraLevel,
-  AnnouncementState, Announcement, Trick,
+  AnnouncementState, Announcement, Trick, PlayerCount,
 } from './types'
 import { countPoints } from './pointcount'
 import { getKontraMultiplier, evaluateBonus, evaluateBonusForSeats, bonusBaseValue } from './announce'
@@ -34,7 +34,7 @@ export function roundToNearest5(n: number): number {
 }
 
 export function calcDifference(points: number): number {
-  return roundToNearest5(points - 35)
+  return points - 35
 }
 
 export function countDeclarerPoints(
@@ -60,12 +60,12 @@ export function scoreNormalContract(
   // Always use |difference| for magnitude; sign determined by win/loss
   let total = (won ? 1 : -1) * (contractBase + Math.abs(difference)) * gameKontra
 
-  // Valat cancels all other bonuses but is added on top of the game score
+  // Valat eliminates all other scores for the hand — only the valat bonus is counted
   if (bonusResults['valat']) {
     const valatAnn = announcements.announcements.find(a => a.bonus === 'valat')
     const valAnnounced = valatAnn?.announced ?? false
     const valKontra = getKontraMultiplier(announcements, 'valat')
-    return total + bonusBaseValue('valat', valAnnounced) * valKontra
+    return bonusBaseValue('valat', valAnnounced) * valKontra
   }
 
   // Announced bonuses: achieved=+value, not achieved=-value (independent of win/loss)
@@ -109,9 +109,9 @@ export function scoreFlatContract(contract: Contract, won: boolean): number {
   return won ? v : -v
 }
 
-export function scoreKlop(capturedCards: Record<Seat, Card[]>): Record<Seat, number> {
+export function scoreKlop(capturedCards: Record<Seat, Card[]>, activeSeats: Seat[] = [0, 1, 2, 3]): Record<Seat, number> {
   const result: Record<Seat, number> = { 0: 0, 1: 0, 2: 0, 3: 0 }
-  for (const seat of [0, 1, 2, 3] as Seat[]) {
+  for (const seat of activeSeats) {
     const cards = capturedCards[seat]
     if (cards.length === 0) {
       result[seat] = 70
@@ -120,8 +120,7 @@ export function scoreKlop(capturedCards: Record<Seat, Card[]>): Record<Seat, num
       if (pts > 35) {
         result[seat] = -70
       } else {
-        const rounded = roundToNearest5(pts)
-      result[seat] = rounded === 0 ? 0 : -rounded
+        result[seat] = -pts
       }
     }
   }
@@ -131,10 +130,11 @@ export function scoreKlop(capturedCards: Record<Seat, Card[]>): Record<Seat, num
 export function mondPenalty(
   mondCapturedWithSkis: boolean,
   mondPlayedBySeat: Seat | null,
+  playerCount: 3 | 4 = 4,
 ): Record<Seat, number> {
   const result: Record<Seat, number> = { 0: 0, 1: 0, 2: 0, 3: 0 }
   if (mondCapturedWithSkis && mondPlayedBySeat !== null) {
-    result[mondPlayedBySeat] = -20
+    result[mondPlayedBySeat] = playerCount === 3 ? -21 : -20
   }
   return result
 }
@@ -164,6 +164,7 @@ export function updateRadliAfterHand(
   contract: Contract,
   _won: boolean,
   valatBonusAchieved = false,
+  activeSeats: Seat[] = [0, 1, 2, 3],
 ): RadliState {
   const contractStrength: Partial<Record<Contract, number>> = {
     'beggar': 7, 'solo-without': 8, 'open-beggar': 9,
@@ -174,9 +175,9 @@ export function updateRadliAfterHand(
 
   if (!isKlop && !isBeggarOrHigher && !valatBonusAchieved) return state
 
-  // All four seats gain one uncancelled radl
+  // All active seats gain one uncancelled radl
   const newUncancelled = { ...state.uncancelled }
-  for (const seat of [0, 1, 2, 3] as Seat[]) {
+  for (const seat of activeSeats) {
     newUncancelled[seat] = (newUncancelled[seat] ?? 0) + 1
   }
   return { uncancelled: newUncancelled }
@@ -219,11 +220,13 @@ export function computeHandScore(params: {
   radliState: RadliState
   contractBase: number
   won: boolean
+  playerCount?: PlayerCount
 }): HandScore {
   const {
     contract, declarer, partner, capturedCards, talonRemainder,
     mondCapturedWithSkis, mondPlayedBySeat, announcementState,
     completedTricks, calledKing, radliState, contractBase,
+    playerCount = 4,
   } = params
 
   const declarerPoints = countDeclarerPoints(capturedCards, declarer, partner)
@@ -246,7 +249,7 @@ export function computeHandScore(params: {
   // Mond penalty applies in normal contracts and solo-without; not in beggar/valat contracts
   const hasMondPenalty = !['beggar', 'open-beggar', 'color-valat-without', 'valat-without'].includes(contract)
   const mPenalties = hasMondPenalty
-    ? mondPenalty(mondCapturedWithSkis, mondPlayedBySeat)
+    ? mondPenalty(mondCapturedWithSkis, mondPlayedBySeat, playerCount)
     : ({ 0: 0, 1: 0, 2: 0, 3: 0 } as Record<Seat, number>)
 
   const opponentSeats = ([0, 1, 2, 3] as Seat[]).filter(s => s !== declarer && s !== partner)
@@ -315,7 +318,14 @@ export function computeHandScore(params: {
   const bonusBreakdown: HandScore['bonusBreakdown'] = []
 
   if (!isFlat) {
-    bonusBreakdown.push(...announcementState.announcements.map(ann => ({
+    const valatAchieved = bonusResults['valat']
+    const valatAlreadyAnnounced = announcementState.announcements.some(a => a.bonus === 'valat')
+
+    // When valat fires, only show the valat bonus; all other announced bonuses are cancelled
+    const visibleAnnouncements = valatAchieved
+      ? announcementState.announcements.filter(a => a.bonus === 'valat')
+      : announcementState.announcements
+    bonusBreakdown.push(...visibleAnnouncements.map(ann => ({
       bonus: ann.bonus,
       announced: true,
       achieved: bonusResults[ann.bonus],
@@ -324,8 +334,6 @@ export function computeHandScore(params: {
       side: 'declarer' as const,
     })))
 
-    const valatAchieved = bonusResults['valat']
-    const valatAlreadyAnnounced = announcementState.announcements.some(a => a.bonus === 'valat')
     if (valatAchieved && !valatAlreadyAnnounced) {
       bonusBreakdown.push({ bonus: 'valat', announced: false, achieved: true, value: bonusBaseValue('valat', false), kontraLevel: 1, side: 'declarer' })
     }

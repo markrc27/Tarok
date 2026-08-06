@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useGameStore } from '../state/store'
-import type { Seat } from '../engine/types'
+import type { Seat, PlayerCount } from '../engine/types'
 import { legalCards } from '../engine/play'
 import { legalBids } from '../engine/bidding'
+import { legalBids3 } from '../engine/bidding3'
 import { talonGroupSize } from '../engine/talon'
 import { saveGameRecord, saveDraftRecord, consumeDraftRecord, opfsLoad } from '../state/persistence'
 import MenuBar from './MenuBar'
@@ -23,10 +24,14 @@ import RoundHistoryDialog from './dialogs/RoundHistoryDialog'
 import { BONUS_LABEL } from './labels'
 import { useCardLayout } from './useCardLayout'
 
-const AI_SEATS: { seat: Seat; pos: string; dir: 'h' | 'v'; flip?: boolean }[] = [
+const AI_SEATS_4P: { seat: Seat; pos: string; dir: 'h' | 'v'; flip?: boolean }[] = [
   { seat: 2, pos: 'seat-top', dir: 'h' },
   { seat: 1, pos: 'seat-left', dir: 'v', flip: true },
   { seat: 3, pos: 'seat-right', dir: 'v' },
+]
+const AI_SEATS_3P: { seat: Seat; pos: string; dir: 'h' | 'v'; flip?: boolean }[] = [
+  { seat: 1, pos: 'seat-top-left', dir: 'h' },
+  { seat: 2, pos: 'seat-top-right', dir: 'h' },
 ]
 
 export default function App() {
@@ -43,6 +48,8 @@ export default function App() {
     radliState, pendingDiscardCount, roundId, roundHistory, cardAppearance,
     voidDealSeat, options,
   } = store
+  const playerCount = options.playerCount
+  const AI_SEATS = playerCount === 3 ? AI_SEATS_3P : AI_SEATS_4P
 
   // Warm the traditional-mode card images so pictures are ready before a card is
   // dealt (they were previously fetched lazily on first render, causing flashes).
@@ -107,7 +114,7 @@ export default function App() {
 
   // Compute legal bids for human
   const humanLegalBids = biddingState && phase === 'bidding' && biddingState.currentBidder === 0
-    ? legalBids(biddingState, 0)
+    ? (playerCount === 3 ? legalBids3(biddingState, 0) : legalBids(biddingState, 0))
     : []
 
   const isHumanBidding = phase === 'bidding' && biddingState?.currentBidder === 0
@@ -115,7 +122,10 @@ export default function App() {
     if (!playState) return false
     const playedSeats = new Set(playState.currentTrick.cards.map(c => c.seat))
     const ledSeat = playState.currentTrick.ledSeat
-    const order: Seat[] = [ledSeat, ((ledSeat+1)%4) as Seat, ((ledSeat+2)%4) as Seat, ((ledSeat+3)%4) as Seat]
+    const pc = playState.playerCount ?? 4
+    const order: Seat[] = pc === 3
+      ? [ledSeat, ((ledSeat+1)%3) as Seat, ((ledSeat+2)%3) as Seat]
+      : [ledSeat, ((ledSeat+1)%4) as Seat, ((ledSeat+2)%4) as Seat, ((ledSeat+3)%4) as Seat]
     return order.find(s => !playedSeats.has(s)) === 0
   })()
 
@@ -153,7 +163,7 @@ export default function App() {
         {phase === 'setup' && (
           <div className="idle-screen">
             <h1>Tarok</h1>
-            <p>4-Player Tarok — Play vs. Computer</p>
+            <p>Tarok — Play vs. Computer</p>
             <p style={{ fontSize: 13, marginTop: -8 }}>v{__APP_VERSION__}</p>
             <div style={{ margin: '14px 0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <label style={{ color: '#aaa', fontSize: 13 }}>Your name</label>
@@ -172,6 +182,28 @@ export default function App() {
                 }}
               />
             </div>
+            {/* Player count selector */}
+            <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderRadius: 4, overflow: 'hidden', border: '1px solid #555' }}>
+              {([4, 3] as PlayerCount[]).map(n => {
+                const selected = playerCount === n
+                return (
+                  <button
+                    key={n}
+                    onClick={() => store.setPlayerCount(n)}
+                    style={{
+                      background: selected ? '#0078d4' : '#555',
+                      border: 'none',
+                      color: selected ? '#fff' : '#ccc',
+                      padding: '6px 24px', cursor: 'pointer', fontSize: 13,
+                      fontWeight: selected ? 'bold' : 'normal',
+                    }}
+                  >
+                    {n} Players
+                  </button>
+                )
+              })}
+            </div>
+            {/* Difficulty selector */}
             <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderRadius: 4, overflow: 'hidden', border: '1px solid #555' }}>
               {(['easy', 'hard'] as const).map(d => {
                 const selected = options.botDifficulty === d
@@ -313,7 +345,7 @@ export default function App() {
         })()}
       </div>
 
-      {phase !== 'setup' && <StatusBar playState={playState} biddingState={biddingState} playerNames={playerNames} sessionScores={sessionScores} roundsPlayed={roundId} onShowRoundHistory={() => setShowRoundHistory(v => !v)} />}
+      {phase !== 'setup' && <StatusBar playState={playState} biddingState={biddingState} playerNames={playerNames} sessionScores={sessionScores} roundsPlayed={roundId} playerCount={playerCount} onShowRoundHistory={() => setShowRoundHistory(v => !v)} />}
 
       {/* Modal dialogs */}
       {isHumanBidding && humanLegalBids.length > 0 && (
@@ -328,7 +360,9 @@ export default function App() {
 
       {phase === 'forehand-choice' && biddingState && (
         <BiddingDialog
-          legalBids={['klop', 'three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one', 'beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without']}
+          legalBids={playerCount === 3
+            ? ['klop', 'three', 'two', 'one', 'beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without']
+            : ['klop', 'three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one', 'beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without']}
           onBid={(action) => action.kind === 'bid' && store.setForehandContract(action.contract)}
           isForehandChoice
         />
@@ -382,11 +416,11 @@ export default function App() {
       )}
 
       {showHistory && (
-        <HistoryDialog onClose={() => setShowHistory(false)} />
+        <HistoryDialog onClose={() => setShowHistory(false)} currentPlayerCount={playerCount} />
       )}
 
       {showLeaderboard && (
-        <LeaderboardDialog onClose={() => setShowLeaderboard(false)} />
+        <LeaderboardDialog onClose={() => setShowLeaderboard(false)} currentPlayerCount={playerCount} />
       )}
 
       {showHelp && (
@@ -397,6 +431,7 @@ export default function App() {
         <RoundHistoryDialog
           roundHistory={roundHistory}
           playerNames={playerNames}
+          playerCount={playerCount}
           onClose={() => setShowRoundHistory(false)}
         />
       )}
@@ -405,14 +440,14 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setShowAbout(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 320 }}>
             <h2 style={{ marginBottom: 6 }}>Tarok</h2>
-            <p style={{ color: '#aaa', fontSize: 13, marginBottom: 4 }}>Slovenian card game — 4 players</p>
+            <p style={{ color: '#aaa', fontSize: 13, marginBottom: 4 }}>Slovenian card game — 3 or 4 players</p>
             <p style={{ color: '#666', fontSize: 13, marginBottom: 4 }}>
               v{__APP_VERSION__}
               <span style={{ color: '#555', marginLeft: 8 }}>
                 · {(() => { try { return new Date(__BUILD_TIME__).toLocaleString() } catch { return __BUILD_TIME__ } })()}
               </span>
             </p>
-            <p style={{ color: '#888', fontSize: 12, marginBottom: 20 }}>Built with Claude</p>
+            <p style={{ color: '#888', fontSize: 12, marginBottom: 20 }}>Built by Mark Cochrane with Claude Code</p>
             <div className="modal-actions" style={{ justifyContent: 'center' }}>
               <button className="btn" onClick={() => setShowAbout(false)}>Close</button>
             </div>
