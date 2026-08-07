@@ -185,6 +185,17 @@ _Prompt structure per request:_
 
 ---
 
+### UI-015 — Trick area cards overlap too much on desktop
+**Added:** 2026-08-06
+**Fixed:** —
+**Version:** —
+
+**Problem:** When 4 cards are played to the current trick, cards overlap heavily in the centre-table area, making it hard to read all 4 cards at once — particularly the top bot and bottom player positions.
+
+**Fix direction:** Increase the spacing between cards in the trick area so all 4 played cards are at least mostly visible. The trick area is sized via `clamp` in CSS; review the card offsets/positions in `App.tsx` or `TrickArea` so that each of the 4 played-card slots has enough separation that face symbols and values are legible without requiring a hover.
+
+---
+
 ### UI-003 — Mobile responsive layout
 **Added:** 2026-07-23
 **Fixed:** —
