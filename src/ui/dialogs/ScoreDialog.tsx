@@ -7,6 +7,12 @@ import { bonusBaseValue, getKontraMultiplier } from '../../engine/announce'
 import { CONTRACT_LABEL, BONUS_LABEL, SUIT_SYM } from '../labels'
 const RANK_LABEL: Record<string, string> = { K: 'K', Q: 'Q', Kn: 'C', J: 'J' }
 
+function kontraMultLabel(mult: number): string {
+  if (mult <= 1) return ''
+  const name = mult === 2 ? 'kontra' : mult === 4 ? 'rekontra' : mult === 8 ? 'subkontra' : 'mordkontra'
+  return ` ${name} ×${mult}`
+}
+
 function cardText(card: Card): string {
   if (card.kind === 'trump') {
     if (card.ordinal === 22) return 'Škis'
@@ -114,7 +120,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       lines.push('')
       lines.push('--- Score breakdown ---')
       const gameKontraLog = getKontraMultiplier(announcementState, 'game')
-      const gameKontraStrLog = gameKontraLog > 1 ? ` x${gameKontraLog}` : ''
+      const gameKontraStrLog = kontraMultLabel(gameKontraLog)
       if (isFlat) {
         lines.push(`Game (${CONTRACT_LABEL[contract]}): ${CONTRACT_BASE[contract]} base (flat)${gameKontraStrLog} = ${won ? '+' : '-'}${CONTRACT_BASE[contract] * gameKontraLog}`)
       } else {
@@ -123,7 +129,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       }
       for (const b of handScore.bonusBreakdown) {
         const net = b.value * b.kontraLevel
-        const kontraStr = b.announced && b.kontraLevel > 1 ? ` x${b.kontraLevel}` : ''
+        const kontraStr = b.announced ? kontraMultLabel(b.kontraLevel) : ''
         const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
         if (b.side === 'opponent') {
           lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (vs opponents, ${tag}): ACHIEVED = -${net}`)
@@ -165,7 +171,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
     // Klop: per-player point summary with groups-of-3 breakdown
     if (contract === 'klop') {
       lines.push('')
-      lines.push('--- Klop Point Summary (Rounded to Nearest 5 Points) ---')
+      lines.push('--- Klop Point Summary (Rounded to Nearest 5) ---')
       for (const seat of [0, 1, 2, 3] as Seat[]) {
         const cards = effectiveCaptured[seat]
         const sc = delta[seat]
@@ -325,7 +331,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             </div>
             {(() => {
               const gk = getKontraMultiplier(announcementState, 'game')
-              const gkStr = gk > 1 ? ` ×${gk}` : ''
+              const gkStr = kontraMultLabel(gk)
               if (isFlat) {
                 return (
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -345,7 +351,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             {handScore.bonusBreakdown.map((b, i) => {
               const net = b.value * b.kontraLevel
               const label = BONUS_LABEL[b.bonus] ?? b.bonus
-              const kontraStr = b.kontraLevel > 1 ? ` ×${b.kontraLevel}` : ''
+              const kontraStr = kontraMultLabel(b.kontraLevel)
               const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
               if (b.side === 'opponent') {
                 return (
@@ -492,7 +498,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                 <div style={{ marginTop: 8, fontSize: 12, color: '#ccc', maxHeight: 340, overflowY: 'auto' }}>
                   {contract === 'klop' ? (
                     <div style={{ padding: '8px 10px', background: '#1a1a1a', borderRadius: 4 }}>
-                      <div style={{ color: '#aaa', marginBottom: 8, fontWeight: 'bold' }}>Klop Point Summary (Rounded to Nearest 5 Points)</div>
+                      <div style={{ color: '#aaa', marginBottom: 8, fontWeight: 'bold' }}>Klop Point Summary (Rounded to Nearest 5)</div>
                       {(seats as Seat[]).map(seat => {
                         const cards = effectiveCaptured[seat]
                         const sc = delta[seat]

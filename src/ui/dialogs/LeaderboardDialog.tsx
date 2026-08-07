@@ -104,8 +104,14 @@ export default function LeaderboardDialog({ onClose }: Props) {
                   <tr key={row.id}>
                     <td style={{ color: '#aaa', whiteSpace: 'nowrap', fontSize: 12 }}>{formatDate(row.played_at)}</td>
                     <td>
-                      {i === 0 && sortKey === 'final_score' && sortDir === 'desc' && (
+                      {sortKey === 'final_score' && sortDir === 'desc' && i === 0 && (
                         <span style={{ fontSize: 11, marginRight: 4 }}>🥇</span>
+                      )}
+                      {sortKey === 'final_score' && sortDir === 'desc' && i === 1 && (
+                        <span style={{ fontSize: 11, marginRight: 4 }}>🥈</span>
+                      )}
+                      {sortKey === 'final_score' && sortDir === 'desc' && i === 2 && (
+                        <span style={{ fontSize: 11, marginRight: 4 }}>🥉</span>
                       )}
                       {row.player_name}
                     </td>

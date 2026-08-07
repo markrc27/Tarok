@@ -1,7 +1,7 @@
 // Cloudflare Pages Function — /api/games
 // GET ?view=leaderboard → top 10 by final_score DESC
 // GET (default/history)  → all games by played_at DESC, limit 500
-// POST → save a completed game (human player seat 0 only)
+// POST → save a completed game (human player seat 0 only, 1st place only)
 
 interface D1PreparedStatement {
   bind(...values: unknown[]): D1PreparedStatement
@@ -22,6 +22,7 @@ interface GameRow {
   final_score: number
   rounds: number
   difficulty: string
+  place: number
 }
 
 interface PostBody {
@@ -31,6 +32,7 @@ interface PostBody {
   finalScore: number
   rounds: number
   difficulty: 'easy' | 'hard'
+  place: number
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -45,7 +47,8 @@ function validate(body: unknown): body is PostBody {
     typeof b.playerName === 'string' && b.playerName.length >= 1 && b.playerName.length <= 50 &&
     typeof b.finalScore === 'number' && Number.isInteger(b.finalScore) && Math.abs(b.finalScore) <= 100_000 &&
     typeof b.rounds === 'number' && Number.isInteger(b.rounds) && b.rounds >= 1 && b.rounds <= 500 &&
-    (b.difficulty === 'easy' || b.difficulty === 'hard')
+    (b.difficulty === 'easy' || b.difficulty === 'hard') &&
+    typeof b.place === 'number' && Number.isInteger(b.place) && b.place >= 1 && b.place <= 4
   )
 }
 
@@ -54,9 +57,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const view = url.searchParams.get('view')
 
   const sql = view === 'leaderboard'
-    ? `SELECT id, played_at, player_name, final_score, rounds, difficulty
-       FROM games ORDER BY final_score DESC LIMIT 10`
-    : `SELECT id, played_at, player_name, final_score, rounds, difficulty
+    ? `SELECT id, played_at, player_name, final_score, rounds, difficulty, place
+       FROM games WHERE place = 1 ORDER BY final_score DESC LIMIT 10`
+    : `SELECT id, played_at, player_name, final_score, rounds, difficulty, place
        FROM games ORDER BY played_at DESC LIMIT 500`
 
   const { results } = await env.DB.prepare(sql).all<GameRow>()
@@ -73,9 +76,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!validate(body)) return new Response('Invalid data', { status: 422 })
 
   await env.DB.prepare(
-    `INSERT OR IGNORE INTO games (id, played_at, player_name, final_score, rounds, difficulty)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).bind(body.id, body.playedAt, body.playerName, body.finalScore, body.rounds, body.difficulty).run()
+    `INSERT OR IGNORE INTO games (id, played_at, player_name, final_score, rounds, difficulty, place)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(body.id, body.playedAt, body.playerName, body.finalScore, body.rounds, body.difficulty, body.place).run()
 
   return new Response(null, { status: 201 })
 }

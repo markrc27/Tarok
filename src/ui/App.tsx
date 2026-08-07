@@ -363,6 +363,7 @@ export default function App() {
             declarer={declarer}
             partner={partner}
             hands={dealResult.hands}
+            announcementState={announcementState ?? undefined}
             onFinish={(bonuses, kontraGame) => store.finishAnnouncements(bonuses, kontraGame)}
           />
         )
@@ -412,7 +413,7 @@ export default function App() {
                 · {(() => { try { return new Date(__BUILD_TIME__).toLocaleString() } catch { return __BUILD_TIME__ } })()}
               </span>
             </p>
-            <p style={{ color: '#888', fontSize: 12, marginBottom: 20 }}>Built with Claude</p>
+            <p style={{ color: '#888', fontSize: 12, marginBottom: 20 }}>Built by Mark Cochrane with Claude Code</p>
             <div className="modal-actions" style={{ justifyContent: 'center' }}>
               <button className="btn" onClick={() => setShowAbout(false)}>Close</button>
             </div>

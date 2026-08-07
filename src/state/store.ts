@@ -341,7 +341,7 @@ export const useGameStore = create<Store>()(persist((set, get) => {
       if (needsKingCall) {
         set({ phase: 'king-call' })
       } else {
-        advanceToPlay()
+        advanceToAnnouncing()
       }
     },
 
@@ -548,7 +548,8 @@ export const useGameStore = create<Store>()(persist((set, get) => {
         difficulty: get().options.botDifficulty,
       }
       saveGameRecord(gameRecord)
-      postGameToApi(gameRecord, playerNames[0], finalScores[0])
+      const humanPlace = ([0, 1, 2, 3] as Seat[]).filter(s => finalScores[s] > finalScores[0]).length + 1
+      postGameToApi(gameRecord, playerNames[0], finalScores[0], humanPlace)
       consumeDraftRecord()
 
       const [a, b, c] = pickNames()
@@ -578,7 +579,8 @@ export const useGameStore = create<Store>()(persist((set, get) => {
           difficulty: options.botDifficulty,
         }
         saveGameRecord(gameRecord)
-        postGameToApi(gameRecord, playerNames[0], sessionScores[0])
+        const humanPlace = ([0, 1, 2, 3] as Seat[]).filter(s => sessionScores[s] > sessionScores[0]).length + 1
+        postGameToApi(gameRecord, playerNames[0], sessionScores[0], humanPlace)
       }
       consumeDraftRecord()
 

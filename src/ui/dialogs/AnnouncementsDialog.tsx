@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { BonusName, Seat, Card, Contract } from '../../engine/types'
+import type { BonusName, Seat, Card, Contract, AnnouncementState } from '../../engine/types'
 import { canAnnounce } from '../../engine/announce'
 
 const BONUS_LABELS: Record<BonusName, string> = {
@@ -10,6 +10,14 @@ const BONUS_LABELS: Record<BonusName, string> = {
   'pagat-ultimo': 'Pagat Ultimo: Pagat wins last trick (25/50)',
 }
 
+const BONUS_SHORT: Record<BonusName, string> = {
+  trula: 'Trula',
+  kings: 'Kings',
+  valat: 'Valat',
+  'king-ultimo': 'King Ultimo',
+  'pagat-ultimo': 'Pagat Ultimo',
+}
+
 const DECLARER_SIDE_BONUSES: BonusName[] = ['trula', 'kings', 'valat', 'king-ultimo', 'pagat-ultimo']
 
 interface Props {
@@ -17,10 +25,11 @@ interface Props {
   declarer: Seat
   partner: Seat | null
   hands: Record<Seat, Card[]>
+  announcementState?: AnnouncementState
   onFinish: (bonuses: BonusName[], kontraGame: boolean) => void
 }
 
-export default function AnnouncementsDialog({ contract, declarer, partner, hands, onFinish }: Props) {
+export default function AnnouncementsDialog({ contract, declarer, partner, hands, announcementState, onFinish }: Props) {
   const [checked, setChecked] = useState<Set<BonusName>>(new Set())
 
   const HUMAN = 0 as Seat
@@ -62,7 +71,20 @@ export default function AnnouncementsDialog({ contract, declarer, partner, hands
         </>
       ) : canKontra ? (
         <>
-          <p style={{ color: '#aaa', fontSize: 12, margin: '6px 0 6px' }}>You are an opponent.</p>
+          <p style={{ color: '#aaa', fontSize: 12, margin: '6px 0 8px' }}>You are an opponent.</p>
+          {announcementState && announcementState.announcements.length > 0 && (
+            <div style={{ background: '#1a1a1a', borderRadius: 4, padding: '6px 10px', marginBottom: 10, fontSize: 12 }}>
+              <div style={{ color: '#888', marginBottom: 4 }}>Declarer announced:</div>
+              {announcementState.announcements.map((ann, i) => (
+                <div key={i} style={{ color: '#f0c040' }}>
+                  {BONUS_SHORT[ann.bonus]}{ann.announced ? '' : ' (unannounced)'}
+                </div>
+              ))}
+            </div>
+          )}
+          {announcementState && announcementState.announcements.length === 0 && (
+            <p style={{ color: '#555', fontSize: 11, margin: '0 0 8px' }}>No bonuses announced by declarer.</p>
+          )}
           <p style={{ margin: '0 0 4px', fontWeight: 'bold', fontSize: 16 }}>Kontra</p>
           <p style={{ color: '#aaa', fontSize: 12, margin: '0 0 14px' }}>This doubles the point value for the round.</p>
           <div className="modal-actions">

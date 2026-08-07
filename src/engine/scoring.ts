@@ -60,12 +60,12 @@ export function scoreNormalContract(
   // Always use |difference| for magnitude; sign determined by win/loss
   let total = (won ? 1 : -1) * (contractBase + Math.abs(difference)) * gameKontra
 
-  // Valat cancels all other bonuses but is added on top of the game score
+  // Valat replaces all other scoring — only the valat bonus value counts
   if (bonusResults['valat']) {
     const valatAnn = announcements.announcements.find(a => a.bonus === 'valat')
     const valAnnounced = valatAnn?.announced ?? false
     const valKontra = getKontraMultiplier(announcements, 'valat')
-    return total + bonusBaseValue('valat', valAnnounced) * valKontra
+    return bonusBaseValue('valat', valAnnounced) * valKontra
   }
 
   // Announced bonuses: achieved=+value, not achieved=-value (independent of win/loss)
@@ -121,7 +121,7 @@ export function scoreKlop(capturedCards: Record<Seat, Card[]>): Record<Seat, num
         result[seat] = -70
       } else {
         const rounded = roundToNearest5(pts)
-      result[seat] = rounded === 0 ? 0 : -rounded
+        result[seat] = rounded === 0 ? 0 : -rounded
       }
     }
   }

@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.5.11 — 2026-08-06
+
+### Engine / Scoring
+- **Valat bonus replaces all other scoring**: in a normal contract where valat is achieved, only the valat bonus value (250 unannounced / 500 announced) counts — base score, difference, and all other bonuses are zeroed. Previously the valat bonus was incorrectly added on top.
+- **Bug fix — announcements skipped for solo contracts**: `applyDiscard` was calling `advanceToPlay()` instead of `advanceToAnnouncing()` for the non-king-call path, causing solo-three / solo-two / solo-one to skip the announcement phase entirely.
+
+### UI / Scoring
+- **Kontra label in score breakdown**: multiplier now reads "kontra ×2", "rekontra ×4", "subkontra ×8", "mordkontra ×16" instead of a bare "×N".
+- **Opponent announcement visibility (UI-014)**: when a bot on the declaring side announces a bonus (e.g. Pagat Ultimo), opponents now see the list of declared bonuses in their Kontra dialog before deciding to kontra or pass.
+
+### Leaderboard
+- **Medals**: 🥇 1st, 🥈 2nd, 🥉 3rd medals shown on the leaderboard when sorted by score descending.
+- **1st-place only gate**: only 1st-place finishes are posted to the shared leaderboard and shown there; 2nd–4th are saved to local history only.
+- **D1 `place` column**: API and schema updated to store and filter by finishing position.
+
+### About
+- **Credits updated**: About dialog now reads "Built by Mark Cochrane with Claude Code".
+
 ## v1.5.10 — 2026-08-04
 
 ### Engine / Scoring

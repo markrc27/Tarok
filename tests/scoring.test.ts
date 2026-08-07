@@ -34,15 +34,13 @@ describe('calcDifference', () => {
     expect(calcDifference(35)).toBe(0)
   })
 
-  it('36 points = difference of +5 (rounds up to nearest 5)', () => {
-    // 36-35=1, round to nearest 5 = 0... wait:
-    // roundToNearest5(1) = 0, so difference = 0
-    // Actually 36 points: diff = 36-35 = 1, rounded to nearest 5 = 0
+  it('36 points = difference of 0 (rounds to nearest 5)', () => {
+    // 36-35=1, roundToNearest5(1) = 0
     expect(calcDifference(36)).toBe(0)
   })
 
-  it('38 points = difference of +5', () => {
-    // 38-35 = 3, rounded to nearest 5 = 5
+  it('38 points = difference of +5 (rounds to nearest 5)', () => {
+    // 38-35=3, roundToNearest5(3) = 5
     expect(calcDifference(38)).toBe(5)
   })
 
@@ -103,7 +101,7 @@ describe('scoreKlop', () => {
       1: [], 2: [], 3: [],
     }
     const scores = scoreKlop(captured)
-    // pts = 1, rounded to nearest 5 = 0, so score = -0 = 0
+    // pts = 1, rounded to nearest 5 = 0, so score = 0
     expect(scores[0]).toBe(0)
   })
 

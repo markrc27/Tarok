@@ -263,7 +263,7 @@ const SECTIONS: Section[] = [
         <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
           <li>On a <strong>win</strong>: the declarer (and partner, if any) each gain this amount.</li>
           <li>On a <strong>loss</strong>: the declarer (and partner, if any) each lose this amount.</li>
-          <li>The <strong>difference</strong> is how many card points the declaring side scored above or below 35, rounded to the nearest 5. A margin of 1–2 points rounds to 0 (no bonus); you need ≥3 extra points to see a +5 difference. This means winning by a handful of small taroks looks the same as winning exactly — the real bonus comes from capturing honor cards.</li>
+          <li>The <strong>difference</strong> is how many card points the declaring side scored above or below 35, rounded to the nearest 5. A margin of 1–2 points rounds to 0 (no bonus); you need ≥3 extra points to see a +5 difference.</li>
           <li>The partner always receives the same score as the declarer.</li>
         </ul>
         <p style={{ color: '#888', fontSize: 12, marginTop: 4 }}>The card-point counting in this app is the same as the traditional method — the numbers are identical. The pagat.com page linked in the Cards section explains the counting in more depth.</p>
@@ -300,8 +300,8 @@ const SECTIONS: Section[] = [
             ))}
           </tbody>
         </table>
-        <p style={{ color: '#888', fontSize: 12 }}>Rounding works the same way as the card-point difference in normal contracts: nearest multiple of 5. Examples: 13 pts → 15 → −15; 7 pts → 5 → −5; 25 pts (already a multiple) → −25; 26 pts → 25 → −25.</p>
-        <p>In the Round Result dialog, click <em>Show game log</em> after any Klop round to see the <strong>Klop Point Summary</strong> — it breaks down each player's captured pile into groups of three, shows the arithmetic, and traces the rounding step to the final score.</p>
+        <p style={{ color: '#888', fontSize: 12 }}>Rounding: nearest multiple of 5. Examples: 13 pts → 15 → −15; 7 pts → 5 → −5; 25 pts (already a multiple) → −25; 3 pts → 5 → −5.</p>
+        <p>In the Round Result dialog, click <em>Show score log</em> after any Klop round to see the <strong>Klop Point Summary</strong> — it breaks down each player's captured pile into groups of three and traces the rounding step.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Vitamins (Klop talon rule)</h4>
         <p>In Klop, the talon's 6 cards are dealt out one at a time as <strong>vitamins</strong>: after each of the first 6 tricks, the top talon card is revealed and added to the trick winner's captured pile. This means every talon card ends up scored — there is no unchosen talon remainder in Klop. Vitamins are shown in gold in the trick log after a Klop round.</p>
       </>

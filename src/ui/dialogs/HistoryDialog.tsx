@@ -16,6 +16,7 @@ interface HistoryRow {
   difficulty: string
 }
 
+
 type SortKey = 'playedAt' | 'finalScore'
 
 function formatDate(ts: number): string {
