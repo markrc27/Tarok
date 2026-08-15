@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.5.12 — 2026-08-15
+
+### Engine / Scoring
+- **Emperor trick — colour valat exception**: in a colour valat, when a non-trump is led and the other three cards are the trula (Škis/Mond/Pagat), the led suit now wins — taroks are demoted, so the emperor trick no longer fires. (When a trump is led in a colour valat, the emperor trick still applies and the Pagat wins.) Previously the Pagat won unconditionally, which could wrongly fail a valid colour valat.
+- **King ultimo win condition corrected**: king ultimo now scores when the declarer's side *wins the last trick with the called king in it* — it no longer requires the king itself to be the winning card. Previously, winning that trick with a trump (e.g. the partner overtrumping the led king) was wrongly scored as a failure (−10 / −20 announced) instead of a success. Fixed both the bonus evaluation and the unannounced-attempt deduction. (Pagat ultimo is unchanged — the pagat must still actually win the trick, per pagat.com.)
+
+### Bidding / Rules
+- **Compulsory klop forehand choice fixed**: when all other players pass under compulsory klop, the forehand could still be offered the removed three-through-beggar ladder. Now the forehand may only choose Klop or Solo Without and above — enforced for the human dialog, the bot forehand pick, and with a defensive engine guard. Illegal contracts render greyed-out, and an explanatory banner is shown during the forehand choice.
+
+### Bot play
+- **Cutthroat Mond capture (Hard mode)**: bots already take an opponent's Mond with the Škis; on Hard, a bot will now also capture a *teammate's* Mond with the Škis when it has no better use for it (the last two tricks, or when it's the bot's only trump). Because the −20 Mond penalty is individual, this is a free relative gain in the individually-scored game. Easy mode stays "loyal" and never captures its own side's Mond.
+
+### UI
+- **Open beggar exposes a bot declarer's hand**: when a bot declares open beggar, its cards are now revealed face-up after the first trick (as the rules require), not just when the human is declarer.
+- **Declarer / partner highlighted**: the declarer's name block gets a soft white outline and the partner's the called-king gold — the partner only once the partnership becomes public.
+- **Trick cards no longer overlap vertically**: the top and bottom players' played cards are offset by half a card height so their rank/numeral stays readable at any screen size.
+- **Game log trick numbers**: trick labels changed from `T1` to `#1` so they no longer collide with trump/tarok card labels (`T16`, `T20`, …) in the log.
+
+### Internal
+- Added regression tests: king-ultimo win/loss scoring, compulsory-klop forehand choice list, and the Mond/Škis capture rules (opponent's Mond always taken; teammate's taken only on Hard, late-hand).
+
 ## v1.5.11 — 2026-08-06
 
 ### Engine / Scoring

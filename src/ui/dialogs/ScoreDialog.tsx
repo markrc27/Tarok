@@ -165,7 +165,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       const ordered = [...trick.cards].sort((a, b) => order.indexOf(a.seat) - order.indexOf(b.seat))
       const plays = ordered.map(({ seat, card }) => `${playerNames[seat]}:${cardText(card)}`).join('  ')
       const vitaminStr = trick.vitamin ? `  [vitamin: ${cardText(trick.vitamin)}]` : ''
-      lines.push(`T${i+1}: ${plays}${vitaminStr}  -> ${playerNames[trick.winner ?? ledSeat]}`)
+      lines.push(`#${i+1}: ${plays}${vitaminStr}  -> ${playerNames[trick.winner ?? ledSeat]}`)
     })
 
     // Klop: per-player point summary with groups-of-3 breakdown
@@ -313,7 +313,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             <div style={{ color: '#aaa', fontWeight: 'bold', marginBottom: 4 }}>Vitamins (tricks 1–6)</div>
             {completedTricks.slice(0, 6).map((t, idx) => t.vitamin ? (
               <div key={idx} style={{ display: 'flex', gap: 8 }}>
-                <span style={{ color: '#666', minWidth: 24 }}>T{idx + 1}:</span>
+                <span style={{ color: '#666', minWidth: 24 }}>#{idx + 1}:</span>
                 <span style={{ color: '#f0c040', minWidth: 40 }}>{cardText(t.vitamin)}</span>
                 <span style={{ color: '#666' }}>({t.vitamin.points} pt{t.vitamin.points !== 1 ? 's' : ''})</span>
                 <span>→ {playerNames[t.winner ?? t.cards[0].seat]}</span>
@@ -456,7 +456,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                   })
                   return (
                     <div key={i} style={{ marginBottom: 2, lineHeight: '1.5' }}>
-                      <span style={{ color: '#666', marginRight: 4 }}>T{i + 1}</span>
+                      <span style={{ color: '#666', marginRight: 4 }}>#{i + 1}</span>
                       {ordered.map(({ seat, card }, j) => (
                         <span key={j} style={{ marginRight: 6 }}>
                           <span style={{ color: '#888', fontSize: 10 }}>{playerNames[seat]}: </span>

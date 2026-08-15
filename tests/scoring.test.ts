@@ -339,6 +339,56 @@ describe('computeHandScore valat win condition', () => {
   })
 })
 
+describe('computeHandScore king ultimo (pagat.com: king in last trick, side wins)', () => {
+  const calledKing: SuitCard = king('clubs')
+  // Declarer side (seat 0 + partner seat 2) clearly wins the game (≥36 pts).
+  const deck = buildDeck()
+  const capturedCards = { 0: deck.slice(3), 1: deck.slice(0, 3), 2: [], 3: [] } as Record<Seat, Card[]>
+
+  function score(lastTrick: Trick): number {
+    // Filler trick won by an opponent so the hand is not a valat (which would
+    // cancel bonuses). The engine only inspects the last trick for the ultimo.
+    const fillerTrick: Trick = { cards: [{ seat: 1, card: low() }], winner: 1 }
+    return computeHandScore({
+      contract: 'one', declarer: 0, partner: 2,
+      capturedCards, talonRemainder: [], mondCapturedWithSkis: false, mondPlayedBySeat: null,
+      announcementState: initAnnouncements(), completedTricks: [fillerTrick, lastTrick],
+      calledKing, radliState: initRadli(), contractBase: CONTRACT_BASE['one'], won: true,
+    }).declarerScore
+  }
+
+  // Baseline: called king NOT in the last trick → no king-ultimo credit or debit.
+  const baseline = score({ cards: [{ seat: 0, card: trump(5) }, { seat: 2, card: trump(6) }], winner: 2 })
+
+  it('partner overtrumps the called king but declarer side wins → +10 vs baseline', () => {
+    // Before the fix this was wrongly scored as a failure (−10), because the
+    // winning card was a trump, not the king itself.
+    const lastTrick: Trick = {
+      cards: [
+        { seat: 0, card: calledKing },  // declarer plays the called king
+        { seat: 1, card: low() },
+        { seat: 2, card: trump(6) },    // partner overtrumps and wins the trick
+        { seat: 3, card: low() },
+      ],
+      winner: 2,
+    }
+    expect(score(lastTrick) - baseline).toBe(10)
+  })
+
+  it('opponent wins the last trick containing the called king → -10 vs baseline', () => {
+    const lastTrick: Trick = {
+      cards: [
+        { seat: 0, card: calledKing },  // declarer plays the called king
+        { seat: 1, card: trump(6) },    // opponent overtrumps and wins the trick
+        { seat: 2, card: low() },
+        { seat: 3, card: low() },
+      ],
+      winner: 1,
+    }
+    expect(score(lastTrick) - baseline).toBe(-10)
+  })
+})
+
 describe('mond penalty not applied in beggar / open-beggar', () => {
   function makeTrick(winner: Seat, cards: Card[]): Trick {
     return { cards: cards.map((card, i) => ({ seat: ((winner + i) % 4) as Seat, card })), winner }

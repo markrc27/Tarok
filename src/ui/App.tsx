@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useGameStore } from '../state/store'
-import type { Seat } from '../engine/types'
+import type { Seat, Card, SuitCard } from '../engine/types'
 import { legalCards } from '../engine/play'
-import { legalBids } from '../engine/bidding'
+import { legalBids, forehandChoiceContracts } from '../engine/bidding'
 import { talonGroupSize } from '../engine/talon'
 import { saveGameRecord, saveDraftRecord, consumeDraftRecord, opfsLoad } from '../state/persistence'
 import MenuBar from './MenuBar'
@@ -123,6 +123,27 @@ export default function App() {
   const contract = biddingState?.highestBid ?? playState?.contract
   const groupSize = contract ? talonGroupSize(contract) : 3
 
+  // Highlight the declarer's and partner's name blocks during play. Klop has no
+  // declarer. The partner is a secret until the called king appears publicly, so
+  // it is only highlighted once the partnership has been revealed.
+  const declarerSeat: Seat | null =
+    playState && playState.contract !== 'klop' ? playState.declarer : null
+  const partnerSeat: Seat | null = (() => {
+    if (!playState || playState.partner === null) return null
+    const ck = playState.kingCall?.calledKing
+    if (!ck) return null
+    const kingSeen = (e: { card: Card }) =>
+      e.card.kind === 'suit' && (e.card as SuitCard).suit === ck.suit && (e.card as SuitCard).rank === 'K'
+    const revealed =
+      playState.completedTricks.some(t => t.cards.some(kingSeen)) ||
+      playState.currentTrick.cards.some(kingSeen)
+    return revealed ? playState.partner : null
+  })()
+  const seatLabelClass = (seat: Seat): string =>
+    seat === declarerSeat ? 'seat-label declarer'
+      : seat === partnerSeat ? 'seat-label partner'
+        : 'seat-label'
+
   return (
     <>
       <MenuBar
@@ -199,14 +220,21 @@ export default function App() {
         )}
 
         {/* AI seats */}
-        {dealResult && AI_SEATS.map(({ seat, pos, dir, flip }) => (
+        {dealResult && AI_SEATS.map(({ seat, pos, dir, flip }) => {
+          // Open beggar: after trick 1 the declarer's cards are exposed face-up
+          // for the opponents to see — this applies when a bot is the declarer.
+          const openBeggarExposed = !!playState
+            && playState.contract === 'open-beggar'
+            && seat === playState.declarer
+            && playState.completedTricks.length >= 1
+          return (
           <div key={seat} className={`seat ${pos}`}>
-            <div className="seat-label">{playerNames[seat]}</div>
+            <div className={seatLabelClass(seat)}>{playerNames[seat]}</div>
             {phase !== 'idle' && phase !== 'setup' && phase !== 'scoring' && (
               <div style={flip ? { transform: 'rotate(180deg)', marginTop: 20 } : undefined}>
                 <Hand
                   cards={(phase === 'playing' && playState ? playState.hands[seat] : dealResult.hands[seat])}
-                  faceUp={false}
+                  faceUp={openBeggarExposed}
                   vertical={dir === 'v'}
                   cardW={cardLayout.cardW}
                   cardH={cardLayout.cardH}
@@ -215,12 +243,13 @@ export default function App() {
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
 
         {/* Human seat */}
         {dealResult && phase !== 'idle' && phase !== 'setup' && phase !== 'scoring' && (
           <div className="seat seat-bottom">
-            <div className="seat-label" style={{ position: 'absolute', right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: 8, whiteSpace: 'nowrap' }}>{playerNames[0]}</div>
+            <div className={seatLabelClass(0)} style={{ position: 'absolute', right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: 8, whiteSpace: 'nowrap' }}>{playerNames[0]}</div>
             <Hand
               cards={humanHand}
               faceUp
@@ -252,7 +281,7 @@ export default function App() {
         )}
 
         {/* Score-hits-zero compulsory klop notice */}
-        {phase === 'bidding' && biddingState?.isCompulsoryKlop && voidDealSeat === null && (
+        {(phase === 'bidding' || phase === 'forehand-choice') && biddingState?.isCompulsoryKlop && voidDealSeat === null && (
           <div style={{
             position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
             background: '#1e1a10', border: '1px solid #6b5a20',
@@ -328,9 +357,10 @@ export default function App() {
 
       {phase === 'forehand-choice' && biddingState && (
         <BiddingDialog
-          legalBids={['klop', 'three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one', 'beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without']}
+          legalBids={forehandChoiceContracts(biddingState.isCompulsoryKlop)}
           onBid={(action) => action.kind === 'bid' && store.setForehandContract(action.contract)}
           isForehandChoice
+          isCompulsoryKlop={biddingState.isCompulsoryKlop}
         />
       )}
 

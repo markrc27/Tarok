@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { GameState, GamePhase } from './gameState'
 import type { Seat, BidAction, Contract, Suit, Card, PlayState, BonusName } from '../engine/types'
 import { deal } from '../engine/deal'
-import { initBidding, applyBid, resolveBidding, legalBids } from '../engine/bidding'
+import { initBidding, applyBid, resolveBidding, legalBids, forehandChoiceContracts } from '../engine/bidding'
 import {
   initTalonExchange, selectTalonGroup as selectGroup, resolveKingCall,
   discardHand, talonGroupSize,
@@ -218,14 +218,12 @@ export const useGameStore = create<Store>()(persist((set, get) => {
       return
     }
     if (nonForehandAllPassed && noOneBid && forehand !== HUMAN) {
-      // Bot forehand must pick — use ceiling logic across all contracts (klop/three included)
+      // Bot forehand must pick — use ceiling logic across the contracts the
+      // forehand may name (klop/three included; restricted under compulsory klop).
       const botHand = dealResult.hands[forehand]
       const eval_ = evaluateHand(botHand)
-      const allContracts: Contract[] = [
-        'klop', 'three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one',
-        'beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without',
-      ]
-      const rec = recommendBid(eval_, allContracts, biddingState.isCompulsoryKlop, botHand, get().options.botDifficulty)
+      const choiceContracts = forehandChoiceContracts(biddingState.isCompulsoryKlop)
+      const rec = recommendBid(eval_, choiceContracts, biddingState.isCompulsoryKlop, botHand, get().options.botDifficulty)
       const pickedContract: Contract = rec === 'pass' ? 'klop' : rec
       set({ biddingState: applyBid(biddingState, { kind: 'bid', contract: pickedContract }) })
       afterBidResolved()
@@ -301,11 +299,16 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     setForehandContract: (contract) => {
       const { dealResult, biddingState } = get()
       if (!dealResult || !biddingState) return
-      const newBid = applyBid(biddingState, { kind: 'bid', contract })
+      // Guard: the forehand may only choose a legal contract. Under compulsory
+      // klop the three-through-beggar ladder is unavailable, so coerce anything
+      // illegal down to klop rather than trusting the caller.
+      const allowed = forehandChoiceContracts(biddingState.isCompulsoryKlop)
+      const chosen = allowed.includes(contract) ? contract : 'klop'
+      const newBid = applyBid(biddingState, { kind: 'bid', contract: chosen })
       set({ biddingState: newBid, forehandChoiceContract: null })
-      const needsTalon = ['three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one'].includes(contract)
+      const needsTalon = ['three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one'].includes(chosen)
       if (needsTalon) {
-        const exchange = initTalonExchange(dealResult.talon, contract)
+        const exchange = initTalonExchange(dealResult.talon, chosen)
         set({ talonExchange: exchange, phase: 'talon' })
       } else {
         advanceToAnnouncing()

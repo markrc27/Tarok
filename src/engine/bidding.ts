@@ -36,6 +36,19 @@ export function isForehandOnlyContract(c: Contract): boolean {
   return c === 'klop' || c === 'three'
 }
 
+// Contracts the forehand may choose when every other player has passed.
+// Normally the forehand is "free to name any contract" — the only situation in
+// which klop and three can be played. Under compulsory klop the three-through-
+// beggar ladder is removed: the forehand may only choose klop, or solo-without
+// and above. (pagat.com: "forehand has the choice of naming solo without or
+// higher, or playing a klop".)
+export function forehandChoiceContracts(isCompulsoryKlop: boolean): Contract[] {
+  if (isCompulsoryKlop) {
+    return ['klop', ...availableContracts(true)]
+  }
+  return availableContracts(false)
+}
+
 export function legalBids(state: BiddingState, seat: Seat): Contract[] {
   if (state.passed.has(seat)) return []
   if (seat !== state.currentBidder) return []

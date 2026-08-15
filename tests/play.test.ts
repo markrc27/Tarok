@@ -298,6 +298,38 @@ describe('resolveTrick colour valat', () => {
     }
     expect(resolveTrick(trick, true)).toBe(0) // King of hearts wins
   })
+
+  it('emperor trick is SUPPRESSED when a non-trump is led — led suit wins', () => {
+    // pagat.com exception: colour valat, non-trump led, other three play the
+    // trula (Škis/Mond/Pagat). Taroks are demoted, so the led suit wins.
+    const trick: TrickState = {
+      trickNumber: 1, ledSeat: 0,
+      ledSuit: 'hearts',
+      cards: [
+        { seat: 0, card: suit('hearts', 'K', 5) }, // led suit
+        { seat: 1, card: skis },
+        { seat: 2, card: mond },
+        { seat: 3, card: pagat },
+      ],
+    }
+    expect(resolveTrick(trick, true)).toBe(0) // led suit wins, NOT the Pagat
+  })
+
+  it('emperor trick STILL fires in colour valat when a trump is led', () => {
+    // The exception only covers a non-trump lead; with a tarok led the emperor
+    // trick holds and the Pagat wins.
+    const trick: TrickState = {
+      trickNumber: 1, ledSeat: 0,
+      ledSuit: 'trump-suit' as unknown as 'trump',
+      cards: [
+        { seat: 0, card: skis },
+        { seat: 1, card: mond },
+        { seat: 2, card: pagat },
+        { seat: 3, card: trump(10) },
+      ],
+    }
+    expect(resolveTrick(trick, true)).toBe(2) // Pagat wins via emperor trick
+  })
 })
 
 describe('isEmperorTrick', () => {

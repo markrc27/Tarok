@@ -633,3 +633,71 @@ describe('secret partner does not lead called king (BOT-004)', () => {
     expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })
   })
 })
+
+// ── Capturing the Mond with the Škis ───────────────────────────────────────
+
+describe('Mond capture with Škis', () => {
+  it('opponent bot plays Škis to capture an enemy declarer\'s Mond', () => {
+    // seat 0 (opponent) led hearts; declarer(1) trumped in with the Mond and is
+    // winning. Bot seat 3 is void in hearts (must trump) and holds the Škis.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 2,
+      trickCards: [
+        { seat: 0, card: suit('hearts', 7) },
+        { seat: 1, card: mond },
+      ],
+      hand3: [skis, trump(3)],
+    })
+    const card = chooseCard(state, 3, cfg(null))
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })
+  })
+
+  it('does NOT Škis a Mond played by its own side (teammate)', () => {
+    // declarer 1 + partner 2 vs opponents 0 and 3, so bot seat 3's teammate is
+    // seat 0. Seat 0 is winning with the Mond → don't capture our own side's Mond.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 2,
+      trickCards: [
+        { seat: 2, card: suit('hearts', 7) },  // declarer's partner leads hearts
+        { seat: 0, card: mond },               // bot's teammate trumps in, winning
+      ],
+      hand3: [skis, trump(3)],
+    })
+    // knownPartner = the declarer's partner (seat 2), as the bot knows once revealed
+    const card = chooseCard(state, 3, cfg(2 as Seat))
+    expect(card).not.toMatchObject({ kind: 'trump', ordinal: 22 })
+  })
+
+  it('HARD: cutthroat — captures a teammate\'s Mond with the Škis late in the hand', () => {
+    // Same teammate-Mond setup, but hard mode and late in the hand (10 tricks
+    // done): the individual −20 penalty makes taking it a relative gain, and the
+    // Škis has no better use left.
+    const priorTricks: Trick[] = Array.from({ length: 10 }, () => ({ cards: [], winner: 0 as Seat }))
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 2,
+      trickCards: [
+        { seat: 2, card: suit('hearts', 7) },
+        { seat: 0, card: mond },
+      ],
+      hand3: [skis, trump(3)],
+      completedTricks: priorTricks,
+    })
+    const card = chooseCard(state, 3, { difficultyBias: 0.5, knownPartner: 2 as Seat, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })
+  })
+
+  it('EASY: stays loyal — does not capture a teammate\'s Mond even late in the hand', () => {
+    const priorTricks: Trick[] = Array.from({ length: 10 }, () => ({ cards: [], winner: 0 as Seat }))
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 2,
+      trickCards: [
+        { seat: 2, card: suit('hearts', 7) },
+        { seat: 0, card: mond },
+      ],
+      hand3: [skis, trump(3)],
+      completedTricks: priorTricks,
+    })
+    const card = chooseCard(state, 3, { difficultyBias: 0.5, knownPartner: 2 as Seat, difficulty: 'easy' })
+    expect(card).not.toMatchObject({ kind: 'trump', ordinal: 22 })
+  })
+})

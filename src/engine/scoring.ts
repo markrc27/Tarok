@@ -290,7 +290,12 @@ export function computeHandScore(params: {
     const kingAnnounced = announcementState.announcements.some(a => a.bonus === 'king-ultimo')
     if (!kingAnnounced && !bonusResults['king-ultimo'] && calledKing) {
       const kingByDeclSide = lastTrick.cards.find(e => declarerSeats.includes(e.seat) && cardsEqual(e.card, calledKing))
-      if (kingByDeclSide && winnerCard && !cardsEqual(winnerCard, calledKing)) {
+      // King ultimo fails only when the declarer's side LOSES the last trick
+      // containing the called king. Winning that trick with a different card
+      // (e.g. the partner overtrumps) is a success, not a failure — so it is
+      // handled by bonusResults above, not here. (pagat.com "Notes on ... ultimo")
+      const declSideWonLast = lastTrick.winner !== null && declarerSeats.includes(lastTrick.winner)
+      if (kingByDeclSide && !declSideWonLast) {
         sideScore -= bonusBaseValue('king-ultimo', false)
         kingUltimoFailed = true
       }

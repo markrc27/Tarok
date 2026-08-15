@@ -294,6 +294,22 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
 
   if (winner !== null && onMySide(winner, seat, declarer, knownPartner)) {
     if (difficulty === 'hard') {
+      // Cutthroat Mond capture: a teammate is winning THIS trick with the Mond
+      // and we hold the Škis. The −20 Mond penalty is individual, so taking it
+      // costs our own score nothing while docking the Mond-player 20 — a net
+      // relative gain in an individually-scored game. Only spend the Škis when
+      // it has no better use (last two tricks, or it's our only trump), and only
+      // where the Mond penalty actually applies (not the valat contracts).
+      if (!isValatContract) {
+        const winnerCard = currentTrick.cards.find(e => e.seat === winner)?.card
+        const winnerHasMond = winnerCard?.kind === 'trump' && (winnerCard as TrumpCard).ordinal === 21
+        const skisCandidate = candidates.find(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 22)
+        if (winnerHasMond && skisCandidate) {
+          const lateHand = state.completedTricks.length >= 10
+          const skisIsOnlyTrump = state.hands[seat].filter(c => c.kind === 'trump').length === 1
+          if (lateHand || skisIsOnlyTrump) return skisCandidate
+        }
+      }
       // If forced to trump over partner's trick, use cheapest safe trump rather than lowest
       if (forcedToTrump && !isLastToPlay) {
         const myTrumps = candidates.filter(c => c.kind === 'trump') as TrumpCard[]

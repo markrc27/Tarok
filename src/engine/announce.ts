@@ -123,8 +123,11 @@ export function evaluateBonusForSeats(
     const lastTrick = completedTricks[completedTricks.length - 1]
     if (!lastTrick || lastTrick.winner === null) return false
     if (!seats.includes(lastTrick.winner)) return false
-    const winnerEntry = lastTrick.cards.find(e => e.seat === lastTrick.winner)
-    return winnerEntry !== undefined && cardsEqual(winnerEntry.card, calledKing)
+    // King ultimo: it is enough for this side to win the last trick with the
+    // called king *in it* — the winning card need not be the king itself
+    // (e.g. the partner overtrumps the led king). Contrast pagat ultimo, where
+    // the pagat must actually win the trick. (pagat.com "Notes on ... ultimo")
+    return lastTrick.cards.some(e => seats.includes(e.seat) && cardsEqual(e.card, calledKing))
   }
 
   if (bonus === 'valat') {

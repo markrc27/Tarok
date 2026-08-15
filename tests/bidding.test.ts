@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   initBidding, applyBid, resolveBidding, legalBids,
-  biddingOrder, contractStrength, availableContracts,
+  biddingOrder, contractStrength, availableContracts, forehandChoiceContracts,
 } from '../src/engine/bidding'
 import { evaluateHand, recommendBid } from '../src/ai/bidding-heuristic'
 import type { Seat, BidAction, Card, SuitCard, TrumpCard } from '../src/engine/types'
@@ -109,6 +109,29 @@ describe('legalBids', () => {
     expect(bids).not.toContain('beggar')
     expect(bids).toContain('solo-without')
     expect(bids).toContain('valat-without')
+  })
+
+  it('forehand choice (normal): may name any contract including klop and three', () => {
+    const bids = forehandChoiceContracts(false)
+    expect(bids).toContain('klop')
+    expect(bids).toContain('three')
+    expect(bids).toContain('two')
+    expect(bids).toContain('solo-without')
+    expect(bids).toContain('valat-without')
+    expect(bids).toHaveLength(12)
+  })
+
+  it('forehand choice (compulsory klop): only klop or solo-without and above', () => {
+    const bids = forehandChoiceContracts(true)
+    expect(bids).toContain('klop')          // klop is always an option for forehand
+    expect(bids).toContain('solo-without')
+    expect(bids).toContain('valat-without')
+    // The three-through-beggar ladder is removed under compulsory klop
+    expect(bids).not.toContain('three')
+    expect(bids).not.toContain('two')
+    expect(bids).not.toContain('one')
+    expect(bids).not.toContain('solo-three')
+    expect(bids).not.toContain('beggar')
   })
 
   it('passed seat gets empty legal bids', () => {

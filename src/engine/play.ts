@@ -70,8 +70,13 @@ function highestCardInTrick(trick: TrickState, isColourValat: boolean): Card | n
 }
 
 export function resolveTrick(trick: TrickState, isColourValat: boolean): Seat {
-  // Emperor trick check FIRST
-  if (isEmperorTrick(trick)) {
+  // Emperor trick check FIRST: Škis + Mond + Pagat in one trick → Pagat wins.
+  // Exception (pagat.com): in a colour valat with a NON-trump led, taroks are
+  // demoted to a plain suit and the led suit wins, so the emperor trick does not
+  // apply. When a trump is led in a colour valat, the emperor trick still holds.
+  const ledCard = trick.cards[0]?.card
+  const emperorSuppressed = isColourValat && ledCard != null && !isTrump(ledCard)
+  if (isEmperorTrick(trick) && !emperorSuppressed) {
     const pagatEntry = trick.cards.find(({ card }) => isPagat(card))!
     return pagatEntry.seat
   }

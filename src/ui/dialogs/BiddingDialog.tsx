@@ -28,7 +28,9 @@ export default function BiddingDialog({ legalBids, onBid, isForehandChoice, curr
     setInfoFor(prev => prev === c ? null : c)
   }
 
-  const displayContracts = isForehandChoice ? legalBids : ALL_CONTRACTS
+  // Always show the full ladder; illegal contracts (e.g. three-through-beggar
+  // under compulsory klop) render greyed-out and disabled rather than hidden.
+  const displayContracts = ALL_CONTRACTS
 
   return (
     <div className="bid-panel">
@@ -36,7 +38,9 @@ export default function BiddingDialog({ legalBids, onBid, isForehandChoice, curr
 
       {isForehandChoice && (
         <p style={{ marginBottom: 10, color: '#aaa', fontSize: 12 }}>
-          All others passed — choose your contract:
+          {isCompulsoryKlop
+            ? 'Compulsory klop — all others passed. Play Klop, or declare Solo Without or higher.'
+            : 'All others passed — choose your contract:'}
         </p>
       )}
       {!isForehandChoice && currentHighBid && (

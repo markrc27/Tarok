@@ -105,6 +105,14 @@ body {
   padding: 2px 8px;
   border-radius: 3px;
 }
+/* Declarer: a whiter version of the called-king (#f0c040) glow. Kept subtle. */
+.seat-label.declarer {
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.5), 0 0 8px rgba(255,255,255,0.4);
+}
+/* Partner: the exact called-king gold, shown only once the partnership is public. */
+.seat-label.partner {
+  box-shadow: 0 0 0 2px rgba(240,192,64,0.6), 0 0 8px rgba(240,192,64,0.5);
+}
 .seat-avatar {
   width: 36px;
   height: 36px;
@@ -159,10 +167,13 @@ body {
 .trick-slot {
   position: absolute;
 }
-.trick-slot-top    { top: 20px;    left: 50%; transform: translateX(-50%); }
-.trick-slot-left   { top: 50%;    left: 0;  transform: translateY(-50%); }
-.trick-slot-right  { top: 50%;    right: 0; transform: translateY(-50%); }
-.trick-slot-bottom { bottom: 20px; left: 50%; transform: translateX(-50%); }
+/* Top and bottom cards are offset from the trick-area centre by half a card
+   height so they always separate vertically — independent of how much the
+   container collapses — keeping each card's rank corner readable. */
+.trick-slot-top    { top: 50%; left: 50%; transform: translate(-50%, calc(-50% - var(--card-h, 135px) * 0.5)); }
+.trick-slot-left   { top: 50%; left: 0;  transform: translateY(-50%); }
+.trick-slot-right  { top: 50%; right: 0; transform: translateY(-50%); }
+.trick-slot-bottom { top: 50%; left: 50%; transform: translate(-50%, calc(-50% + var(--card-h, 135px) * 0.5)); }
 /* center slot (vitamin card): offset scales with trick area so it doesn't clip */
 .trick-slot-center { top: 50%; left: calc(50% + min(80px, 16%)); transform: translate(-50%, -50%); }
 
@@ -470,15 +481,12 @@ body {
   .seat-right { right: 4px; }
   .seat-top   { top: 52px; }
 
-  /* Trick area: the desktop reserve (395px) collapses this to ~130px on a
-     phone, so the top and bottom cards land on top of each other. Reserve
-     less and floor the height at two card-heights + a gap so opposite cards
-     always separate. */
+  /* Trick area: reserve less vertical space on a phone. Top/bottom separation
+     is handled by the card-height offset on .trick-slot-top/-bottom, so no
+     per-slot overrides are needed here. */
   .trick-area {
     height: clamp(calc(var(--card-h, 80px) * 2 + 24px), calc(100% - 300px), 300px);
   }
-  .trick-slot-top    { top: 8px; }
-  .trick-slot-bottom { bottom: 8px; }
 
   /* Status bar sits at the very bottom, where iOS Safari's URL bar / home
      indicator overlaps it — pad past the safe area so the "Called King" line

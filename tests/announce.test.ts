@@ -228,11 +228,13 @@ describe('pagat-ultimo: winning card must be the Pagat (ENG-003)', () => {
   })
 })
 
-describe('king-ultimo: winning card must be the called king (ENG-003)', () => {
+describe('king-ultimo: declarer side wins last trick with the called king in it', () => {
+  // pagat.com: "For king ultimo it is good enough for either partner to win the
+  // last trick with the called king in it." The winning card need NOT be the king.
   const emptyCaptured: Record<Seat, Card[]> = { 0: [], 1: [], 2: [], 3: [] }
   const calledKing: SuitCard = king('clubs')
 
-  it('called king wins last trick on declarer side -> achieved', () => {
+  it('called king wins last trick directly (declarer plays and wins it) -> achieved', () => {
     const lastTrick: Trick = {
       cards: [
         { seat: 0, card: king('clubs') },
@@ -245,17 +247,30 @@ describe('king-ultimo: winning card must be the called king (ENG-003)', () => {
     expect(evaluateBonus('king-ultimo', emptyCaptured, [lastTrick], 0, null, calledKing)).toBe(true)
   })
 
-  it('called king present but beaten by own side -> not achieved', () => {
+  it('partner overtrumps the called king and wins the last trick -> achieved', () => {
     const lastTrick: Trick = {
       cards: [
-        { seat: 0, card: king('clubs') },  // called king played by declarer
-        { seat: 1, card: trump(19) },      // partner trumps it (wins trick)
-        { seat: 2, card: low() },
-        { seat: 3, card: low() },
+        { seat: 0, card: king('clubs') },  // declarer leads the called king
+        { seat: 1, card: low() },          // opponent
+        { seat: 2, card: trump(19) },      // partner overtrumps and wins
+        { seat: 3, card: low() },          // opponent
       ],
-      winner: 1,  // partner wins, but with a trump not the king
+      winner: 2,  // partner wins the trick — king is in it, winning card is a trump
     }
-    // Seat 1 is NOT on declarer side (partner=null) so should also be false for that reason
-    expect(evaluateBonus('king-ultimo', emptyCaptured, [lastTrick], 0, null, calledKing)).toBe(false)
+    // declarer=0, partner=2: enough for the partner to win the trick with the king in it
+    expect(evaluateBonus('king-ultimo', emptyCaptured, [lastTrick], 0, 2, calledKing)).toBe(true)
+  })
+
+  it('opponent wins the last trick containing the called king -> not achieved', () => {
+    const lastTrick: Trick = {
+      cards: [
+        { seat: 0, card: king('clubs') },  // declarer leads the called king
+        { seat: 1, card: trump(19) },      // opponent overtrumps and wins
+        { seat: 2, card: low() },          // partner
+        { seat: 3, card: low() },          // opponent
+      ],
+      winner: 1,  // opponent wins — declarer side lost the last trick
+    }
+    expect(evaluateBonus('king-ultimo', emptyCaptured, [lastTrick], 0, 2, calledKing)).toBe(false)
   })
 })
