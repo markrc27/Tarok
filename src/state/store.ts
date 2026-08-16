@@ -123,10 +123,17 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     const contract = biddingState.highestBid ?? 'klop'
     const declarer = biddingState.highestBidder ?? biddingState.forehand
     const partner = kingCall?.partner ?? null
-    const playState = initPlay(
-      dealResult, contract, declarer, partner, talonExchange,
-      contract === 'color-valat-without', kingCall, dealResult.hands,
-    )
+    const anns = get().announcementState?.announcements ?? []
+    const playState = {
+      ...initPlay(
+        dealResult, contract, declarer, partner, talonExchange,
+        contract === 'color-valat-without', kingCall, dealResult.hands,
+      ),
+      announcedUltimos: {
+        pagat: anns.some(a => a.bonus === 'pagat-ultimo'),
+        king: anns.some(a => a.bonus === 'king-ultimo'),
+      },
+    }
     set({ phase: 'playing', playState })
     botDelay(runBotPlay)
   }

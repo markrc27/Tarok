@@ -389,6 +389,41 @@ describe('computeHandScore king ultimo (pagat.com: king in last trick, side wins
   })
 })
 
+describe('computeHandScore opponent pagat ultimo (played to last trick, beaten)', () => {
+  // declarer side = seat 0 + partner 2; opponents = 1 and 3. The game result is
+  // held constant across baseline/case so the delta isolates the pagat handling.
+  const deck = buildDeck()
+  const capturedCards = { 0: deck.slice(3), 1: deck.slice(0, 3), 2: [], 3: [] } as Record<Seat, Card[]>
+
+  function score(lastTrick: Trick): number {
+    const fillerTrick: Trick = { cards: [{ seat: 1, card: low() }], winner: 1 } // not a valat
+    return computeHandScore({
+      contract: 'two', declarer: 0, partner: 2,
+      capturedCards, talonRemainder: [], mondCapturedWithSkis: false, mondPlayedBySeat: null,
+      announcementState: initAnnouncements(), completedTricks: [fillerTrick, lastTrick],
+      calledKing: null, radliState: initRadli(), contractBase: CONTRACT_BASE['two'], won: false,
+    }).declarerScore
+  }
+
+  // Baseline: no Pagat in the last trick → no pagat-ultimo scoring either way.
+  const baseline = score({ cards: [{ seat: 1, card: trump(5) }, { seat: 2, card: trump(6) }], winner: 2 })
+
+  it('opponent plays the Pagat to the last trick and is beaten → +25 credited to declarer', () => {
+    // pagat.com: an unannounced pagat ultimo attempt that is beaten costs the
+    // attacker the bonus; a bonus lost by the opposition is added to declarer.
+    const lastTrick: Trick = {
+      cards: [
+        { seat: 1, card: trump(1) },   // opponent plays the Pagat (attempting ultimo)
+        { seat: 2, card: trump(6) },   // declarer's partner beats it
+        { seat: 0, card: low() },
+        { seat: 3, card: low() },
+      ],
+      winner: 2,                       // declarer side wins — Pagat beaten
+    }
+    expect(score(lastTrick) - baseline).toBe(25)
+  })
+})
+
 describe('mond penalty not applied in beggar / open-beggar', () => {
   function makeTrick(winner: Seat, cards: Card[]): Trick {
     return { cards: cards.map((card, i) => ({ seat: ((winner + i) % 4) as Seat, card })), winner }

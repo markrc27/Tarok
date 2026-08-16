@@ -249,7 +249,7 @@ export default function App() {
         {/* Human seat */}
         {dealResult && phase !== 'idle' && phase !== 'setup' && phase !== 'scoring' && (
           <div className="seat seat-bottom">
-            <div className={seatLabelClass(0)} style={{ position: 'absolute', right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: 8, whiteSpace: 'nowrap' }}>{playerNames[0]}</div>
+            <div className={`${seatLabelClass(0)} human-seat-label`}>{playerNames[0]}</div>
             <Hand
               cards={humanHand}
               faceUp

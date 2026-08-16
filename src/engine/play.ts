@@ -131,40 +131,58 @@ export function legalCards(state: PlayState, seat: Seat): Card[] {
   const hand = state.hands[seat]
   const trick = state.currentTrick
 
-  if (trick.cards.length === 0) {
-    // Leading: any card is legal in both positive and negative contracts
-    return [...hand]
-  }
-
-  const ledSuit = trick.ledSuit!
-  const isColourValat = state.isColourValat
-
   // Step 1: determine candidates by suit-following / trump rules
   let candidates: Card[]
 
-  const following = hand.filter(c => effectiveSuit(c, isColourValat) === ledSuit)
-  if (following.length > 0) {
-    candidates = following
-  } else if (!isColourValat && ledSuit !== 'trump') {
-    const trumps = hand.filter(c => effectiveSuit(c, isColourValat) === 'trump')
-    candidates = trumps.length > 0 ? trumps : [...hand]
-  } else {
+  if (trick.cards.length === 0) {
+    // Leading: any card is legal (the announced-ultimo reserve below still binds
+    // the pagat / called-king holder in positive contracts).
     candidates = [...hand]
+  } else {
+    const ledSuit = trick.ledSuit!
+    const isColourValat = state.isColourValat
+
+    const following = hand.filter(c => effectiveSuit(c, isColourValat) === ledSuit)
+    if (following.length > 0) {
+      candidates = following
+    } else if (!isColourValat && ledSuit !== 'trump') {
+      const trumps = hand.filter(c => effectiveSuit(c, isColourValat) === 'trump')
+      candidates = trumps.length > 0 ? trumps : [...hand]
+    } else {
+      candidates = [...hand]
+    }
+
+    // Step 2: negative contract extra rules apply on top of the candidate set
+    if (isNegativeContract(state.contract)) {
+      const highest = highestCardInTrick(trick, isColourValat)
+      if (highest) {
+        const canBeat = candidates.filter(c => beats(c, highest, isColourValat))
+        if (canBeat.length > 0) candidates = canBeat
+      }
+
+      // Pagat restriction: remove Pagat if other legal cards exist
+      if (candidates.length > 1) {
+        const withoutPagat = candidates.filter(c => !isPagat(c))
+        if (withoutPagat.length > 0) candidates = withoutPagat
+      }
+    }
   }
 
-  // Step 2: negative contract extra rules apply on top of the candidate set
-  if (isNegativeContract(state.contract)) {
-    const highest = highestCardInTrick(trick, isColourValat)
-    if (highest) {
-      const canBeat = candidates.filter(c => beats(c, highest, isColourValat))
-      if (canBeat.length > 0) candidates = canBeat
-    }
-
-    // Pagat restriction: remove Pagat if other legal cards exist
-    if (candidates.length > 1) {
-      const withoutPagat = candidates.filter(c => !isPagat(c))
-      if (withoutPagat.length > 0) candidates = withoutPagat
-    }
+  // Announced ultimo obligation (positive contracts only): the holder of the
+  // pagat / called king must keep it as long as legally possible — it may only be
+  // played once no other legal card remains, so it is naturally saved for the last
+  // trick. (pagat.com: "the side making the announcement is obliged to keep the
+  // card for as long as they can, subject to the rules of play".) The candidate
+  // set is already restricted to this seat's hand, so this only binds the actual
+  // holder.
+  const announced = state.announcedUltimos
+  if (announced && !isNegativeContract(state.contract) && candidates.length > 1) {
+    const calledKing = state.kingCall?.calledKing ?? null
+    const isReserved = (c: Card): boolean =>
+      (announced.pagat && isPagat(c)) ||
+      (announced.king && calledKing !== null && cardsEqual(c, calledKing))
+    const withoutReserved = candidates.filter(c => !isReserved(c))
+    if (withoutReserved.length > 0) candidates = withoutReserved
   }
 
   return candidates

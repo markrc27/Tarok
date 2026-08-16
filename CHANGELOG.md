@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.5.13 — 2026-08-16
+
+### Engine / Scoring
+- **Pagat ultimo — opponent's failed attempt now scored**: if an opponent plays the Pagat to the last trick unannounced and is beaten, the opposition loses the bonus, so **+25 is now credited to the declarer's side** (previously nothing was scored). This completes the four unannounced cases: declarer wins (+25), declarer beaten (−25), opponent wins (−25), opponent beaten (**+25, new**). Aligns with pagat.com.
+- **Announced ultimo — obligation to hold the card**: when Pagat ultimo or King ultimo is announced, `legalCards` now forbids the holder from playing the Pagat / called king while any other legal card remains (leading or following), so it is naturally saved for the last trick. It becomes legal only when forced (last card, only trump, etc.). Enforced via a new optional `PlayState.announcedUltimos` populated when play begins.
+
+### UI
+- **Score breakdown moved above the per-player table**: the round-result reads top-to-bottom as "how the points were earned/won" → "each player's resulting score".
+- **Score breakdown — opponent attempted-and-beaten line**: an opponent's failed pagat-ultimo attempt now shows as a positive credit ("opponents … ✗ beaten +25") instead of being hidden; opponent-won bonuses still render as a negative.
+- **Threshold line greyed to match**: the "N pts → rounds to … → over/under the 35 threshold" line now uses the same grey (`#aaa`) as the result header line above it.
+- **"This round" zero is neutral**: a `+0` in the round-result table now renders white (like the Session total column) instead of green; only actual gains are green and losses red.
+
+### UI (mobile)
+- **Declarer outline survives night mode**: on a phone in Dark appearance, the OS dims/warms the whole screen, which washed the subtle translucent white declarer ring out entirely (the gold partner ring, being saturated, survived). Under `prefers-color-scheme: dark` the declarer ring is now opaque with a dark edge so it reads on the felt at low brightness. Light mode is left exactly as v1.5.12.
+- **Human name no longer clipped on mobile**: the bottom-left player name was pinned to the left of the hand and ran off the screen edge on phones (showing e.g. "ark" instead of "Mark"). It now sits just above the hand on narrow screens; desktop placement is unchanged.
+
 ## v1.5.12 — 2026-08-15
 
 ### Engine / Scoring

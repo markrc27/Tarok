@@ -132,7 +132,9 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
         const kontraStr = b.announced ? kontraMultLabel(b.kontraLevel) : ''
         const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
         if (b.side === 'opponent') {
-          lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (vs opponents, ${tag}): ACHIEVED = -${net}`)
+          lines.push(b.achieved
+            ? `${BONUS_LABEL[b.bonus] ?? b.bonus} (opponents, ${tag}): won = -${net}`
+            : `${BONUS_LABEL[b.bonus] ?? b.bonus} (opponents attempted, beaten, ${tag}): +${net}`)
         } else {
           lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (${tag}): ${b.achieved ? 'Successful' : 'Unsuccessful'} = ${b.achieved ? '+' : '-'}${net}`)
         }
@@ -251,9 +253,84 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
         )}
 
         {contract !== 'klop' && !isFlat && (
-          <p style={{ color: '#666', margin: '-10px 0 14px', fontSize: 12 }}>
+          <p style={{ color: '#aaa', margin: '-10px 0 14px', fontSize: 12 }}>
             {declarerPts} pts → rounds to {Math.round(declarerPts / 5) * 5} (nearest 5) → {Math.abs(Math.round(declarerPts / 5) * 5 - 35)} {won ? 'over' : 'under'} the 35 threshold
           </p>
+        )}
+
+        {/* Score breakdown — above the per-player table so the hand reads
+            top-to-bottom as "how the points were earned/won" → "each player's
+            resulting score". */}
+        {handScore && contract !== 'klop' && (
+          <div style={{ margin: '4px 0 12px', padding: '8px 10px', background: '#1a1a1a', borderRadius: 4, fontSize: 12, color: '#ccc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ color: '#aaa', fontWeight: 'bold' }}>Score breakdown</span>
+              <span style={{ color: '#555', fontSize: 11 }}>default / announced</span>
+            </div>
+            {(() => {
+              const gk = getKontraMultiplier(announcementState, 'game')
+              const gkStr = kontraMultLabel(gk)
+              if (isFlat) {
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base (flat){gkStr}</span>
+                    <span style={{ color: '#f0f0f0' }}>{won ? '+' : '−'}{CONTRACT_BASE[contract] * gk}</span>
+                  </div>
+                )
+              }
+              const gameNet = (CONTRACT_BASE[contract] + Math.abs(difference)) * gk
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base + {Math.abs(difference)} {won ? 'over' : 'under'} threshold{gkStr}</span>
+                  <span style={{ color: '#f0f0f0' }}>{won ? '+' : '−'}{gameNet}</span>
+                </div>
+              )
+            })()}
+            {handScore.bonusBreakdown.map((b, i) => {
+              const net = b.value * b.kontraLevel
+              const label = BONUS_LABEL[b.bonus] ?? b.bonus
+              const kontraStr = kontraMultLabel(b.kontraLevel)
+              const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
+              if (b.side === 'opponent') {
+                // Opponents won the bonus → subtracted from the declarer's side.
+                // Opponents attempted it and were beaten → added to the declarer's side.
+                return (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{label} (opponents, {tag}): {b.achieved ? '✓ won' : '✗ beaten'}</span>
+                    <span style={{ color: b.achieved ? '#f44' : '#4f4' }}>{b.achieved ? '−' : '+'}{net}</span>
+                  </div>
+                )
+              }
+              return (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{label} ({tag}): {b.achieved ? '✓' : '✗'}</span>
+                  <span style={{ color: b.achieved ? '#4f4' : '#f44' }}>
+                    {b.achieved ? '+' : '−'}{net}
+                  </span>
+                </div>
+              )
+            })}
+            {handScore.radliApplied && (
+              <div style={{ color: '#f0c040' }}>Radli: score doubled</div>
+            )}
+            {(() => {
+              const sideScore = handScore.declarerScore - handScore.mondPenalties[declarer]
+              return (
+                <div style={{ borderTop: '1px solid #444', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                  <span>Declarer net</span>
+                  <span style={{ color: sideScore >= 0 ? '#4f4' : '#f44' }}>
+                    {sideScore >= 0 ? '+' : ''}{sideScore}
+                  </span>
+                </div>
+              )
+            })()}
+            {seats.filter(s => handScore.mondPenalties[s] !== 0).map(s => (
+              <div key={s} style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
+                <span>Mond lost with Škis: {playerNames[s]} (individual)</span>
+                <span style={{ color: '#f44' }}>{handScore.mondPenalties[s]}</span>
+              </div>
+            ))}
+          </div>
         )}
 
         <table className="score-table">
@@ -282,7 +359,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                     : seat === partner  ? 'Partner'
                     : 'Opponent'}
                 </td>
-                <td style={{ color: delta[seat] >= 0 ? '#4f4' : '#f44' }}>
+                <td style={{ color: delta[seat] > 0 ? '#4f4' : delta[seat] < 0 ? '#f44' : undefined }}>
                   {delta[seat] >= 0 ? '+' : ''}{delta[seat]}
                 </td>
                 <td>{sessionScores[seat] + delta[seat] >= 0 ? '+' : ''}{sessionScores[seat] + delta[seat]}</td>
@@ -319,77 +396,6 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
                 <span>→ {playerNames[t.winner ?? t.cards[0].seat]}</span>
               </div>
             ) : null)}
-          </div>
-        )}
-
-        {/* Score breakdown — always visible */}
-        {handScore && contract !== 'klop' && (
-          <div style={{ margin: '12px 0 8px', padding: '8px 10px', background: '#1a1a1a', borderRadius: 4, fontSize: 12, color: '#ccc' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ color: '#aaa', fontWeight: 'bold' }}>Score breakdown</span>
-              <span style={{ color: '#555', fontSize: 11 }}>default / announced</span>
-            </div>
-            {(() => {
-              const gk = getKontraMultiplier(announcementState, 'game')
-              const gkStr = kontraMultLabel(gk)
-              if (isFlat) {
-                return (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base (flat){gkStr}</span>
-                    <span style={{ color: '#f0f0f0' }}>{won ? '+' : '−'}{CONTRACT_BASE[contract] * gk}</span>
-                  </div>
-                )
-              }
-              const gameNet = (CONTRACT_BASE[contract] + Math.abs(difference)) * gk
-              return (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Game ({CONTRACT_LABEL[contract]}): {CONTRACT_BASE[contract]} base + {Math.abs(difference)} {won ? 'over' : 'under'} threshold{gkStr}</span>
-                  <span style={{ color: '#f0f0f0' }}>{won ? '+' : '−'}{gameNet}</span>
-                </div>
-              )
-            })()}
-            {handScore.bonusBreakdown.map((b, i) => {
-              const net = b.value * b.kontraLevel
-              const label = BONUS_LABEL[b.bonus] ?? b.bonus
-              const kontraStr = kontraMultLabel(b.kontraLevel)
-              const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
-              if (b.side === 'opponent') {
-                return (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{label} (vs opponents, {tag}): ✓</span>
-                    <span style={{ color: '#f44' }}>−{net}</span>
-                  </div>
-                )
-              }
-              return (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{label} ({tag}): {b.achieved ? '✓' : '✗'}</span>
-                  <span style={{ color: b.achieved ? '#4f4' : '#f44' }}>
-                    {b.achieved ? '+' : '−'}{net}
-                  </span>
-                </div>
-              )
-            })}
-            {handScore.radliApplied && (
-              <div style={{ color: '#f0c040' }}>Radli: score doubled</div>
-            )}
-            {(() => {
-              const sideScore = handScore.declarerScore - handScore.mondPenalties[declarer]
-              return (
-                <div style={{ borderTop: '1px solid #444', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                  <span>Declarer net</span>
-                  <span style={{ color: sideScore >= 0 ? '#4f4' : '#f44' }}>
-                    {sideScore >= 0 ? '+' : ''}{sideScore}
-                  </span>
-                </div>
-              )
-            })()}
-            {seats.filter(s => handScore.mondPenalties[s] !== 0).map(s => (
-              <div key={s} style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
-                <span>Mond lost with Škis: {playerNames[s]} (individual)</span>
-                <span style={{ color: '#f44' }}>{handScore.mondPenalties[s]}</span>
-              </div>
-            ))}
           </div>
         )}
 

@@ -162,6 +162,54 @@ describe('legalCards - negative contracts', () => {
   })
 })
 
+describe('legalCards - announced ultimo obligation', () => {
+  const hasPagat = (cards: Card[]) => cards.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 1)
+  const hasCard = (cards: Card[], s: 'clubs'|'spades'|'hearts'|'diamonds', rank: string) =>
+    cards.some(c => c.kind === 'suit' && (c as SuitCard).suit === s && String((c as SuitCard).rank) === rank)
+
+  it('announced pagat ultimo: holder may not lead the Pagat while other cards remain', () => {
+    const state = makeState(
+      { 0: [pagat, king('clubs'), low()], 1: [], 2: [], 3: [] },
+      {},
+      { contract: 'one', announcedUltimos: { pagat: true, king: false } },
+    )
+    const legal = legalCards(state, 0)
+    expect(hasPagat(legal)).toBe(false)
+    expect(legal).toHaveLength(2)
+  })
+
+  it('announced pagat ultimo: Pagat is forced when it is the only legal card', () => {
+    const state = makeState(
+      { 0: [pagat], 1: [], 2: [], 3: [] },
+      {},
+      { contract: 'one', announcedUltimos: { pagat: true, king: false } },
+    )
+    expect(legalCards(state, 0)).toHaveLength(1)
+    expect(hasPagat(legalCards(state, 0))).toBe(true)
+  })
+
+  it('unannounced: the Pagat is freely playable', () => {
+    const state = makeState({ 0: [pagat, king('clubs'), low()], 1: [], 2: [], 3: [] }, {}, { contract: 'one' })
+    expect(hasPagat(legalCards(state, 0))).toBe(true)
+  })
+
+  it('announced king ultimo: holder may not lead the called king while other cards remain', () => {
+    const calledKing = king('hearts')
+    const state = makeState(
+      { 0: [calledKing, low(), t5], 1: [], 2: [], 3: [] },
+      {},
+      {
+        contract: 'one',
+        kingCall: { calledSuit: 'hearts', calledKing, partner: 0, kingInTalon: false, kingInDeclarerHand: true },
+        announcedUltimos: { pagat: false, king: true },
+      },
+    )
+    const legal = legalCards(state, 0)
+    expect(hasCard(legal, 'hearts', 'K')).toBe(false)
+    expect(legal).toHaveLength(2)
+  })
+})
+
 describe('resolveTrick', () => {
   it('highest trump wins when trumps played', () => {
     const trick: TrickState = {

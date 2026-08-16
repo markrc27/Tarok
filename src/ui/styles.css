@@ -113,6 +113,29 @@ body {
 .seat-label.partner {
   box-shadow: 0 0 0 2px rgba(240,192,64,0.6), 0 0 8px rgba(240,192,64,0.5);
 }
+/* Dark appearance (iOS "Dark" / prefers-color-scheme: dark): the phone's
+   night-mode dimming washes the subtle translucent white ring out entirely, so
+   under dark mode give the declarer an opaque ring with a dark edge that reads
+   on the felt at low brightness. Light mode is left exactly as v1.5.12; the gold
+   partner ring already survives, so it is untouched. */
+@media (prefers-color-scheme: dark) {
+  .seat-label.declarer {
+    box-shadow:
+      0 0 0 2px rgba(255,255,255,0.95),
+      0 0 0 3px rgba(0,0,0,0.5),
+      0 0 8px rgba(255,255,255,0.5);
+  }
+}
+/* Human name label: to the left of the hand on desktop (repositioned on mobile
+   below, where "left of the hand" runs off the screen edge). */
+.human-seat-label {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 8px;
+  white-space: nowrap;
+}
 .seat-avatar {
   width: 36px;
   height: 36px;
@@ -480,6 +503,18 @@ body {
   .seat-left  { left: 4px; }
   .seat-right { right: 4px; }
   .seat-top   { top: 52px; }
+
+  /* Human name label: "left of the hand" runs off the screen on a phone, so
+     place it just above the hand (left-aligned, on-screen) — this also keeps the
+     declarer/partner outline fully visible. */
+  .human-seat-label {
+    right: auto;
+    left: 4px;
+    top: auto;
+    bottom: 100%;
+    transform: none;
+    margin: 0 0 3px 0;
+  }
 
   /* Trick area: reserve less vertical space on a phone. Top/bottom separation
      is handled by the card-height offset on .trick-slot-top/-bottom, so no

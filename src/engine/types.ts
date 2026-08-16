@@ -153,6 +153,9 @@ export interface PlayState {
   klopTalon: Card[]  // klop only: remaining talon cards to be dealt as vitamins
   kingCall: KingCall | null
   kingInTalonCaptured: boolean
+  // Which ultimos were announced this hand. When set, the holder of the pagat /
+  // called king is obliged to keep it as long as legally possible (see legalCards).
+  announcedUltimos?: { pagat: boolean; king: boolean }
 }
 
 export type PlayAction = { kind: 'play-card'; seat: Seat; card: Card }

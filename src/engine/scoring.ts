@@ -272,6 +272,7 @@ export function computeHandScore(params: {
   // Only on normal contracts (flat contracts have no bonuses). Track which fired so
   // they can be itemized in the breakdown below (they adjust sideScore directly).
   let pagatUltimoFailed = false
+  let pagatUltimoOpponentFailed = false
   let kingUltimoFailed = false
   if (!isFlat && completedTricks.length > 0) {
     const lastTrick = completedTricks[completedTricks.length - 1]
@@ -284,6 +285,22 @@ export function computeHandScore(params: {
       if (pagatByDeclSide && winnerCard && !isPagat(winnerCard)) {
         sideScore -= bonusBaseValue('pagat-ultimo', false)
         pagatUltimoFailed = true
+      }
+    }
+
+    // Opponent's failed unannounced pagat ultimo: an opponent played the pagat to
+    // the last trick but it was beaten. The opposition loses the bonus, so its
+    // value is ADDED to the declarer's side. (pagat.com: "if the bonus is not
+    // announced, but you play the pagat to the last trick, you are deemed to be
+    // attempting to score the bonus, and you score minus the appropriate bonus if
+    // the pagat is beaten" + "any bonuses lost by the opposition are added to the
+    // declarer's team's score".) The called king only ever sits on the declarer's
+    // side, so there is no opponent equivalent for king ultimo.
+    if (!pagatAnnounced && !opponentBonusResults['pagat-ultimo']) {
+      const pagatByOpp = lastTrick.cards.find(e => opponentSeats.includes(e.seat) && isPagat(e.card))
+      if (pagatByOpp && winnerCard && !isPagat(winnerCard)) {
+        sideScore += bonusBaseValue('pagat-ultimo', false)
+        pagatUltimoOpponentFailed = true
       }
     }
 
@@ -355,6 +372,11 @@ export function computeHandScore(params: {
     // so the breakdown and copy log account for the deduction instead of hiding it.
     if (pagatUltimoFailed) {
       bonusBreakdown.push({ bonus: 'pagat-ultimo', announced: false, achieved: false, value: bonusBaseValue('pagat-ultimo', false), kontraLevel: 1, side: 'declarer' })
+    }
+    // Opponent attempted pagat ultimo and was beaten → value credited to declarer.
+    // side:'opponent' + achieved:false is rendered as a positive (opponents lost it).
+    if (pagatUltimoOpponentFailed) {
+      bonusBreakdown.push({ bonus: 'pagat-ultimo', announced: false, achieved: false, value: bonusBaseValue('pagat-ultimo', false), kontraLevel: 1, side: 'opponent' })
     }
     if (kingUltimoFailed) {
       bonusBreakdown.push({ bonus: 'king-ultimo', announced: false, achieved: false, value: bonusBaseValue('king-ultimo', false), kontraLevel: 1, side: 'declarer' })
