@@ -3,6 +3,8 @@ import {
   initAnnouncements, bonusBaseValue, canAnnounce, nextKontraLevel,
   applyAnnouncement, getKontraMultiplier, evaluateBonus,
 } from '../src/engine/announce'
+import { recommendAnnouncements } from '../src/ai/bidding-heuristic'
+import { BONUS_LABEL } from '../src/ui/labels'
 import type { Card, Seat, SuitCard, TrumpCard, Trick } from '../src/engine/types'
 
 function trump(ordinal: number): TrumpCard {
@@ -257,5 +259,42 @@ describe('king-ultimo: winning card must be the called king (ENG-003)', () => {
     }
     // Seat 1 is NOT on declarer side (partner=null) so should also be false for that reason
     expect(evaluateBonus('king-ultimo', emptyCaptured, [lastTrick], 0, null, calledKing)).toBe(false)
+  })
+})
+
+// Guards the hard-difficulty flow that surfaces a bot's announcement in the
+// top-left "ANNOUNCED" overlay during play (App.tsx). The overlay renders
+// BONUS_LABEL[ann.bonus] for each entry in announcementState.announcements,
+// so a bot's pagat-ultimo must (1) be recommended for a qualifying hand,
+// (2) land in the announcements array, and (3) have a display label.
+describe('bot pagat-ultimo reaches the play-screen overlay', () => {
+  // Pagat + 9 trumps: the qualifying hand from recommendAnnouncements.
+  const botHand: Card[] = [
+    pagat,
+    trump(21), trump(20), trump(19), trump(18),
+    trump(17), trump(16), trump(15), trump(14),
+    king('hearts'),
+  ]
+
+  it('recommendAnnouncements suggests pagat-ultimo for a strong Pagat hand', () => {
+    expect(recommendAnnouncements(botHand)).toContain('pagat-ultimo')
+  })
+
+  it('does not suggest pagat-ultimo without enough trumps', () => {
+    const weak: Card[] = [pagat, trump(20), king('hearts'), low()]
+    expect(recommendAnnouncements(weak)).not.toContain('pagat-ultimo')
+  })
+
+  it('applying the recommendation records it in announcements (what the overlay renders)', () => {
+    const declarer: Seat = 1  // a bot seat
+    let ann = initAnnouncements()
+    for (const bonus of recommendAnnouncements(botHand)) {
+      ann = applyAnnouncement(ann, { kind: 'announce', seat: declarer, bonus }, declarer, null)
+    }
+    const entry = ann.announcements.find(a => a.bonus === 'pagat-ultimo')
+    expect(entry).toBeDefined()
+    expect(entry!.announced).toBe(true)
+    // The overlay maps the bonus name to this label.
+    expect(BONUS_LABEL['pagat-ultimo']).toBe('Pagat Ultimo')
   })
 })
