@@ -270,6 +270,47 @@ _Prompt structure per request:_
 
 ---
 
+## UI / Messaging
+
+### UI-014 — Compulsory-klop forehand-choice message misstates the trigger
+**Added:** 2026-08-20
+**Fixed:** —
+**Version:** —
+
+**Problem:** When a compulsory klop reaches the human forehand's contract
+choice (all three other seats passed), the dialog reads
+"Compulsory klop — all others passed. Play Klop, or declare Solo Without or
+higher." This conflates two independent facts and implies the *all-pass*
+caused the compulsory klop, which is wrong. Per AGENT.md, compulsory klop is
+triggered by **a player's cumulative score landing exactly on zero**, or by a
+no-trump redeal (void deal). The all-pass is only why the *forehand* is the
+one now choosing — it has nothing to do with why the hand is a compulsory
+klop.
+
+**Evidence:** Reported session (screenshot, Round 8): scores Mark +110,
+Vesna +85, Katja −75, Matic **+0**. Matic went from −35 back to exactly 0 in
+the previous round, which is what triggered the compulsory klop. The dialog
+still said "Compulsory klop — all others passed," leading the player to think
+the passing caused it.
+
+**Fix direction:** Split the two messages in the forehand-choice dialog when
+`isCompulsoryKlop`. State the real trigger first — "Compulsory klop: a
+player's score hit zero" (or "…after a no-trump redeal" when `voidDealSeat`
+is set) — then, separately, "All others passed — play Klop or declare Solo
+Without or higher." Reuse the wording already used by the bidding-phase
+banner in `App.tsx` (score-hit-zero vs. void-deal). While here, confirm the
+forehand-choice list is actually restricted to the compulsory-klop floor
+(klop + solo-without and above); today `App.tsx` passes the full contract
+list to the forehand-choice `BiddingDialog` and does not forward
+`isCompulsoryKlop`, so three–beggar are not greyed out as they should be.
+
+**Files to modify:** `src/ui/App.tsx` (forehand-choice `BiddingDialog` props:
+forward `isCompulsoryKlop` and restrict `legalBids`),
+`src/ui/dialogs/BiddingDialog.tsx` (forehand-choice message text for the
+compulsory-klop case).
+
+---
+
 ## Game Variants
 
 ### VAR-001 — 3-player variant
