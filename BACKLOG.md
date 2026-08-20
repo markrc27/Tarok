@@ -32,6 +32,59 @@ that scores reflect them.
 
 ---
 
+### ENG-002 — Uncancelled-radli session-end penalty (−100 each) is never applied
+**Added:** 2026-08-20
+**Fixed:** —
+**Version:** —
+
+**Problem:** Per CLAUDE.md/AGENT.md, any radli still uncancelled when a
+session ends should cost the holder −100 points each. The math exists —
+`radliEndOfSession()` in `src/engine/scoring.ts` (correctly computes
+`-(uncancelled × 100)` per seat) — and is unit-tested in isolation in
+`tests/scoring.test.ts`. But nothing in the actual game flow ever calls it.
+
+**Evidence:** Traced every session-ending path in `store.ts`:
+- `endGameFromMenu` (the "New Game"/end-session action) builds
+  `finalScores: { ...sessionScores }` — a flat copy, no radli deduction —
+  before saving to history and posting to the leaderboard.
+- The other `finalScores` computation (inside the per-hand completion path)
+  is `sessionScores[seat] + delta[seat]`, also with no radli involvement.
+- There is no Škis-round mechanic at all to even detect "the session has
+  ended." `src/engine/session.ts` is an empty stub:
+  `// Škis-round session-end logic is not yet implemented.` The CHANGELOG
+  (CQ-004) shows the original session stubs (`initSession`, `initSkisRound`,
+  `shouldEndSession`, `nextDealer`, `applyMisdeal`) were deliberately
+  *removed* as dead code in a past cleanup and never rebuilt.
+
+Net effect: any uncancelled radli a player is carrying when they click "New
+Game" today just vanish — no penalty, no Škis-round prompt to determine
+when the session should even end. The rule is documented in CLAUDE.md,
+AGENT.md, and both in-app Rules/Score dialogs, but unenforced in play.
+
+**Fix direction:** Two parts, and the first is the harder design question:
+1. Implement the Škis-round session-end trigger (see AGENT.md *Ending a
+   session*): when the player chooses to end, play one final hand, note who
+   holds the Škis, and continue the session until that player's next turn
+   to deal (redo the Škis round if the Škis was in the talon instead).
+   `endGameFromMenu` currently ends immediately on click with no such
+   mechanic — needs a decision on how this surfaces in the UI (a
+   confirmation flow, most likely, since it changes when "New Game"
+   actually finalizes the session).
+2. Once session-end is detected, call `radliEndOfSession(radliState)` and
+   fold its per-seat result into `finalScores` before `saveGameRecord`/
+   `postGameToApi` — both call sites (`store.ts` `finalScores` blocks) need
+   the same treatment, matching the "all scoring call sites" testing
+   invariant in CLAUDE.md. Add an integration test asserting a session
+   ending with N uncancelled radli on a seat reduces that seat's recorded
+   `finalScores` by `N × 100`.
+
+**Files to modify:** `src/engine/session.ts` (Škis-round detection —
+currently an empty stub), `src/state/store.ts` (`endGameFromMenu` and the
+other `finalScores` call site), `tests/integration.test.ts` (session-end
+radli penalty test).
+
+---
+
 ## Bot Difficulty System
 
 ### BOT-003 — Add Hard difficulty mode with meaningfully smarter bot logic
