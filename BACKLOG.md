@@ -311,6 +311,76 @@ compulsory-klop case).
 
 ---
 
+## Documentation
+
+### DOC-001 — AGENT.md: "Calling a king" subsection is out of order relative to "Talon exchange"
+**Added:** 2026-08-20
+**Fixed:** —
+**Version:** —
+
+**Problem:** In AGENT.md's "Domain rules reference," under Bidding, the
+`### Calling a king` subsection is written *before* the `### Talon exchange`
+subsection. That's backwards from both actual play order and the engine's
+implementation: in `store.ts`, both the human flow
+(`chooseTalonGroup`/`applyDiscard` → `phase: 'king-call'`) and the bot flow
+(`botTalon`) resolve the talon exchange first, then call the king against
+the post-discard hand — you can't sensibly call a king before seeing/
+exchanging the talon. AGENT.md's own Roadmap section (item 3:
+"`engine/talon.ts`, calling a king") already lists them in the correct
+order, so the Domain rules section currently contradicts the Roadmap
+section within the same file.
+
+**Fix direction:** Swap the two subsections so the section reads
+Bidding → Talon exchange → Calling a king → Announcements, matching actual
+gameplay, the code, and the Roadmap section's existing ordering.
+
+---
+
+### DOC-002 — In-app Rules dialog section order doesn't follow gameplay order, hurting learnability
+**Added:** 2026-08-20
+**Fixed:** —
+**Version:** —
+
+**Goal:** A newcomer opening Help → Rules should be able to read top to
+bottom and end up with the sections landing in the order they'll actually
+encounter them at the table. Right now the order actively works against
+that.
+
+**Problem:** `HelpDialog.tsx`'s `SECTIONS` array is currently ordered:
+Introduction → Cards → **Contracts** → **Bonuses** → Deal → **Bidding** →
+**Calling a King** → **Announcements** → **Talon Exchange** → Play →
+Scoring → Radli → 3-Player → Variations.
+
+Three problems, in order of how confusing they are to a first-time reader:
+
+1. **Contracts is stranded before Bidding** (position 3 vs. 6) — a
+   newcomer reads a list of contract names and base scores before being
+   told what bidding even is or how a contract gets chosen.
+2. **Bonuses is stranded before Announcements** (position 4 vs. 8) — same
+   problem: bonus values are presented before the announcement mechanic
+   that makes them relevant (unannounced vs. announced/doubled, kontra).
+3. **Calling a King (7) comes before Talon Exchange (9), with
+   Announcements (8) sandwiched between them.** This is the same ordering
+   bug as DOC-001, but worse here because it implies Announcements happens
+   between king-calling and the talon exchange. Actual gameplay order,
+   confirmed in `store.ts` (`chooseTalonGroup`/`applyDiscard` →
+   `phase: 'king-call'` → `advanceToAnnouncing`), is: Talon Exchange →
+   Calling a King → Announcements.
+
+**Fix direction:** Reorder `SECTIONS` to: Introduction → Cards → Deal →
+Bidding → Contracts → Talon Exchange → Calling a King → Announcements →
+Bonuses → Play → Scoring → Radli → 3-Player → Variations. Pure reorder of
+existing section content — no copy changes needed. Covers the same
+gameplay-order principle as DOC-001, applied to player-facing content
+instead of the agent spec; do both in the same pass since they're the same
+underlying fix (talon-before-king-call) plus the contracts/bonuses
+placement.
+
+**Files to modify:** `src/ui/dialogs/HelpDialog.tsx` (`SECTIONS` array
+order only).
+
+---
+
 ## Game Variants
 
 ### VAR-001 — 3-player variant
