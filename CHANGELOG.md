@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.6.3 — 2026-08-22
+- **Bug fix (UI-014)**: compulsory-klop bidding messages now state the actual trigger — "a player's score hit exactly zero" or "<player> had no taroks and the deal was redealt" — instead of just "bidding floor raised" / "all others passed", which described the effect but never the cause. Fixed in both the normal Bidding dialog and the Forehand-choice dialog.
+- **Bug fix**: Forehand-choice dialog now correctly restricts contract options to the compulsory-klop floor (klop, solo without, open beggar, colour valat without, valat without) when compulsory klop applies — previously it always showed the full ladder including three through beggar.
+
 ## v1.6.2 — 2026-08-06
 - **Hotfix**: revert options-from-persist exclusion — caused "New Game" to freeze on load; cross-tab contamination fix is deferred
 
