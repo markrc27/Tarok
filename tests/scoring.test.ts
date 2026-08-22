@@ -473,3 +473,40 @@ describe('mond penalty not applied in beggar / open-beggar', () => {
     expect(hs.mondPenalties[0]).toBe(-20)
   })
 })
+
+describe('radl end-of-session wiring (SCO-001)', () => {
+  it('lost beggar gives all 4 players 1 radl, projected radli costs each -100 at session end', () => {
+    // Beggar-or-higher → all seats gain a radl; no winner to cancel one
+    const state = initRadli()
+    const { newRadliState: afterCancel } = applyRadli(0, state, 0, false)
+    const projected = updateRadliAfterHand(afterCancel, 'beggar', false)
+    const penalties = radliEndOfSession(projected)
+    for (const seat of [0, 1, 2, 3] as Seat[]) {
+      expect(projected.uncancelled[seat]).toBe(1)
+      expect(penalties[seat]).toBe(-100)
+    }
+  })
+
+  it('won beggar cancels declarer radl, others keep theirs', () => {
+    // Declarer (seat 0) had 1 radl going in; wins beggar → radl cancelled; others gain +1
+    const state = { uncancelled: { 0: 1, 1: 0, 2: 0, 3: 0 } }
+    const { newRadliState: afterCancel } = applyRadli(0, state, 0, true)
+    const projected = updateRadliAfterHand(afterCancel, 'beggar', true)
+    const penalties = radliEndOfSession(projected)
+    expect(projected.uncancelled[0]).toBe(1)  // gained new one, cancelled old one → net 1
+    expect(penalties[0]).toBe(-100)
+    expect(projected.uncancelled[1]).toBe(1)
+    expect(penalties[1]).toBe(-100)
+  })
+
+  it('session score + radl penalty = correct final score for lost beggar', () => {
+    // Simulates the finalScores formula in store.ts endGame()
+    const sessionScore = 0   // no prior rounds
+    const handDelta = -70    // beggar flat loss
+    const state = initRadli()
+    const { newRadliState: afterCancel } = applyRadli(0, state, 0, false)
+    const projected = updateRadliAfterHand(afterCancel, 'beggar', false)
+    const penalty = radliEndOfSession(projected)[0]
+    expect(sessionScore + handDelta + penalty).toBe(-170)
+  })
+})

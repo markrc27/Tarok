@@ -165,8 +165,8 @@ _Prompt structure per request:_
 
 ### UI-016 — Reorder HelpDialog sections and move point-counting into Scoring
 **Added:** 2026-08-20
-**Fixed:** —
-**Version:** —
+**Fixed:** 2026-08-22
+**Version:** v1.5.14
 
 **Problem:** The section order in `src/ui/dialogs/HelpDialog.tsx` does not follow the logical flow of a game. Contracts appear before the deal and bidding, Bonuses appears before play begins, and the point-counting explanation lives in the Cards section rather than with Scoring where it is needed.
 
@@ -184,8 +184,8 @@ Note: "3 Player" is a placeholder heading for VAR-001; add a stub entry that lin
 
 ### UI-002 — Leaderboard difficulty tabs (Easy / Hard)
 **Added:** 2026-07-22
-**Fixed:** —
-**Version:** —
+**Fixed:** 2026-08-22
+**Version:** v1.5.14
 
 **Problem:** Easy and Hard scores are mixed in the leaderboard, making it impossible to compare like-for-like. A player on Hard shouldn't be competing against Easy scores.
 
@@ -195,12 +195,23 @@ Note: "3 Player" is a placeholder heading for VAR-001; add a stub entry that lin
 
 ### UI-001 — Show difficulty level in the top banner
 **Added:** 2026-07-22
-**Fixed:** —
-**Version:** —
+**Fixed:** 2026-08-22
+**Version:** v1.5.14
 
 **Problem:** There is no visible indicator of the current difficulty setting during play. Players have to open the Options dialog to check.
 
 **Fix direction:** Display the current difficulty ("Easy" / "Hard") in the menu bar or status bar area at the top of the screen, alongside the existing version/menu items. Should update immediately if the player changes difficulty mid-session via Options.
+
+---
+
+### UI-017 — Game history should show player's finishing rank
+**Added:** 2026-08-22
+**Fixed:** —
+**Version:** —
+
+**Problem:** The game history list (Game → History) shows past games but gives no indication of how the player finished — 1st, 2nd, 3rd, or 4th place. A player can't tell at a glance whether a game was a win or a loss.
+
+**Fix direction:** Add a finishing rank to each history row. Could be a numeric place ("1st", "2nd", etc.) or a medal icon for top 3 (matching the leaderboard style), or both. Rank is determinable from the final score snapshot already stored in history — compute it by sorting all four players' final scores at game-end and recording the human's position.
 
 ---
 
@@ -232,8 +243,8 @@ Note: "3 Player" is a placeholder heading for VAR-001; add a stub entry that lin
 
 ### TXT-001 — Compulsory Klop bidding dialog shows incorrect trigger description
 **Added:** 2026-08-20
-**Fixed:** —
-**Version:** —
+**Fixed:** 2026-08-22
+**Version:** v1.5.14
 
 **Problem:** There are three compulsory-klop strings in the UI; two are accurate and one is not.
 
@@ -252,8 +263,8 @@ Note: "3 Player" is a placeholder heading for VAR-001; add a stub entry that lin
 
 ### SCO-001 — Uncancelled radli not deducted at session end
 **Added:** 2026-08-20
-**Fixed:** —
-**Version:** —
+**Fixed:** 2026-08-22
+**Version:** v1.5.14
 
 **Problem:** The Rules dialog states "Uncancelled radli at the end of the session cost 100 points each," and CLAUDE.md documents the same rule. However, the end-of-session flow does not actually apply the −100 penalty per outstanding radl to each player's final score.
 
