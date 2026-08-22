@@ -31,13 +31,15 @@ export default function LeaderboardDialog({ onClose, currentDifficulty }: Props)
   const [activeTab, setActiveTab] = useState<'easy' | 'hard'>(currentDifficulty)
 
   useEffect(() => {
-    fetch('/api/games?view=leaderboard')
+    setRows(null)
+    setError(false)
+    fetch(`/api/games?view=leaderboard&difficulty=${activeTab}`)
       .then(r => { if (!r.ok) throw new Error(); return r.json() })
       .then((data: LeaderboardRow[]) => setRows(data))
       .catch(() => setError(true))
-  }, [])
+  }, [activeTab])
 
-  const filtered = rows ? rows.filter(r => (r.difficulty ?? 'easy') === activeTab) : []
+  const filtered = rows ?? []
 
   const sorted = [...filtered].sort((a, b) => {
     const diff = a[sortKey] - b[sortKey]

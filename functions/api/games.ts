@@ -56,9 +56,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const url = new URL(request.url)
   const view = url.searchParams.get('view')
 
+  const difficulty = url.searchParams.get('difficulty')
   const sql = view === 'leaderboard'
-    ? `SELECT id, played_at, player_name, final_score, rounds, difficulty, place
-       FROM games WHERE place = 1 ORDER BY final_score DESC LIMIT 10`
+    ? difficulty === 'easy' || difficulty === 'hard'
+      ? `SELECT id, played_at, player_name, final_score, rounds, difficulty, place
+         FROM games WHERE place = 1 AND difficulty = '${difficulty}' ORDER BY final_score DESC LIMIT 10`
+      : `SELECT id, played_at, player_name, final_score, rounds, difficulty, place
+         FROM games WHERE place = 1 ORDER BY final_score DESC LIMIT 10`
     : `SELECT id, played_at, player_name, final_score, rounds, difficulty, place
        FROM games ORDER BY played_at DESC LIMIT 500`
 
