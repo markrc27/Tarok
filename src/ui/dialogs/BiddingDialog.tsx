@@ -17,9 +17,10 @@ interface Props {
   currentHighBid?: Contract | null
   currentHighBidderName?: string | null
   isCompulsoryKlop?: boolean
+  compulsoryKlopReason?: string | null
 }
 
-export default function BiddingDialog({ legalBids, onBid, isForehandChoice, currentHighBid, currentHighBidderName, isCompulsoryKlop }: Props) {
+export default function BiddingDialog({ legalBids, onBid, isForehandChoice, currentHighBid, currentHighBidderName, isCompulsoryKlop, compulsoryKlopReason }: Props) {
   const [selected, setSelected] = useState<Contract | null>(legalBids[0] ?? null)
   const [infoFor, setInfoFor] = useState<Contract | null>(null)
 
@@ -39,7 +40,7 @@ export default function BiddingDialog({ legalBids, onBid, isForehandChoice, curr
       {isForehandChoice && (
         <p style={{ marginBottom: 10, color: '#aaa', fontSize: 12 }}>
           {isCompulsoryKlop
-            ? 'Compulsory klop — all others passed. Play Klop, or declare Solo Without or higher.'
+            ? `Compulsory Klop — ${compulsoryKlopReason ?? 'bidding floor raised'}. Play Klop, or declare Solo Without or higher.`
             : 'All others passed — choose your contract:'}
         </p>
       )}
@@ -52,7 +53,7 @@ export default function BiddingDialog({ legalBids, onBid, isForehandChoice, curr
       {!isForehandChoice && !currentHighBid && (
         <p style={{ marginBottom: 10, color: '#aaa', fontSize: 12 }}>
           {isCompulsoryKlop
-            ? 'Compulsory Klop — bid Solo Without or higher, or pass.'
+            ? `Compulsory Klop — ${compulsoryKlopReason ?? 'bidding floor raised'}. Bid Solo Without or higher, or pass.`
             : 'No bids yet — bid Two or higher, or pass.'}
         </p>
       )}

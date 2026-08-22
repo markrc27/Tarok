@@ -53,38 +53,36 @@ const SECTIONS: Section[] = [
             ))}
           </tbody>
         </table>
-        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>How points are counted</h4>
-        <p style={{ background: '#12233a', borderLeft: '3px solid #0078d4', padding: '8px 12px', borderRadius: '0 4px 4px 0', color: '#cde' }}>
-          <strong>You don't need to learn any of this to play</strong> — the app counts every card and keeps the running score for you. This is here only if you'd like to understand where the numbers come from.
-        </p>
-        <p>At the end of the hand, take every card your side captured and sort it into <strong>groups of three</strong>. Each group scores the total of its cards' values <strong>minus 2</strong>. Add the groups together for your card-point total. (This is exactly how the score log breaks it down.)</p>
-        <p>The whole pack always totals <strong>70 points</strong>. To win an ordinary hand, your side needs more than half — at least <strong>36</strong>. If a few cards are left over at the end, they count as one last small group, losing 1 instead of 2.</p>
-        <p style={{ margin: '4px 0 6px', color: '#ccc' }}>A few example groups of three:</p>
-        <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
-          <thead>
-            <tr style={{ color: '#aaa' }}>
-              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Group of three</th>
-              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Total − 2</th>
-              <th style={{ textAlign: 'center', padding: '3px 8px' }}>Points</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              ['Škis + King + empty card', '5 + 5 + 1 − 2', '9'],
-              ['King + Queen + empty card', '5 + 4 + 1 − 2', '8'],
-              ['Three Cavaliers', '3 + 3 + 3 − 2', '7'],
-              ['King + two empty cards', '5 + 1 + 1 − 2', '5'],
-              ['Three empty cards', '1 + 1 + 1 − 2', '1'],
-            ].map(([group, calc, pts]) => (
-              <tr key={group} style={{ borderTop: '1px solid #333' }}>
-                <td style={{ padding: '3px 8px' }}>{group}</td>
-                <td style={{ padding: '3px 8px', color: '#888' }}>{calc}</td>
-                <td style={{ padding: '3px 8px', textAlign: 'center', color: '#f0c040', fontWeight: 'bold' }}>{pts}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p style={{ color: '#888', fontSize: 12, marginTop: 6 }}>There is more detail — including other counting methods that reach the same totals — at <a href="https://www.pagat.com/tarot/counting.html" target="_blank" rel="noreferrer" style={{ color: '#7ab8e8' }}>pagat.com/tarot/counting.html ↗</a>.</p>
+      </>
+    ),
+  },
+  {
+    id: 'deal',
+    title: 'Deal',
+    content: (
+      <>
+        <p>The dealer deals <strong>counterclockwise</strong>, starting with forehand (the player to the dealer's right). Each player receives <strong>12 cards</strong>; the remaining <strong>6 cards</strong> form the <strong>talon</strong>, dealt face-down to the center.</p>
+        <p>Cards are dealt in batches: typically 6 to each player and 6 to the talon. The dealer role rotates counterclockwise each round.</p>
+        <p>If a player has too few card points (a <strong>missdeal</strong> — no face cards), they may ask for a redeal. House rules vary on the exact threshold.</p>
+      </>
+    ),
+  },
+  {
+    id: 'bidding',
+    title: 'Bidding',
+    content: (
+      <>
+        <p>Bidding proceeds <strong>counterclockwise</strong> starting with forehand. Each player must either <strong>pass</strong> or bid a contract <em>higher</em> than the current highest bid.</p>
+        <p><strong>Klop</strong> and <strong>Three</strong> are only available to forehand when all other players have passed and forehand has not yet bid.</p>
+        <p>When three players have passed, the highest bidder becomes the declarer. If all four players pass (including forehand declining klop/three), <strong>klop</strong> is played with no declarer.</p>
+        <p>The <strong>forehand</strong> has priority: if a non-forehand player bids a contract, forehand may "hold" the same contract to take it over (forehand wins ties).</p>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Compulsory Klop</h4>
+        <p>Two situations raise the bidding floor to <strong>Solo Without</strong> (contracts below it are removed) and force a klop if everyone passes:</p>
+        <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
+          <li>A player is dealt <strong>zero taroks</strong> (trumps). The hand is redealt, and the next round is compulsory klop.</li>
+          <li>A player's session score <strong>hits exactly zero</strong> (was negative or positive, then lands on 0 after a round).</li>
+        </ul>
+        <p>The bidding panel will say <em>"Compulsory Klop"</em> when this applies.</p>
       </>
     ),
   },
@@ -118,6 +116,44 @@ const SECTIONS: Section[] = [
             </div>
           ))}
         </div>
+      </>
+    ),
+  },
+  {
+    id: 'talon',
+    title: 'Talon Exchange',
+    content: (
+      <>
+        <p>In contracts that use the talon (Three, Two, One, Solo Three, Solo Two, Solo One), the declarer picks up the relevant talon cards.</p>
+        <p>The talon is split into groups equal in size to the number of talon cards allowed by the contract. The declarer <strong>chooses one group</strong>, adds those cards to their hand, then <strong>discards</strong> the same number of cards face-down into their capture pile.</p>
+        <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
+          <li>Discarded trumps <strong>must be declared</strong> publicly.</li>
+          <li><strong>Kings cannot be discarded.</strong></li>
+          <li>The unchosen talon groups go to the opponents' capture pile.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'calling-king',
+    title: 'Calling a King',
+    content: (
+      <>
+        <p>After winning the bid in a contract with a partner (Three, Two, or One), the declarer <strong>calls a king by suit</strong>. The player holding that king becomes the declarer's secret partner.</p>
+        <p>The partner's identity is hidden until the called king is played in a trick. Until then, opponents do not know who the partner is.</p>
+        <p>If the declarer holds <strong>all four kings</strong> themselves, they may call a queen instead. If the called king is in the talon (discovered during talon exchange), the declarer plays alone.</p>
+      </>
+    ),
+  },
+  {
+    id: 'announcements',
+    title: 'Announcements',
+    content: (
+      <>
+        <p>After the talon exchange (and king call), the declarer's side may <strong>announce</strong> bonuses they intend to achieve. Announced bonuses are worth double but are also lost at double value if failed.</p>
+        <p>For each announcement, opponents may bid <strong>kontra</strong> (×2). The announcing side may answer with <strong>rekontra</strong> (×4), then <strong>subkontra</strong> (×8), and <strong>mordkontra</strong> (×16).</p>
+        <p>Opponents may also kontra the <strong>game</strong> (the contract itself), not just individual bonuses.</p>
+        <p>Announceable bonuses: <em>Trula, Kings, King Ultimo, Pagat Ultimo, Valat</em>.</p>
       </>
     ),
   },
@@ -158,74 +194,6 @@ const SECTIONS: Section[] = [
     ),
   },
   {
-    id: 'deal',
-    title: 'Deal',
-    content: (
-      <>
-        <p>The dealer deals <strong>counterclockwise</strong>, starting with forehand (the player to the dealer's right). Each player receives <strong>12 cards</strong>; the remaining <strong>6 cards</strong> form the <strong>talon</strong>, dealt face-down to the center.</p>
-        <p>Cards are dealt in batches: typically 6 to each player and 6 to the talon. The dealer role rotates counterclockwise each round.</p>
-        <p>If a player has too few card points (a <strong>missdeal</strong> — no face cards), they may ask for a redeal. House rules vary on the exact threshold.</p>
-      </>
-    ),
-  },
-  {
-    id: 'bidding',
-    title: 'Bidding',
-    content: (
-      <>
-        <p>Bidding proceeds <strong>counterclockwise</strong> starting with forehand. Each player must either <strong>pass</strong> or bid a contract <em>higher</em> than the current highest bid.</p>
-        <p><strong>Klop</strong> and <strong>Three</strong> are only available to forehand when all other players have passed and forehand has not yet bid.</p>
-        <p>When three players have passed, the highest bidder becomes the declarer. If all four players pass (including forehand declining klop/three), <strong>klop</strong> is played with no declarer.</p>
-        <p>The <strong>forehand</strong> has priority: if a non-forehand player bids a contract, forehand may "hold" the same contract to take it over (forehand wins ties).</p>
-        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Compulsory Klop</h4>
-        <p>Two situations raise the bidding floor to <strong>Solo Without</strong> (contracts below it are removed) and force a klop if everyone passes:</p>
-        <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
-          <li>A player is dealt <strong>zero taroks</strong> (trumps). The hand is redealt, and the next round is compulsory klop.</li>
-          <li>A player's session score <strong>hits exactly zero</strong> (was negative or positive, then lands on 0 after a round).</li>
-        </ul>
-        <p>The bidding panel will say <em>"Compulsory Klop"</em> when this applies.</p>
-      </>
-    ),
-  },
-  {
-    id: 'calling-king',
-    title: 'Calling a King',
-    content: (
-      <>
-        <p>After winning the bid in a contract with a partner (Three, Two, or One), the declarer <strong>calls a king by suit</strong>. The player holding that king becomes the declarer's secret partner.</p>
-        <p>The partner's identity is hidden until the called king is played in a trick. Until then, opponents do not know who the partner is.</p>
-        <p>If the declarer holds <strong>all four kings</strong> themselves, they may call a queen instead. If the called king is in the talon (discovered during talon exchange), the declarer plays alone.</p>
-      </>
-    ),
-  },
-  {
-    id: 'announcements',
-    title: 'Announcements',
-    content: (
-      <>
-        <p>After the talon exchange (and king call), the declarer's side may <strong>announce</strong> bonuses they intend to achieve. Announced bonuses are worth double but are also lost at double value if failed.</p>
-        <p>For each announcement, opponents may bid <strong>kontra</strong> (×2). The announcing side may answer with <strong>rekontra</strong> (×4), then <strong>subkontra</strong> (×8), and <strong>mordkontra</strong> (×16).</p>
-        <p>Opponents may also kontra the <strong>game</strong> (the contract itself), not just individual bonuses.</p>
-        <p>Announceable bonuses: <em>Trula, Kings, King Ultimo, Pagat Ultimo, Valat</em>.</p>
-      </>
-    ),
-  },
-  {
-    id: 'talon',
-    title: 'Talon Exchange',
-    content: (
-      <>
-        <p>In contracts that use the talon (Three, Two, One, Solo Three, Solo Two, Solo One), the declarer picks up the relevant talon cards.</p>
-        <p>The talon is split into groups equal in size to the number of talon cards allowed by the contract. The declarer <strong>chooses one group</strong>, adds those cards to their hand, then <strong>discards</strong> the same number of cards face-down into their capture pile.</p>
-        <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
-          <li>Discarded trumps <strong>must be declared</strong> publicly.</li>
-          <li><strong>Kings cannot be discarded.</strong></li>
-          <li>The unchosen talon groups go to the opponents' capture pile.</li>
-        </ul>
-      </>
-    ),
-  },
-  {
     id: 'play',
     title: 'The Play',
     content: (
@@ -251,6 +219,38 @@ const SECTIONS: Section[] = [
     title: 'Scoring',
     content: (
       <>
+        <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>How points are counted</h4>
+        <p style={{ background: '#12233a', borderLeft: '3px solid #0078d4', padding: '8px 12px', borderRadius: '0 4px 4px 0', color: '#cde' }}>
+          <strong>You don't need to learn any of this to play</strong> — the app counts every card and keeps the running score for you. This is here only if you'd like to understand where the numbers come from.
+        </p>
+        <p>At the end of the hand, take every card your side captured and sort it into <strong>groups of three</strong>. Each group scores the total of its cards' values <strong>minus 2</strong>. Add the groups together for your card-point total. (This is exactly how the score log breaks it down.)</p>
+        <p>The whole pack always totals <strong>70 points</strong>. To win an ordinary hand, your side needs more than half — at least <strong>36</strong>. If a few cards are left over at the end, they count as one last small group, losing 1 instead of 2.</p>
+        <p style={{ margin: '4px 0 6px', color: '#ccc' }}>A few example groups of three:</p>
+        <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
+          <thead>
+            <tr style={{ color: '#aaa' }}>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Group of three</th>
+              <th style={{ textAlign: 'left', padding: '3px 8px' }}>Total − 2</th>
+              <th style={{ textAlign: 'center', padding: '3px 8px' }}>Points</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['Škis + King + empty card', '5 + 5 + 1 − 2', '9'],
+              ['King + Queen + empty card', '5 + 4 + 1 − 2', '8'],
+              ['Three Cavaliers', '3 + 3 + 3 − 2', '7'],
+              ['King + two empty cards', '5 + 1 + 1 − 2', '5'],
+              ['Three empty cards', '1 + 1 + 1 − 2', '1'],
+            ].map(([group, calc, pts]) => (
+              <tr key={group} style={{ borderTop: '1px solid #333' }}>
+                <td style={{ padding: '3px 8px' }}>{group}</td>
+                <td style={{ padding: '3px 8px', color: '#888' }}>{calc}</td>
+                <td style={{ padding: '3px 8px', textAlign: 'center', color: '#f0c040', fontWeight: 'bold' }}>{pts}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ color: '#888', fontSize: 12, marginTop: 6 }}>There is more detail — including other counting methods that reach the same totals — at <a href="https://www.pagat.com/tarot/counting.html" target="_blank" rel="noreferrer" style={{ color: '#7ab8e8' }}>pagat.com/tarot/counting.html ↗</a>.</p>
         <p>After all 12 tricks are played, card points are counted for the declarer's side. The total of all card points in the pack is <strong>70</strong>.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Who scores each round?</h4>
         <p><strong>Only the declarer and their partner gain or lose points.</strong> Opponents' scores are not affected by the result of a hand — their running total stays the same whether the declarer wins or loses.</p>
@@ -320,6 +320,16 @@ const SECTIONS: Section[] = [
         </ul>
         <p>When scoring, if the declarer holds outstanding radli, their score (and the partner's, if any) is <strong>doubled</strong> and one radl is annulled — but <em>only on a win</em>. On a loss the score is still doubled but the radl is not canceled.</p>
         <p>Uncanceled radli at the end of the session cost <strong>100 points each</strong>.</p>
+      </>
+    ),
+  },
+  {
+    id: 'three-player',
+    title: '3 Player',
+    content: (
+      <>
+        <p>A 3-player variant of Slovenian Tarok exists and is planned for a future version of this app. It uses a modified deal (16 cards each), no partner calling, and slightly different scoring rules.</p>
+        <p style={{ color: '#666', fontSize: 12 }}>Not yet available in this app.</p>
       </>
     ),
   },

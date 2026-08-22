@@ -8,9 +8,10 @@ interface Props {
   onAbout: () => void
   cardAppearance: 'simple' | 'traditional'
   onSetCardAppearance: (a: 'simple' | 'traditional') => void
+  botDifficulty: 'easy' | 'hard'
 }
 
-export default function MenuBar({ onEndGame, onHistory, onLeaderboard, onHelp, onAbout, cardAppearance, onSetCardAppearance }: Props) {
+export default function MenuBar({ onEndGame, onHistory, onLeaderboard, onHelp, onAbout, cardAppearance, onSetCardAppearance, botDifficulty }: Props) {
   const [open, setOpen] = useState<string | null>(null)
 
   const toggle = (menu: string) => setOpen(o => o === menu ? null : menu)
@@ -48,7 +49,7 @@ export default function MenuBar({ onEndGame, onHistory, onLeaderboard, onHelp, o
         { label: 'About', onClick: onAbout },
       ])}
       <span style={{ marginLeft: 'auto', padding: '0 10px', color: '#f0f0f0', fontSize: 13, lineHeight: '24px', opacity: 0.6 }}>
-        v{__APP_VERSION__}
+        {botDifficulty === 'hard' ? 'Hard' : 'Easy'} · v{__APP_VERSION__}
       </span>
     </div>
   )

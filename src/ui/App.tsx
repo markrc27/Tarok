@@ -41,7 +41,7 @@ export default function App() {
     phase, dealResult, biddingState, talonExchange, kingCall,
     announcementState, playState, sessionScores, playerNames,
     radliState, pendingDiscardCount, roundId, roundHistory, cardAppearance,
-    voidDealSeat, options,
+    voidDealSeat, compulsoryKlopNextSeat, options,
   } = store
 
   // Warm the traditional-mode card images so pictures are ready before a card is
@@ -167,6 +167,7 @@ export default function App() {
         onAbout={() => setShowAbout(true)}
         cardAppearance={cardAppearance}
         onSetCardAppearance={store.setCardAppearance}
+        botDifficulty={options.botDifficulty}
       />
 
       <div className="game-table">
@@ -289,7 +290,7 @@ export default function App() {
             whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 5,
             textAlign: 'center',
           }}>
-            A player&apos;s score hit zero — compulsory klop: bidding starts at Solo Without.
+            {compulsoryKlopNextSeat !== null ? playerNames[compulsoryKlopNextSeat] : 'A player'}&apos;s score hit zero — compulsory klop: bidding starts at Solo Without.
           </div>
         )}
 
@@ -352,6 +353,15 @@ export default function App() {
           currentHighBid={biddingState?.highestBid ?? null}
           currentHighBidderName={biddingState?.highestBidder != null ? playerNames[biddingState.highestBidder] : null}
           isCompulsoryKlop={biddingState?.isCompulsoryKlop}
+          compulsoryKlopReason={
+            biddingState?.isCompulsoryKlop
+              ? voidDealSeat !== null
+                ? `${playerNames[voidDealSeat]} just had no Tarok cards in the last deal`
+                : compulsoryKlopNextSeat !== null
+                  ? `${playerNames[compulsoryKlopNextSeat]}'s score just reached 0`
+                  : null
+              : null
+          }
         />
       )}
 
@@ -361,6 +371,13 @@ export default function App() {
           onBid={(action) => action.kind === 'bid' && store.setForehandContract(action.contract)}
           isForehandChoice
           isCompulsoryKlop={biddingState.isCompulsoryKlop}
+          compulsoryKlopReason={
+            voidDealSeat !== null
+              ? `${playerNames[voidDealSeat]} just had no Tarok cards in the last deal`
+              : compulsoryKlopNextSeat !== null
+                ? `${playerNames[compulsoryKlopNextSeat]}'s score just reached 0`
+                : null
+          }
         />
       )}
 
@@ -417,7 +434,7 @@ export default function App() {
       )}
 
       {showLeaderboard && (
-        <LeaderboardDialog onClose={() => setShowLeaderboard(false)} />
+        <LeaderboardDialog onClose={() => setShowLeaderboard(false)} currentDifficulty={options.botDifficulty} />
       )}
 
       {showHelp && (

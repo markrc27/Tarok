@@ -37,5 +37,5 @@ export interface GameState {
   roundId: number
   roundHistory: RoundRecord[]
   voidDealSeat: Seat | null
-  compulsoryKlopNext: boolean
+  compulsoryKlopNextSeat: Seat | null
 }

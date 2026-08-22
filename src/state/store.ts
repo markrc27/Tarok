@@ -12,7 +12,7 @@ import { initPlay, playCard, isHandComplete } from '../engine/play'
 import { initAnnouncements, applyAnnouncement } from '../engine/announce'
 import {
   initRadli, computeHandScore, updateRadliAfterHand, applyRadli,
-  scoreKlop, countDeclarerPoints, adjustCapturedForTalon,
+  scoreKlop, countDeclarerPoints, adjustCapturedForTalon, radliEndOfSession,
 } from '../engine/scoring'
 import { CONTRACT_BASE } from '../engine/types'
 import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard, recommendAnnouncements } from '../ai/bidding-heuristic'
@@ -51,7 +51,7 @@ function makeInitialState(): GameState {
     roundId: 0,
     roundHistory: [],
     voidDealSeat: null,
-    compulsoryKlopNext: false,
+    compulsoryKlopNextSeat: null,
   }
 }
 
@@ -264,7 +264,7 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     ...makeInitialState(),
 
     startNewGame: () => {
-      const { dealerSeat, sessionScores, statistics, playerNames, radliState, roundId, roundHistory, compulsoryKlopNext } = get()
+      const { dealerSeat, sessionScores, statistics, playerNames, radliState, roundId, roundHistory, compulsoryKlopNextSeat } = get()
       let outcome = deal(dealerSeat)
       let voidDealSeat: Seat | null = null
       while (outcome.kind === 'void-deal') {
@@ -272,7 +272,7 @@ export const useGameStore = create<Store>()(persist((set, get) => {
         outcome = deal(dealerSeat)
       }
       // Compulsory klop triggers from: void-deal redeal, OR a player's score hitting exactly 0
-      const isCompulsoryKlop = voidDealSeat !== null || compulsoryKlopNext
+      const isCompulsoryKlop = voidDealSeat !== null || compulsoryKlopNextSeat !== null
       const biddingState = initBidding(dealerSeat, isCompulsoryKlop)
       set({
         ...makeInitialState(),
@@ -456,9 +456,9 @@ export const useGameStore = create<Store>()(persist((set, get) => {
 
       // Compulsory klop trigger: a player whose score was non-zero lands on exactly zero.
       // Players who never scored (always at 0) do not trigger it.
-      const compulsoryKlopNext = ([0, 1, 2, 3] as Seat[]).some(
+      const compulsoryKlopNextSeat = ([0, 1, 2, 3] as Seat[]).find(
         s => sessionScores[s] !== 0 && newScores[s] === 0,
-      )
+      ) ?? null
 
       const newRoundRecord: RoundRecord = {
         roundNumber: roundId,
@@ -482,7 +482,7 @@ export const useGameStore = create<Store>()(persist((set, get) => {
         dealResult: null,
         talonExchange: null,
         kingCall: null,
-        compulsoryKlopNext,
+        compulsoryKlopNextSeat,
       })
     },
 
@@ -505,6 +505,10 @@ export const useGameStore = create<Store>()(persist((set, get) => {
 
       let newStats = statistics
       const delta: Record<Seat, number> = { 0: 0, 1: 0, 2: 0, 3: 0 }
+      let endDeclarer: Seat = (playState?.declarer ?? 0) as Seat
+      let endContract: Contract = playState?.contract ?? 'klop'
+      let endDeclarerWon = false
+      let endValatBonusAchieved = false
 
       if (playState) {
         const { contract, declarer, partner, capturedCards, talonRemainder,
@@ -512,6 +516,8 @@ export const useGameStore = create<Store>()(persist((set, get) => {
                 kingInTalonCaptured } = playState
         const ann = announcementState ?? initAnnouncements()
         const effectiveCaptured = adjustCapturedForTalon(capturedCards, talonRemainder, declarer, partner, kingInTalonCaptured)
+        endDeclarer = declarer
+        endContract = contract
 
         if (contract === 'klop') {
           const klopScores = scoreKlop(capturedCards)
@@ -539,14 +545,21 @@ export const useGameStore = create<Store>()(persist((set, get) => {
             if (s !== declarer && s !== partner) delta[s] = handScore.opponentScores[s]
           }
           newStats = [...statistics, handScore]
+          endDeclarerWon = declarerWon
+          endValatBonusAchieved = handScore.bonusBreakdown.some(b => b.bonus === 'valat' && b.achieved)
         }
       }
 
+      // Project radliState after this round, then charge any uncancelled radli
+      const { newRadliState: afterCancel } = applyRadli(0, radliState, endDeclarer, endDeclarerWon)
+      const projectedRadli = updateRadliAfterHand(afterCancel, endContract, endDeclarerWon, endValatBonusAchieved)
+      const radliPenalties = radliEndOfSession(projectedRadli)
+
       const finalScores: Record<Seat, number> = {
-        0: sessionScores[0] + delta[0],
-        1: sessionScores[1] + delta[1],
-        2: sessionScores[2] + delta[2],
-        3: sessionScores[3] + delta[3],
+        0: sessionScores[0] + delta[0] + radliPenalties[0],
+        1: sessionScores[1] + delta[1] + radliPenalties[1],
+        2: sessionScores[2] + delta[2] + radliPenalties[2],
+        3: sessionScores[3] + delta[3] + radliPenalties[3],
       }
 
       const gameRecord = {
@@ -573,24 +586,31 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     },
 
     endGameFromMenu: () => {
-      const { sessionScores, playerNames, roundId, phase, dealerSeat, statistics, options } = get()
+      const { sessionScores, playerNames, roundId, phase, dealerSeat, statistics, options, radliState } = get()
       const nextDealer = ((dealerSeat + 3) % 4) as Seat
 
       // Completed rounds = roundId when between rounds (setup), roundId-1 when mid-round
       const completedRounds = phase === 'setup' ? roundId : Math.max(0, roundId - 1)
+      const radliPenalties = radliEndOfSession(radliState)
+      const finalScores: Record<Seat, number> = {
+        0: sessionScores[0] + radliPenalties[0],
+        1: sessionScores[1] + radliPenalties[1],
+        2: sessionScores[2] + radliPenalties[2],
+        3: sessionScores[3] + radliPenalties[3],
+      }
 
       if (completedRounds > 0) {
         const gameRecord = {
           id: crypto.randomUUID(),
           playedAt: Date.now(),
           playerNames: { ...playerNames },
-          finalScores: { ...sessionScores },
+          finalScores,
           rounds: completedRounds,
           difficulty: options.botDifficulty,
         }
         saveGameRecord(gameRecord)
-        const humanPlace = ([0, 1, 2, 3] as Seat[]).filter(s => sessionScores[s] > sessionScores[0]).length + 1
-        postGameToApi(gameRecord, playerNames[0], sessionScores[0], humanPlace)
+        const humanPlace = ([0, 1, 2, 3] as Seat[]).filter(s => finalScores[s] > finalScores[0]).length + 1
+        postGameToApi(gameRecord, playerNames[0], finalScores[0], humanPlace)
       }
       consumeDraftRecord()
 

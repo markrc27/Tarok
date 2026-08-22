@@ -163,6 +163,25 @@ _Prompt structure per request:_
 
 ## UI
 
+### UI-016 — Reorder HelpDialog sections and move point-counting into Scoring
+**Added:** 2026-08-20
+**Fixed:** —
+**Version:** —
+
+**Problem:** The section order in `src/ui/dialogs/HelpDialog.tsx` does not follow the logical flow of a game. Contracts appear before the deal and bidding, Bonuses appears before play begins, and the point-counting explanation lives in the Cards section rather than with Scoring where it is needed.
+
+**Current order:** Introduction → Cards → Contracts → Bonuses → Deal → Bidding → Calling a King → Announcements → Talon Exchange → Play → Scoring → Radli → Variations
+
+**Desired order:** Introduction → Cards → Deal → Bidding → Contracts → Talon Exchange → Calling a King → Announcements → Bonuses → Play → Scoring → Radli → 3 Player → Variations
+
+**Also:** Move the "How points are counted" subsection (including the worked-examples table and the pagat.com link at the bottom of the Cards section) out of Cards and into the top of the Scoring section, above the existing Scoring content. Do not change any text — reorder only.
+
+Note: "3 Player" is a placeholder heading for VAR-001; add a stub entry that links to that backlog item.
+
+**Files to modify:** `src/ui/dialogs/HelpDialog.tsx`
+
+---
+
 ### UI-002 — Leaderboard difficulty tabs (Easy / Hard)
 **Added:** 2026-07-22
 **Fixed:** —
@@ -206,6 +225,39 @@ _Prompt structure per request:_
 **Scope:** CSS/layout pass only. No logic, state, or backend changes.
 
 **Fix direction:** Introduce a `useCardLayout()` hook (continuous clamp math from viewport width) that returns fluid `cardW/cardH/handStep/aiStep` values, sets `--card-w`/`--card-h` CSS custom properties, and is wired through `Hand.tsx` and `App.tsx`. CSS-only fixes for: trick area width (`clamp`), card font scaling (derive from `--card-w`), menu bar height (44px on mobile), status bar (nowrap + horizontal scroll), bid panel (centered, max-height leaves hand visible), seat margins. Primary test device: iPhone 13 mini (375×812). Also verify on iPad (no change expected above 640px breakpoint).
+
+---
+
+## UI Text
+
+### TXT-001 — Compulsory Klop bidding dialog shows incorrect trigger description
+**Added:** 2026-08-20
+**Fixed:** —
+**Version:** —
+
+**Problem:** There are three compulsory-klop strings in the UI; two are accurate and one is not.
+
+**Accurate (no change needed):**
+- `App.tsx:292` — score-hits-zero banner: *"A player's score hit zero — compulsory klop: bidding starts at Solo Without."*
+- `App.tsx:306–307` — void-deal banner: *"[Name] had no taroks — cards were redealt. Compulsory klop: bidding starts at Solo Without."*
+
+**Inaccurate (needs fixing):**
+- `BiddingDialog.tsx:42` — forehand-choice subtitle: *"Compulsory klop — all others passed. Play Klop, or declare Solo Without or higher."* The "all others passed" clause is wrong; it describes the forehand-choice situation, not the compulsory-klop trigger.
+
+**Fix direction:** Replace the string at `BiddingDialog.tsx:42` with: *"Compulsory Klop — either a player's score reached exactly 0, or a player was dealt no tarok cards. Play Klop, or declare Solo Without or higher."* No logic changes required.
+
+---
+
+## Scoring
+
+### SCO-001 — Uncancelled radli not deducted at session end
+**Added:** 2026-08-20
+**Fixed:** —
+**Version:** —
+
+**Problem:** The Rules dialog states "Uncancelled radli at the end of the session cost 100 points each," and CLAUDE.md documents the same rule. However, the end-of-session flow does not actually apply the −100 penalty per outstanding radl to each player's final score.
+
+**Fix direction:** In the session-end path (wherever final scores are tallied and the session is closed out), iterate over each player's `radli` count and subtract 100 × radli from their score. Display the deduction in the final score breakdown so players can see why their total changed. Add a test asserting that a player with 2 outstanding radli at session end loses 200 points.
 
 ---
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import type { PlayState, RadliState, AnnouncementState, Seat, Card, SuitCard } from '../../engine/types'
 import { CONTRACT_BASE } from '../../engine/types'
-import { computeHandScore, scoreKlop, countDeclarerPoints, calcDifference, adjustCapturedForTalon, applyRadli, updateRadliAfterHand } from '../../engine/scoring'
+import { computeHandScore, scoreKlop, countDeclarerPoints, calcDifference, adjustCapturedForTalon, applyRadli, updateRadliAfterHand, radliEndOfSession } from '../../engine/scoring'
 import { countPoints } from '../../engine/pointcount'
 import { bonusBaseValue, getKontraMultiplier } from '../../engine/announce'
 import { CONTRACT_LABEL, BONUS_LABEL, SUIT_SYM } from '../labels'
@@ -265,7 +265,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
           <div style={{ margin: '4px 0 12px', padding: '8px 10px', background: '#1a1a1a', borderRadius: 4, fontSize: 12, color: '#ccc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ color: '#aaa', fontWeight: 'bold' }}>Score breakdown</span>
-              <span style={{ color: '#555', fontSize: 11 }}>default / announced</span>
+              <span style={{ color: '#555', fontSize: 11 }}>Points</span>
             </div>
             {(() => {
               const gk = getKontraMultiplier(announcementState, 'game')
@@ -590,6 +590,17 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             <p style={{ color: '#f0c040', margin: 0, textAlign: 'center', fontSize: 14 }}>
               End the game? Session scores will reset.
             </p>
+            {(() => {
+              const endPenalties = radliEndOfSession(projectedRadli)
+              const penalised = seats.filter(s => endPenalties[s] !== 0)
+              if (penalised.length === 0) return null
+              return (
+                <p style={{ color: '#aaa', margin: 0, fontSize: 12, textAlign: 'center' }}>
+                  Uncancelled radli will be charged:{' '}
+                  {penalised.map(s => `${playerNames[s]} ${endPenalties[s]}`).join(', ')}
+                </p>
+              )
+            })()}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button className="btn btn-ghost" onClick={() => setConfirmEnd(false)}>Cancel</button>
               <button className="btn" style={{ background: '#8b2222' }} onClick={onEndGame}>Yes, End Game</button>
