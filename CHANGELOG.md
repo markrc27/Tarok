@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.5.14 — 2026-08-22
+
+### UI
+- **Help dialog — section reorder**: Introduction → Cards → Deal → Bidding → Contracts → Talon Exchange → Calling a King → Announcements → Bonuses → The Play → Scoring → Radli → 3 Player → Variations. Point-counting explanation moved from Cards to the top of Scoring.
+- **Leaderboard — Easy/Hard tabs**: difficulty filter replaces the Difficulty column; opens on the current game's difficulty.
+- **Menu bar shows current difficulty**: right side now reads e.g. "Hard · v1.5.14".
+- **Score breakdown — "Points" column header**: replaces the unclear "default / announced" label.
+- **Compulsory klop dialog — specific reason**: shows which player triggered it and why ("Matic's score just reached 0" or "Matic just had no Tarok cards in the last deal").
+
+### Engine / Scoring
+- **Radli end-of-session penalty applied**: ending a game via "End Game" or the Game menu now deducts 100 pts per uncancelled radl before computing final rankings and posting to the leaderboard. Previously the penalty was shown in ScoreDialog but never actually applied to final scores.
+
 ## v1.5.13 — 2026-08-16
 
 ### Engine / Scoring
