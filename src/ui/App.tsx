@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useGameStore } from '../state/store'
-import type { Seat, PlayerCount, Contract } from '../engine/types'
+import type { Seat, PlayerCount } from '../engine/types'
 import { legalCards } from '../engine/play'
 import { legalBids } from '../engine/bidding'
 import { legalBids3 } from '../engine/bidding3'
@@ -118,20 +118,6 @@ export default function App() {
     : []
 
   const isHumanBidding = phase === 'bidding' && biddingState?.currentBidder === 0
-
-  // Compulsory klop can be triggered by either a score hitting exactly zero or a
-  // void (no-trump) redeal — the bidding dialogs must state which one applies.
-  const compulsoryKlopReason = voidDealSeat !== null
-    ? `${playerNames[voidDealSeat]} had no taroks and the deal was redealt.`
-    : "A player's score hit exactly zero."
-
-  const FOREHAND_CHOICE_BASE_4P: Contract[] = ['klop', 'three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one', 'beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without']
-  const FOREHAND_CHOICE_BASE_3P: Contract[] = ['klop', 'three', 'two', 'one', 'beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without']
-  const COMPULSORY_KLOP_FLOOR: Contract[] = ['klop', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without']
-  const forehandChoiceBase = playerCount === 3 ? FOREHAND_CHOICE_BASE_3P : FOREHAND_CHOICE_BASE_4P
-  const forehandChoiceLegalBids = biddingState?.isCompulsoryKlop
-    ? forehandChoiceBase.filter(c => COMPULSORY_KLOP_FLOOR.includes(c))
-    : forehandChoiceBase
   const isHumanPlaying = phase === 'playing' && (() => {
     if (!playState) return false
     const playedSeats = new Set(playState.currentTrick.cards.map(c => c.seat))
@@ -369,17 +355,16 @@ export default function App() {
           currentHighBid={biddingState?.highestBid ?? null}
           currentHighBidderName={biddingState?.highestBidder != null ? playerNames[biddingState.highestBidder] : null}
           isCompulsoryKlop={biddingState?.isCompulsoryKlop}
-          compulsoryKlopReason={compulsoryKlopReason}
         />
       )}
 
       {phase === 'forehand-choice' && biddingState && (
         <BiddingDialog
-          legalBids={forehandChoiceLegalBids}
+          legalBids={playerCount === 3
+            ? ['klop', 'three', 'two', 'one', 'beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without']
+            : ['klop', 'three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one', 'beggar', 'solo-without', 'open-beggar', 'color-valat-without', 'valat-without']}
           onBid={(action) => action.kind === 'bid' && store.setForehandContract(action.contract)}
           isForehandChoice
-          isCompulsoryKlop={biddingState.isCompulsoryKlop}
-          compulsoryKlopReason={compulsoryKlopReason}
         />
       )}
 

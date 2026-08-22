@@ -327,8 +327,8 @@ _Prompt structure per request:_
 
 ### UI-014 — Compulsory-klop forehand-choice message misstates the trigger
 **Added:** 2026-08-20
-**Fixed:** 2026-08-22
-**Version:** 1.6.3
+**Fixed:** —
+**Version:** —
 
 **Problem:** When a compulsory klop reaches the human forehand's contract
 choice (all three other seats passed), the dialog reads
@@ -361,19 +361,6 @@ list to the forehand-choice `BiddingDialog` and does not forward
 forward `isCompulsoryKlop` and restrict `legalBids`),
 `src/ui/dialogs/BiddingDialog.tsx` (forehand-choice message text for the
 compulsory-klop case).
-
-**Resolution:** A live session surfaced the same conflation in the *normal*
-Bidding dialog too ("Compulsory Klop — bidding floor raised" — states the
-effect, not the cause; player had genuinely hit exactly 0 and the message
-didn't say so). Fixed both dialogs together: `App.tsx` now computes a single
-`compulsoryKlopReason` string (score-hit-zero vs. `voidDealSeat` wording,
-reusing the existing banner copy) and passes it to both `BiddingDialog`
-instances; `BiddingDialog.tsx` interpolates it into both the forehand-choice
-and normal-bidding compulsory-klop messages. The forehand-choice contract
-list is now also restricted to the compulsory-klop floor
-(`klop`/`solo-without`/`open-beggar`/`color-valat-without`/`valat-without`)
-instead of always showing the full ladder. `npm test` (260/260) and
-`npm run build` both pass.
 
 ---
 
