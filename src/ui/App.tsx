@@ -281,33 +281,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Score-hits-zero compulsory klop notice */}
-        {(phase === 'bidding' || phase === 'forehand-choice') && biddingState?.isCompulsoryKlop && voidDealSeat === null && (
-          <div style={{
-            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-            background: '#1e1a10', border: '1px solid #6b5a20',
-            borderRadius: 6, padding: '6px 14px', fontSize: 12, color: '#c8a84a',
-            whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 5,
-            textAlign: 'center',
-          }}>
-            {compulsoryKlopNextSeat !== null ? playerNames[compulsoryKlopNextSeat] : 'A player'}&apos;s score hit zero — compulsory klop: bidding starts at Solo Without.
-          </div>
-        )}
-
-        {/* Void-deal notice — top centre */}
-        {phase === 'bidding' && voidDealSeat !== null && (
-          <div style={{
-            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-            background: '#1e1a10', border: '1px solid #6b5a20',
-            borderRadius: 6, padding: '7px 14px',
-            fontSize: 12, color: '#d4b86a', whiteSpace: 'nowrap',
-            pointerEvents: 'none', zIndex: 5,
-            textAlign: 'center',
-          }}>
-            <strong>{playerNames[voidDealSeat]}</strong> had no taroks — cards were redealt.
-            {' '}Compulsory klop: bidding starts at Solo Without.
-          </div>
-        )}
 
         {/* Announcements overlay — top left */}
         {phase === 'playing' && announcementState && (() => {
