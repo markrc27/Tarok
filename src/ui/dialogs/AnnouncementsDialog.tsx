@@ -64,8 +64,8 @@ export default function AnnouncementsDialog({ contract, declarer, partner, hands
     <div className="announce-layout">
       {talonExchange && talonExchange.groups.length > 0 && (
         <div className="talon-reveal" style={{ '--card-w': '46px', '--card-h': '69px' } as React.CSSProperties}>
-          <p style={{ color: '#888', fontSize: 11, margin: 0 }}>
-            Talon — {declarerName} took the highlighted group:
+          <p style={{ color: '#fff', fontSize: 14, margin: 0 }}>
+            <strong>Talon</strong> — {declarerName} took the highlighted group:
           </p>
           <div className="talon-groups">
             {talonExchange.groups.map((group, i) => (

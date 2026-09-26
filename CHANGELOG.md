@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.6.1 — 2026-09-26
+
+### UI
+- **Talon reveal label — readability pass**: the "Talon — X took the highlighted group" label (added in v1.6.0's UI-019) is now white instead of dim grey, "Talon" is bolded, and the font size matches the announcement bonus list (14px, up from 11px).
+
 ## v1.6.0 — 2026-09-26
 
 ### Bidding / Rules
