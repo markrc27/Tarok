@@ -7,14 +7,18 @@ rules: **pagat.com is authoritative**. Rationale for the process rules:
 ## What this is
 
 Single-player 4-player Slovenian Tarok vs three AI bots. Vite SPA; game
-state lives in memory, session history in `localStorage`. Ships two ways:
-- **Web** (primary): Cloudflare Pages at **tarok.pages.dev**, auto-deploys
-  on push to `master`. Has a real backend — a Cloudflare D1 database
-  (`tarok-db`) storing one row per finished game, served by a Pages
-  Function so players see a shared leaderboard. See "Cloudflare backend".
-- **Electron** (`npm run electron:build` → `C:\TarokBuild\`): Windows
-  installer, **local-only** — never calls the backend, keeps history in
-  `localStorage`/OPFS. Detected via `navigator.userAgent`; skips the API.
+state lives in memory, session history in `localStorage`. Ships as a
+**web app**: Cloudflare Pages at **tarok.pages.dev**, auto-deploys on push
+to `master`. Has a real backend — a Cloudflare D1 database (`tarok-db`)
+storing one row per finished game, served by a Pages Function so players
+see a shared leaderboard. See "Cloudflare backend".
+
+The Electron/Windows-installer build (`npm run electron:build` →
+`C:\TarokBuild\`) is **retired as of 2026-09-26** — releases are Cloudflare-only
+now (too much friction asking people to download and install an .exe). The
+`electron/` folder, the `electron:*` scripts, and the `navigator.userAgent`
+web/Electron split in `persistence.ts` are still in the repo but dormant;
+don't build or ship the installer, and don't add new Electron-only logic.
 
 Look and feel mimics the
 old Microsoft Hearts app: minimal chrome, green felt, modal dialogs for
@@ -44,11 +48,11 @@ symbols / roman numerals. The rules engine is the real product; the UI just pres
 2. Add an entry to CHANGELOG.md (top of file, same version, brief bullet per change)
 3. npm test && npm run build   (both must pass)
 4. git add / commit / push origin master
-5. npm run electron:build      → C:\TarokBuild\Tarok Setup x.x.x.exe
-6. GitHub release: tag V{version}, target master, upload the .exe only
 ```
 
-Pushing to `master` also triggers the Cloudflare Pages web deploy automatically.
+Pushing to `master` also triggers the Cloudflare Pages web deploy automatically
+— that deploy **is** the release. No Electron build, no GitHub release/tag
+(both retired 2026-09-26; see "What this is").
 
 ## Cloudflare backend (web build)
 
