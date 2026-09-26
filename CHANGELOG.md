@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.6.0 — 2026-09-26
+
+### Bidding / Rules
+- **King is now called before the talon is exchanged (ENG-006)**: for three/two/one, the declarer calls a king first, then the talon is dealt out and exchanged — matching pagat.com ("the declarer calls the king before seeing the talon"). Previously the talon exchange happened first, and the bot's king-call heuristic could even see the talon remainder before calling, which the real rule doesn't allow. Fixes both the human dialog order and the bot's decision order.
+- **Bidding dialog text now matches the actual legal bids (TXT-002)**: "must bid X or higher" is derived from the real legal-bid list instead of a hardcoded contract name, and Forehand — who may *match* the current bid instead of strictly raising it — now sees "you may match it or bid higher" instead of a misleading "must bid higher."
+
+### Engine / Scoring
+- **Beggar / Open Beggar / Valat / Colour Valat end as soon as the outcome is decided (ENG-007)**: these are flat-scored with no mond penalty, so once the declarer takes a trick (failing a 0-tricks contract) or loses one (failing an all-tricks contract), the score can no longer change — the hand now ends immediately instead of playing out the rest of the tricks. Solo Without is deliberately excluded: mond penalty still applies to it, so it always plays out in full.
+
+### UI
+- **Called king shown on the Announcements screen (UI-018)**: the called suit is public knowledge the moment it's named (only the partner's identity stays secret) — previously it wasn't shown anywhere during announcements, to either side.
+- **Talon groups shown on the Announcements screen (UI-019)**: per pagat.com the talon is exposed to everyone when the declarer takes a group, not just the declarer. Shown as its own compact panel to the left of Announcements (not scrolling inside it), with smaller cards laid out in a 2-column grid so all groups are visible at once, and a read-only highlight on the picked group with no stray hover effect on the others. Previously a bot declarer's talon exchange was invisible to the human entirely.
+
 ## v1.5.14 — 2026-08-22
 
 ### UI

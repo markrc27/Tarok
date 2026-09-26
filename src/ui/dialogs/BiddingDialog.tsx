@@ -40,21 +40,34 @@ export default function BiddingDialog({ legalBids, onBid, isForehandChoice, curr
       {isForehandChoice && (
         <p style={{ marginBottom: 10, color: '#aaa', fontSize: 12 }}>
           {isCompulsoryKlop
-            ? `Compulsory Klop — ${compulsoryKlopReason ?? 'bidding floor raised'}. Play Klop, or declare Solo Without or higher.`
+            ? `Compulsory Klop — ${compulsoryKlopReason ?? 'bidding floor raised'}. Play Klop, or declare ${CONTRACT_LABEL[legalBids.find(c => c !== 'klop') ?? 'solo-without']} or higher.`
             : 'All others passed — choose your contract:'}
         </p>
       )}
-      {!isForehandChoice && currentHighBid && (
-        <p style={{ marginBottom: 10, color: '#aaa', fontSize: 12 }}>
-          Current bid: <strong style={{ color: '#f0f0f0' }}>{CONTRACT_LABEL[currentHighBid]}</strong>
-          {currentHighBidderName ? ` by ${currentHighBidderName}` : ''} — you must bid higher or pass.
-        </p>
-      )}
+      {!isForehandChoice && currentHighBid && (() => {
+        // TXT-002: Forehand may match the current bid rather than raise it
+        // (bidding.ts: contractStrength(c) >= currentStrength for forehand).
+        // legalBids already reflects that, so derive the wording from it
+        // instead of a hardcoded "must bid higher" that's wrong for Forehand.
+        const canMatch = legalBids.includes(currentHighBid)
+        const lowestLegal = legalBids[0]
+        return (
+          <p style={{ marginBottom: 10, color: '#aaa', fontSize: 12 }}>
+            Current bid: <strong style={{ color: '#f0f0f0' }}>{CONTRACT_LABEL[currentHighBid]}</strong>
+            {currentHighBidderName ? ` by ${currentHighBidderName}` : ''}
+            {canMatch
+              ? ` — as Forehand, you may match it (${CONTRACT_LABEL[currentHighBid]}) or bid higher, or pass.`
+              : lowestLegal
+                ? ` — you must bid higher: ${CONTRACT_LABEL[lowestLegal]} or above, or pass.`
+                : ' — you must bid higher or pass.'}
+          </p>
+        )
+      })()}
       {!isForehandChoice && !currentHighBid && (
         <p style={{ marginBottom: 10, color: '#aaa', fontSize: 12 }}>
           {isCompulsoryKlop
-            ? `Compulsory Klop — ${compulsoryKlopReason ?? 'bidding floor raised'}. Bid Solo Without or higher, or pass.`
-            : 'No bids yet — bid Two or higher, or pass.'}
+            ? `Compulsory Klop — ${compulsoryKlopReason ?? 'bidding floor raised'}. Bid ${CONTRACT_LABEL[legalBids[0] ?? 'solo-without']} or higher, or pass.`
+            : `No bids yet — bid ${CONTRACT_LABEL[legalBids[0] ?? 'two']} or higher, or pass.`}
         </p>
       )}
 

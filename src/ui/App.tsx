@@ -384,6 +384,9 @@ export default function App() {
             partner={partner}
             hands={dealResult.hands}
             announcementState={announcementState ?? undefined}
+            kingCall={kingCall}
+            talonExchange={talonExchange}
+            playerNames={playerNames}
             onFinish={(bonuses, kontraGame) => store.finishAnnouncements(bonuses, kontraGame)}
           />
         )

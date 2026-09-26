@@ -427,6 +427,57 @@ body {
 .talon-group:hover { border-color: #0078d4; }
 .talon-group.selected { border-color: #0078d4; background: rgba(0,120,212,0.2); }
 
+/* Read-only variant (Announcements talon reveal, UI-019): not clickable, so no
+   hover affordance — only the already-picked group stays highlighted. */
+.talon-group.readonly { cursor: default; }
+.talon-group.readonly:not(.selected):hover { border-color: transparent; }
+
+/* ── Announcements: talon reveal (left) + main panel (right) ────────────
+   Non-blocking, like .bid-panel, but laid out as a flex row so the talon
+   reveal sits to the left of the panel instead of scrolling inside it. */
+.announce-layout {
+  position: fixed;
+  top: 32px;
+  right: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  z-index: 200;
+}
+.announce-panel {
+  background: #1e1e1e;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 16px 20px;
+  min-width: 260px;
+  max-width: 340px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+}
+.talon-reveal {
+  background: #1e1e1e;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  flex-shrink: 0;
+}
+/* Grid instead of a single column: "One" deals 6 single-card groups, which
+   would otherwise stack into a tall single strip. 2 columns keeps it to at
+   most 3 rows for any contract, so it fits beside the panel without scrolling. */
+.talon-reveal .talon-groups {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  /* Without this, grid's default justify-content:normal stretches "auto"
+     columns to fill the panel's full width (set by the wider label text
+     above), leaving each 1-card cell far wider than its card — pushing the
+     card to the left of its cell and making the selected highlight box look
+     off-center. Explicitly not stretching keeps each column exactly as wide
+     as its card. */
+  justify-content: start;
+  gap: 6px;
+  margin-top: 6px;
+}
+
 /* ── Discard selection ────────────────────────────────────────────────── */
 .discard-hand { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .discard-card { position: relative; cursor: pointer; }
@@ -497,6 +548,33 @@ body {
   .bid-panel .modal-actions {
     flex-shrink: 0;
     margin-top: 12px;
+  }
+
+  /* Announcements: not enough width for the talon reveal beside the panel,
+     so stack it above instead — both centered, capped so the hand stays
+     visible below, matching .bid-panel's mobile treatment. */
+  .announce-layout {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 50px;
+    flex-direction: column;
+    align-items: center;
+    max-width: 94vw;
+    max-height: calc(100dvh - 240px);
+    overflow-y: auto;
+  }
+  .announce-panel {
+    min-width: min(340px, 94vw);
+    max-width: 94vw;
+  }
+  .talon-reveal {
+    width: 100%;
+    max-width: min(340px, 94vw);
+  }
+  .talon-reveal .talon-groups {
+    grid-template-columns: repeat(3, auto);
+    justify-content: center;
   }
 
   /* Seat positions: tighten side margins, push top past taller menu bar */

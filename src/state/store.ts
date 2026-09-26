@@ -8,7 +8,7 @@ import {
   initTalonExchange, selectTalonGroup as selectGroup, resolveKingCall,
   discardHand, talonGroupSize,
 } from '../engine/talon'
-import { initPlay, playCard, isHandComplete } from '../engine/play'
+import { initPlay, playCard, isHandComplete, isOutcomeDecided } from '../engine/play'
 import { initAnnouncements, applyAnnouncement } from '../engine/announce'
 import {
   initRadli, computeHandScore, updateRadliAfterHand, applyRadli,
@@ -138,6 +138,18 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     botDelay(runBotPlay)
   }
 
+  // Bot calls a king using only its original 12-card hand — mirrors the human
+  // path (callKing action), which per pagat.com happens BEFORE the talon is
+  // ever looked at. Must run before botTalon, not after (ENG-006).
+  const botCallKing = (contract: Contract, declarer: Seat) => {
+    const { dealResult } = get()
+    if (!dealResult) return
+    const suit = recommendKingCall(dealResult.hands[declarer], ['clubs', 'spades', 'hearts', 'diamonds'])
+    const kc = resolveKingCall(suit, dealResult.hands, dealResult.talon, declarer)
+    set({ kingCall: kc })
+    botTalon(contract, declarer)
+  }
+
   const botTalon = (contract: Contract, declarer: Seat) => {
     const { dealResult, biddingState, options } = get()
     if (!dealResult || !biddingState) return
@@ -149,13 +161,8 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     const newHand = discardHand(updatedHand, toDiscard)
     const newHands = { ...dealResult.hands, [declarer]: newHand }
     const newDealResult = { ...dealResult, hands: newHands }
-    let kingCall = null
-    if (['three', 'two', 'one'].includes(contract)) {
-      const suit = recommendKingCall(newHand, ['clubs', 'spades', 'hearts', 'diamonds'], updated.talonRemainder)
-      kingCall = resolveKingCall(suit, newHands, dealResult.talon, declarer)
-    }
     const discardedExchange = { ...updated, discard: toDiscard }
-    set({ dealResult: newDealResult, talonExchange: discardedExchange, kingCall })
+    set({ dealResult: newDealResult, talonExchange: discardedExchange })
     advanceToAnnouncing()
   }
 
@@ -173,14 +180,16 @@ export const useGameStore = create<Store>()(persist((set, get) => {
   // Show completed trick for 1.2 s so the player can see all 4 cards and who won.
   const TRICK_PAUSE = 1200
 
-  const resolveTrickDisplay = (newState: ReturnType<typeof initPlay>, winner: Seat, handComplete: boolean) => {
+  const resolveTrickDisplay = (newState: ReturnType<typeof initPlay>, winner: Seat, handComplete: boolean, outcomeDecided: boolean) => {
     const lastTrick = newState.completedTricks[newState.completedTricks.length - 1]
     const thisRoundId = get().roundId
     set({ playState: newState, pendingTrick: { cards: lastTrick.cards, winner, vitamin: lastTrick.vitamin } })
     setTimeout(() => {
       if (get().roundId !== thisRoundId) return  // new round started during the pause
       set({ pendingTrick: null })
-      if (handComplete) {
+      // ENG-007: outcomeDecided ends the hand the same way handComplete does —
+      // the remaining tricks can no longer change the flat score (see isOutcomeDecided).
+      if (handComplete || outcomeDecided) {
         set({ phase: 'scoring' })
       } else {
         botDelay(runBotPlay)
@@ -199,10 +208,10 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     if (!seat || seat === HUMAN) return
     const pagatUltimoAnnounced = !!(get().announcementState?.announcements.some(a => a.bonus === 'pagat-ultimo'))
     const card = chooseCard(playState, seat, { difficultyBias: 0.5, difficulty: options.botDifficulty, knownPartner: computeKnownPartner(playState), pagatUltimoAnnounced })
-    const { newState, trickComplete, trickWinner, handComplete } = playCard(playState, seat, card)
+    const { newState, trickComplete, trickWinner, handComplete, outcomeDecided } = playCard(playState, seat, card)
     set({ playState: newState })
     if (trickComplete && trickWinner !== null) {
-      resolveTrickDisplay(newState, trickWinner, handComplete)
+      resolveTrickDisplay(newState, trickWinner, handComplete, outcomeDecided)
     } else {
       botDelay(runBotPlay)
     }
@@ -237,8 +246,18 @@ export const useGameStore = create<Store>()(persist((set, get) => {
       return
     }
 
+    // King-calling contracts: call the king BEFORE the talon is ever exchanged
+    // (ENG-006 — pagat.com: "the declarer calls the king before seeing the
+    // talon"). Solo contracts have no king; flat contracts have neither.
+    const needsKingCall = ['three', 'two', 'one'].includes(contract)
     const needsTalon = ['three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one'].includes(contract)
-    if (needsTalon) {
+    if (needsKingCall) {
+      if (declarer === HUMAN) {
+        set({ phase: 'king-call' })
+      } else {
+        botCallKing(contract, declarer)
+      }
+    } else if (needsTalon) {
       if (declarer === HUMAN) {
         const exchange = initTalonExchange(dealResult.talon, contract)
         set({ talonExchange: exchange, phase: 'talon' })
@@ -246,14 +265,6 @@ export const useGameStore = create<Store>()(persist((set, get) => {
         botTalon(contract, declarer)
       }
     } else {
-      if (['three', 'two', 'one'].includes(contract) && declarer !== HUMAN) {
-        // Bot calls king
-        const kc = resolveKingCall(
-          recommendKingCall(dealResult.hands[declarer], ['clubs', 'spades', 'hearts', 'diamonds']),
-          dealResult.hands, dealResult.talon, declarer,
-        )
-        set({ kingCall: kc })
-      }
       advanceToAnnouncing()
     }
   }
@@ -313,8 +324,11 @@ export const useGameStore = create<Store>()(persist((set, get) => {
       const chosen = allowed.includes(contract) ? contract : 'klop'
       const newBid = applyBid(biddingState, { kind: 'bid', contract: chosen })
       set({ biddingState: newBid, forehandChoiceContract: null })
+      const needsKingCall = ['three', 'two', 'one'].includes(chosen)
       const needsTalon = ['three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one'].includes(chosen)
-      if (needsTalon) {
+      if (needsKingCall) {
+        set({ phase: 'king-call' })
+      } else if (needsTalon) {
         const exchange = initTalonExchange(dealResult.talon, chosen)
         set({ talonExchange: exchange, phase: 'talon' })
       } else {
@@ -344,24 +358,22 @@ export const useGameStore = create<Store>()(persist((set, get) => {
       const newHand = discardHand(dealResult.hands[declarer], cards)
       const newHands = { ...dealResult.hands, [declarer]: newHand }
       const newDealResult = { ...dealResult, hands: newHands }
-      const contract = biddingState.highestBid ?? 'three'
-      const needsKingCall = ['three', 'two', 'one'].includes(contract)
       const updatedExchange = talonExchange ? { ...talonExchange, discard: cards } : null
       set({ dealResult: newDealResult, pendingDiscardCount: 0, talonExchange: updatedExchange })
-      if (needsKingCall) {
-        set({ phase: 'king-call' })
-      } else {
-        advanceToAnnouncing()
-      }
+      // King (if any) was already called before the talon phase — see callKing.
+      advanceToAnnouncing()
     },
 
+    // ENG-006: king is called BEFORE the talon is exchanged, so this now leads
+    // into the talon phase rather than straight to announcements.
     callKing: (suit) => {
       const { dealResult, biddingState } = get()
       if (!dealResult || !biddingState) return
       const declarer = biddingState.highestBidder ?? biddingState.forehand
+      const contract = biddingState.highestBid ?? 'three'
       const kc = resolveKingCall(suit, dealResult.hands, dealResult.talon, declarer)
-      set({ kingCall: kc })
-      advanceToAnnouncing()
+      const exchange = initTalonExchange(dealResult.talon, contract)
+      set({ kingCall: kc, talonExchange: exchange, phase: 'talon' })
     },
 
     finishAnnouncements: (bonuses, kontraGame) => {
@@ -383,10 +395,10 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     playCardAction: (card) => {
       const { playState } = get()
       if (!playState) return
-      const { newState, trickComplete, trickWinner, handComplete } = playCard(playState, HUMAN, card)
+      const { newState, trickComplete, trickWinner, handComplete, outcomeDecided } = playCard(playState, HUMAN, card)
       set({ playState: newState })
       if (trickComplete && trickWinner !== null) {
-        resolveTrickDisplay(newState, trickWinner, handComplete)
+        resolveTrickDisplay(newState, trickWinner, handComplete, outcomeDecided)
       } else {
         botDelay(runBotPlay)
       }
@@ -631,8 +643,9 @@ export const useGameStore = create<Store>()(persist((set, get) => {
 
     resumeAfterReload: () => {
       const { phase, biddingState, playState } = get()
-      // Hand complete but lost the scoring transition during the trick-display pause
-      if (phase === 'playing' && playState && isHandComplete(playState)) {
+      // Hand complete, or its outcome already decided early (ENG-007), but lost
+      // the scoring transition during the trick-display pause
+      if (phase === 'playing' && playState && (isHandComplete(playState) || isOutcomeDecided(playState))) {
         set({ phase: 'scoring', pendingTrick: null })
         return
       }

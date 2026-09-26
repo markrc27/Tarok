@@ -233,8 +233,29 @@ export function playCard(state: PlayState, seat: Seat, card: Card): PlayResult {
   }
 
   const handComplete = trickComplete && Object.values(newState.hands).every(h => h.length === 0)
+  const outcomeDecided = trickComplete && isOutcomeDecided(newState)
 
-  return { newState, trickComplete, trickWinner, handComplete }
+  return { newState, trickComplete, trickWinner, handComplete, outcomeDecided }
+}
+
+// ENG-007: beggar/open-beggar/valat/colour-valat are flat-scored with no mond
+// penalty (see computeHandScore), and their win condition — 0 tricks, or all
+// tricks, for the declarer — can only ever get worse once broken: taking a
+// single trick fails a "0 tricks" contract forever, and losing a single trick
+// fails an "all tricks" contract forever. Once that happens the final score
+// can no longer change, so the remaining tricks don't need to be played out.
+// Solo-without is deliberately excluded: it's flat too, but mond penalty
+// still applies to it, and where the Mond ends up depends on the rest of the
+// play — crossing the 36-point threshold early does not settle the score.
+export function isOutcomeDecided(state: PlayState): boolean {
+  const { contract, declarer, capturedCards, completedTricks } = state
+  if (contract === 'beggar' || contract === 'open-beggar') {
+    return capturedCards[declarer].length > 0
+  }
+  if (contract === 'valat-without' || contract === 'color-valat-without') {
+    return completedTricks.some(t => t.winner !== declarer)
+  }
+  return false
 }
 
 export function applyTrickResult(state: PlayState, winner: Seat): PlayState {

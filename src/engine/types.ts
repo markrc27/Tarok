@@ -165,6 +165,9 @@ export interface PlayResult {
   trickComplete: boolean
   trickWinner: Seat | null
   handComplete: boolean
+  // ENG-007: true once a flat "0 tricks" or "all tricks" contract's outcome
+  // is mathematically locked in, even though hands[] may still hold cards.
+  outcomeDecided: boolean
 }
 
 export interface AnnouncementState {

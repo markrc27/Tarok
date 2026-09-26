@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { legalCards, resolveTrick, isEmperorTrick, checkMondCapture, playCard, firstLeader, applyTrickResult } from '../src/engine/play'
+import { legalCards, resolveTrick, isEmperorTrick, checkMondCapture, playCard, firstLeader, applyTrickResult, isOutcomeDecided } from '../src/engine/play'
 import { countPoints } from '../src/engine/pointcount'
-import type { Card, PlayState, TrickState, Seat, SuitCard, TrumpCard } from '../src/engine/types'
+import type { Card, PlayState, TrickState, Seat, SuitCard, TrumpCard, Trick, Contract } from '../src/engine/types'
 
 function trump(ordinal: number): TrumpCard {
   const pts: 1 | 5 = (ordinal === 1 || ordinal === 21 || ordinal === 22) ? 5 : 1
@@ -616,5 +616,86 @@ describe('klop vitamins', () => {
     const capturedPts = countPoints(totalCaptured)
     const vitaminPts = countPoints(vitamins)
     expect(capturedPts).toBe(vitaminPts) // only vitamins in piles (trick cards were empty)
+  })
+})
+
+// ENG-007 — beggar/open-beggar/valat/colour-valat can end as soon as the win/
+// loss outcome is locked in, since they're flat-scored with no mond penalty.
+describe('isOutcomeDecided', () => {
+  function trick(winner: Seat): Trick {
+    return { cards: [], winner }
+  }
+
+  it('beggar: not decided while declarer holds zero captured cards', () => {
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'beggar', declarer: 0, capturedCards: { 0: [], 1: [low()], 2: [], 3: [] },
+    })
+    expect(isOutcomeDecided(state)).toBe(false)
+  })
+
+  it('beggar: decided the instant declarer captures any trick', () => {
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'beggar', declarer: 0, capturedCards: { 0: [low()], 1: [], 2: [], 3: [] },
+    })
+    expect(isOutcomeDecided(state)).toBe(true)
+  })
+
+  it('open-beggar: same 0-tricks rule as beggar', () => {
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'open-beggar', declarer: 2, capturedCards: { 0: [], 1: [], 2: [low()], 3: [] },
+    })
+    expect(isOutcomeDecided(state)).toBe(true)
+  })
+
+  it('valat-without: not decided while declarer has won every completed trick', () => {
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'valat-without', declarer: 0,
+      completedTricks: [trick(0), trick(0), trick(0)],
+    })
+    expect(isOutcomeDecided(state)).toBe(false)
+  })
+
+  it('valat-without: decided the instant any other seat wins a trick', () => {
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'valat-without', declarer: 0,
+      completedTricks: [trick(0), trick(1), trick(0)],
+    })
+    expect(isOutcomeDecided(state)).toBe(true)
+  })
+
+  it('color-valat-without: same all-tricks rule as valat-without', () => {
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'color-valat-without', declarer: 3,
+      completedTricks: [trick(1)],
+    })
+    expect(isOutcomeDecided(state)).toBe(true)
+  })
+
+  it('solo-without is excluded: mond penalty still depends on the rest of play', () => {
+    // Even with a clearly "lost" trick pattern, solo-without must play out —
+    // crossing/missing the 36-point threshold isn't the whole story once mond
+    // penalty is in play.
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'solo-without', declarer: 0,
+      capturedCards: { 0: [], 1: [low()], 2: [], 3: [] },
+      completedTricks: [trick(1), trick(1), trick(1)],
+    })
+    expect(isOutcomeDecided(state)).toBe(false)
+  })
+
+  it('normal contracts (e.g. two) are never ended early: magnitude and bonuses need full play', () => {
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'two', declarer: 0,
+      completedTricks: [trick(1), trick(1), trick(1)],
+    })
+    expect(isOutcomeDecided(state)).toBe(false)
+  })
+
+  it('klop is never ended early', () => {
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'klop' as Contract, declarer: 0,
+      capturedCards: { 0: [], 1: [low()], 2: [], 3: [] },
+    })
+    expect(isOutcomeDecided(state)).toBe(false)
   })
 })
