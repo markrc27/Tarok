@@ -43,8 +43,10 @@ export default function AnnouncementsDialog({ contract, declarer, partner, hands
   const onDeclarerSide = HUMAN === declarer || HUMAN === partner
   const isFlatContract = ['beggar', 'open-beggar', 'solo-without', 'color-valat-without', 'valat-without'].includes(contract)
 
+  const alreadyAnnounced = announcementState?.announcements ?? []
   const eligibleBonuses = onDeclarerSide && !isFlatContract
-    ? DECLARER_SIDE_BONUSES.filter(b => canAnnounce(HUMAN, b, partner, hands, declarer))
+    ? DECLARER_SIDE_BONUSES.filter(b => canAnnounce(HUMAN, b, partner, hands, declarer)
+        && !alreadyAnnounced.some(a => a.bonus === b))
     : []
 
   const canKontra = !onDeclarerSide
@@ -59,6 +61,18 @@ export default function AnnouncementsDialog({ contract, declarer, partner, hands
   // its own floating panel (not inside .announce-panel) so it doesn't force the
   // panel to scroll, with smaller scoped cards so every group fits at once.
   const declarerName = playerNames?.[declarer] ?? 'Declarer'
+
+  // Each announced bonus is listed with the player who called it.
+  const announcedList = alreadyAnnounced.length > 0 && (
+    <div style={{ background: '#1a1a1a', borderRadius: 4, padding: '6px 10px', marginBottom: 10, fontSize: 12 }}>
+      {alreadyAnnounced.map((ann, i) => (
+        <div key={i}>
+          <span style={{ color: '#ccc' }}>{ann.by !== undefined ? (playerNames?.[ann.by] ?? declarerName) : declarerName} announced: </span>
+          <span style={{ color: '#f0c040' }}>{BONUS_SHORT[ann.bonus]}</span>
+        </div>
+      ))}
+    </div>
+  )
 
   return (
     <div className="announce-layout">
@@ -94,6 +108,7 @@ export default function AnnouncementsDialog({ contract, declarer, partner, hands
               You are on the declaring side — announce bonuses:
             </p>
             <p style={{ color: '#666', fontSize: 11, margin: '0 0 10px' }}>Point values: default / if announced</p>
+            {announcedList}
             {eligibleBonuses.length > 0 && (
               <div className="bid-list">
                 {eligibleBonuses.map(b => (
@@ -111,16 +126,7 @@ export default function AnnouncementsDialog({ contract, declarer, partner, hands
         ) : canKontra ? (
           <>
             <p style={{ color: '#aaa', fontSize: 12, margin: '6px 0 8px' }}>You are an opponent.</p>
-            {announcementState && announcementState.announcements.length > 0 && (
-              <div style={{ background: '#1a1a1a', borderRadius: 4, padding: '6px 10px', marginBottom: 10, fontSize: 12 }}>
-                <div style={{ color: '#888', marginBottom: 4 }}>Declarer announced:</div>
-                {announcementState.announcements.map((ann, i) => (
-                  <div key={i} style={{ color: '#f0c040' }}>
-                    {BONUS_SHORT[ann.bonus]}{ann.announced ? '' : ' (unannounced)'}
-                  </div>
-                ))}
-              </div>
-            )}
+            {announcedList}
             {announcementState && announcementState.announcements.length === 0 && (
               <p style={{ color: '#555', fontSize: 11, margin: '0 0 8px' }}>No bonuses announced by declarer.</p>
             )}

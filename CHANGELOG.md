@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.6.2 — 2026-10-03
+
+### UI
+- **Points gauge no longer gives away the hidden partner (UI-020)**: the status bar's "Declarer · N / 36" gauge counted the partner's captured cards from the first trick, so it ticked up whenever the still-secret partner won a trick — revealing who they were. A hidden partner's points are now left out and added in one go when the called king is played. (If you are the hidden partner yourself, your own tricks are still counted — you already know.)
+- **Points gauge now includes the talon remainder won with the called king**: when the called king is in the talon and the declarer wins a trick with it, the rest of the talon goes to the declarer — the final score counted those cards but the live "N / 36" gauge didn't, so it could read e.g. 34 at the last trick and 37 on the score screen. The gauge now adds them the moment that trick is won.
+- **Announcements show who called them**: the Announcements window now lists each bonus as "<player> announced: <bonus>" (previously just "Declarer announced"), and shows it to the declaring side too, not only opponents. The in-play ANNOUNCED panel also names who announced each bonus and who called kontra. Bonuses already announced by your side are no longer offered again as checkboxes.
+- **Reloading during bidding no longer wipes the session**: the saved game stored the "who has passed" set in a form that couldn't be read back, so a page reload mid-auction crashed on load and the recovery screen cleared the whole saved session (scores included). The saved state now round-trips correctly.
+- **Game → End Game uses an in-app confirmation**: replaces the browser's native confirm/alert box, which embedded browsers can block (making End Game silently do nothing), with a dialog matching the score screen's "Yes, End Game" prompt.
+- **Bidding window shows who has passed**: a "Passed: …" line lists the players who have passed so far, in the order they passed ("nobody yet" if none) — useful for judging whether the hand is heading to klop.
+- **Help — called king in the talon**: the Calling a King section now explains that winning a trick with a called king taken from the talon earns the declarer the unchosen talon cards.
+- **Traditional cards are now the default**: a fresh start shows the traditional card art instead of the simple faces. Simple is still available under Options, and anyone who has already picked an appearance keeps their choice.
+
 ## v1.6.1 — 2026-09-26
 
 ### UI

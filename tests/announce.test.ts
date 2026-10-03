@@ -274,3 +274,17 @@ describe('king-ultimo: declarer side wins last trick with the called king in it'
     expect(evaluateBonus('king-ultimo', emptyCaptured, [lastTrick], 0, 2, calledKing)).toBe(false)
   })
 })
+
+describe('announcements record who called them', () => {
+  it('a bonus remembers its announcer', () => {
+    const state = applyAnnouncement(initAnnouncements(), { kind: 'announce', seat: 2, bonus: 'pagat-ultimo' }, 2, null)
+    expect(state.announcements[0].by).toBe(2)
+  })
+
+  it('a kontra chain remembers the latest caller', () => {
+    let state = applyAnnouncement(initAnnouncements(), { kind: 'kontra', seat: 3, target: 'game' }, 0, null)
+    expect(state.kontraTargets[0].by).toBe(3)
+    state = applyAnnouncement(state, { kind: 'rekontra', seat: 0, target: 'game' }, 0, null)
+    expect(state.kontraTargets[0].by).toBe(0)
+  })
+})

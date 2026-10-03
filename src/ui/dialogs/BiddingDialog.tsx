@@ -18,9 +18,10 @@ interface Props {
   currentHighBidderName?: string | null
   isCompulsoryKlop?: boolean
   compulsoryKlopReason?: string | null
+  passedNames?: string[]  // players who have passed so far, in the order they passed
 }
 
-export default function BiddingDialog({ legalBids, onBid, isForehandChoice, currentHighBid, currentHighBidderName, isCompulsoryKlop, compulsoryKlopReason }: Props) {
+export default function BiddingDialog({ legalBids, onBid, isForehandChoice, currentHighBid, currentHighBidderName, isCompulsoryKlop, compulsoryKlopReason, passedNames }: Props) {
   const [selected, setSelected] = useState<Contract | null>(legalBids[0] ?? null)
   const [infoFor, setInfoFor] = useState<Contract | null>(null)
 
@@ -68,6 +69,11 @@ export default function BiddingDialog({ legalBids, onBid, isForehandChoice, curr
           {isCompulsoryKlop
             ? `Compulsory Klop — ${compulsoryKlopReason ?? 'bidding floor raised'}. Bid ${CONTRACT_LABEL[legalBids[0] ?? 'solo-without']} or higher, or pass.`
             : `No bids yet — bid ${CONTRACT_LABEL[legalBids[0] ?? 'two']} or higher, or pass.`}
+        </p>
+      )}
+      {!isForehandChoice && passedNames && (
+        <p style={{ marginBottom: 10, color: '#aaa', fontSize: 12 }}>
+          Passed: <strong style={{ color: '#f0f0f0' }}>{passedNames.length > 0 ? passedNames.join(', ') : 'nobody yet'}</strong>
         </p>
       )}
 

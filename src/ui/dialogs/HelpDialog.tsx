@@ -129,7 +129,7 @@ const SECTIONS: Section[] = [
         <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
           <li>Discarded trumps <strong>must be declared</strong> publicly.</li>
           <li><strong>Kings cannot be discarded.</strong></li>
-          <li>The unchosen talon groups go to the opponents' capture pile.</li>
+          <li>The unchosen talon groups go to the opponents' capture pile (one exception — see Calling a King).</li>
         </ul>
       </>
     ),
@@ -142,6 +142,7 @@ const SECTIONS: Section[] = [
         <p>After winning the bid in a contract with a partner (Three, Two, or One), the declarer <strong>calls a king by suit</strong>. The player holding that king becomes the declarer's secret partner.</p>
         <p>The partner's identity is hidden until the called king is played in a trick. Until then, opponents do not know who the partner is.</p>
         <p>If the declarer holds <strong>all four kings</strong> themselves, they may call a queen instead. If the called king is in the talon (discovered during talon exchange), the declarer plays alone.</p>
+        <p>There is a reward for rescuing a called king from the talon: if the declarer takes the talon group containing the called king and then <strong>wins a trick with that king in it</strong>, the unchosen talon cards go to the declarer's capture pile instead of the opponents'. The points gauge in the status bar adds them as soon as that trick is won. If the king is left in the unchosen part of the talon, or the opponents capture it, the unchosen cards stay with the opponents as usual.</p>
       </>
     ),
   },

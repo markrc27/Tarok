@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { GameState, GamePhase } from './gameState'
 import type { Seat, BidAction, Contract, Suit, Card, PlayState, BonusName } from '../engine/types'
 import { deal } from '../engine/deal'
@@ -41,7 +41,7 @@ function makeInitialState(): GameState {
       soundEnabled: false,
       botDifficulty: (localStorage.getItem('tarok-bot-difficulty') as 'easy' | 'hard') || 'easy',
     },
-    cardAppearance: (localStorage.getItem('tarok-card-appearance') as 'simple' | 'traditional') || 'simple',
+    cardAppearance: (localStorage.getItem('tarok-card-appearance') as 'simple' | 'traditional') || 'traditional',
     statistics: [],
     skisRoundEndSeat: null,
     dealerSeat: 0 as Seat,
@@ -669,6 +669,20 @@ export const useGameStore = create<Store>()(persist((set, get) => {
 }, {
   name: 'tarok-game-state',
   version: 1,
+  // BiddingState.passed is a Set, which plain JSON turns into {} — a reload
+  // mid-bidding then crashed in legalBids and the ErrorBoundary wiped the whole
+  // saved session. Round-trip Sets explicitly; a pre-fix save's `passed: {}`
+  // is revived as an empty Set rather than crashing.
+  storage: createJSONStorage(() => localStorage, {
+    replacer: (_key, value) => value instanceof Set ? { __set: [...value] } : value,
+    reviver: (key, value) => {
+      if (value && typeof value === 'object' && Array.isArray((value as { __set?: unknown }).__set)) {
+        return new Set((value as { __set: unknown[] }).__set)
+      }
+      if (key === 'passed' && value && typeof value === 'object' && !Array.isArray(value)) return new Set()
+      return value
+    },
+  }),
   partialize: (state) => {
     // Exclude pendingTrick: it's transient animation state tied to a setTimeout
     // that won't survive a page reload.

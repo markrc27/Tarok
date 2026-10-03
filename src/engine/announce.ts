@@ -61,7 +61,7 @@ export function applyAnnouncement(
   if (action.kind === 'announce') {
     const existing = state.announcements.find(a => a.bonus === action.bonus)
     if (existing) return state
-    const newAnn: Announcement = { bonus: action.bonus, announced: true, kontraLevel: 1 }
+    const newAnn: Announcement = { bonus: action.bonus, announced: true, kontraLevel: 1, by: action.seat }
     return { ...state, announcements: [...state.announcements, newAnn] }
   }
 
@@ -74,8 +74,8 @@ export function applyAnnouncement(
   if (nextLevel === null) return state // invalid kontra
 
   const newKontraTargets = existing
-    ? state.kontraTargets.map(k => k.target === target ? { ...k, level: nextLevel, byDeclarerSide: bySide } : k)
-    : [...state.kontraTargets, { target, level: nextLevel, byDeclarerSide: bySide }]
+    ? state.kontraTargets.map(k => k.target === target ? { ...k, level: nextLevel, byDeclarerSide: bySide, by: action.seat } : k)
+    : [...state.kontraTargets, { target, level: nextLevel, byDeclarerSide: bySide, by: action.seat }]
 
   // Update announcement kontraLevel if it's a bonus target
   const newAnnouncements = state.announcements.map(a =>

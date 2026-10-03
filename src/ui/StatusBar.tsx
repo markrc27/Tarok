@@ -1,6 +1,6 @@
 import React from 'react'
 import type { PlayState, BiddingState, Seat, SuitCard } from '../engine/types'
-import { countPoints } from '../engine/pointcount'
+import { visibleDeclarerPoints } from '../engine/play'
 import { CONTRACT_LABEL } from './labels'
 
 const SUIT_NAME: Record<string, string> = { clubs: 'Clubs', spades: 'Spades', hearts: 'Hearts', diamonds: 'Diamonds' }
@@ -44,13 +44,9 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
   const isPointContract = !!playState && playState.contract !== 'klop'
     && playState.contract !== 'beggar' && playState.contract !== 'open-beggar'
     && playState.contract !== 'valat-without' && playState.contract !== 'color-valat-without'
-  let declarerPts = 0
-  if (playState && isPointContract) {
-    const cards = ([0, 1, 2, 3] as Seat[])
-      .filter(s => s === playState.declarer || s === playState.partner)
-      .flatMap(s => playState.capturedCards[s])
-    declarerPts = countPoints(cards)
-  }
+  // A hidden partner's captures are excluded until the called king is played —
+  // otherwise the gauge ticking up on their tricks gives the partner away.
+  const declarerPts = playState && isPointContract ? visibleDeclarerPoints(playState, 0) : 0
 
   // Hint when human must follow a specific suit/trump
   let followHint = ''

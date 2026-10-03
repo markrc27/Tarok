@@ -69,6 +69,7 @@ export interface Announcement {
   bonus: BonusName
   announced: boolean
   kontraLevel: KontraLevel
+  by?: Seat  // who announced it (display only)
 }
 
 export interface Trick {
@@ -176,6 +177,7 @@ export interface AnnouncementState {
     target: 'game' | BonusName
     level: KontraLevel
     byDeclarerSide: boolean
+    by?: Seat  // who made the latest call in the chain (display only)
   }[]
   phase: 'open' | 'closed'
 }

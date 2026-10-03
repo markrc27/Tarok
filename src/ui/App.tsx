@@ -36,6 +36,9 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [showRoundHistory, setShowRoundHistory] = useState(false)
+  // In-app replacement for window.confirm/alert on Game → End Game (native
+  // dialogs are blocked in some embedded browsers, which made the item a no-op).
+  const [endGamePrompt, setEndGamePrompt] = useState<{ message: string; canConfirm: boolean } | null>(null)
 
   const {
     phase, dealResult, biddingState, talonExchange, kingCall,
@@ -149,17 +152,16 @@ export default function App() {
       <MenuBar
         onEndGame={() => {
           if (phase === 'scoring') {
-            alert('Use the buttons in the score summary to end the game or start a new round.')
+            setEndGamePrompt({ message: 'Use the buttons in the score summary to end the game or start a new round.', canConfirm: false })
             return
           }
           const completedRounds = phase === 'setup' ? roundId : Math.max(0, roundId - 1)
-          const msg = completedRounds > 0
-            ? 'End the current game? The current round will be discarded and your score will be saved.'
-            : 'Start over? No rounds have been completed yet.'
-          if (window.confirm(msg)) {
-            setShowRoundHistory(false)
-            store.endGameFromMenu()
-          }
+          setEndGamePrompt({
+            message: completedRounds > 0
+              ? 'End the current game? The current round will be discarded and your score will be saved.'
+              : 'Start over? No rounds have been completed yet.',
+            canConfirm: true,
+          })
         }}
         onHistory={() => setShowHistory(true)}
         onLeaderboard={() => setShowLeaderboard(true)}
@@ -285,7 +287,10 @@ export default function App() {
         {/* Announcements overlay — top left */}
         {phase === 'playing' && announcementState && (() => {
           const { announcements, kontraTargets } = announcementState
-          const gameKontra = kontraTargets.find(k => k.target === 'game')?.level ?? 1
+          const gameKontraTarget = kontraTargets.find(k => k.target === 'game')
+          const gameKontra = gameKontraTarget?.level ?? 1
+          const by = (seat: Seat | undefined) => seat !== undefined
+            ? <span style={{ color: '#888' }}> — {playerNames[seat]}</span> : null
           if (announcements.length === 0 && gameKontra === 1) return null
           return (
             <div style={{
@@ -303,12 +308,13 @@ export default function App() {
             }}>
               <div style={{ color: '#888', fontSize: 10, fontWeight: 'bold', marginBottom: 2, letterSpacing: 1 }}>ANNOUNCED</div>
               {gameKontra > 1 && (
-                <div>Game <span style={{ color: '#f0c040' }}>×{gameKontra}</span></div>
+                <div>Game <span style={{ color: '#f0c040' }}>×{gameKontra}</span>{by(gameKontraTarget?.by)}</div>
               )}
               {announcements.map((ann, i) => (
                 <div key={i}>
                   {BONUS_LABEL[ann.bonus] ?? ann.bonus}
                   {ann.kontraLevel > 1 && <span style={{ color: '#f0c040' }}> ×{ann.kontraLevel}</span>}
+                  {by(ann.by)}
                 </div>
               ))}
             </div>
@@ -325,6 +331,7 @@ export default function App() {
           onBid={(action) => store.placeBid(action)}
           currentHighBid={biddingState?.highestBid ?? null}
           currentHighBidderName={biddingState?.highestBidder != null ? playerNames[biddingState.highestBidder] : null}
+          passedNames={(biddingState?.bids ?? []).filter(b => b.action.kind === 'pass').map(b => playerNames[b.seat])}
           isCompulsoryKlop={biddingState?.isCompulsoryKlop}
           compulsoryKlopReason={
             biddingState?.isCompulsoryKlop
@@ -423,6 +430,31 @@ export default function App() {
           playerNames={playerNames}
           onClose={() => setShowRoundHistory(false)}
         />
+      )}
+
+      {endGamePrompt && (
+        <div className="modal-overlay" onClick={() => setEndGamePrompt(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 340 }}>
+            <h2>End Game</h2>
+            <p style={{ fontSize: 13, lineHeight: 1.5 }}>{endGamePrompt.message}</p>
+            <div className="modal-actions">
+              {endGamePrompt.canConfirm ? (
+                <>
+                  <button className="btn btn-ghost" onClick={() => setEndGamePrompt(null)}>Cancel</button>
+                  <button
+                    className="btn"
+                    style={{ background: '#8b2222' }}
+                    onClick={() => { setEndGamePrompt(null); setShowRoundHistory(false); store.endGameFromMenu() }}
+                  >
+                    Yes, End Game
+                  </button>
+                </>
+              ) : (
+                <button className="btn" onClick={() => setEndGamePrompt(null)}>OK</button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {showAbout && (

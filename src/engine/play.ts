@@ -6,6 +6,7 @@ import {
   isTrump, isKing, isPagat, isMond, isSkis, isTrula,
   trumpStrength, suitStrength, cardsEqual, cardId,
 } from './deck'
+import { countPoints } from './pointcount'
 
 function isNegativeContract(contract: Contract): boolean {
   return contract === 'klop' || contract === 'beggar' || contract === 'open-beggar'
@@ -256,6 +257,35 @@ export function isOutcomeDecided(state: PlayState): boolean {
     return completedTricks.some(t => t.winner !== declarer)
   }
   return false
+}
+
+// The partner is a secret until the called king appears publicly in a trick.
+// Checks currentTrick AND completedTricks — the king sits in currentTrick for a
+// render cycle before the trick resolves (see tests/partner-visibility.test.ts).
+export function revealedPartner(state: PlayState): Seat | null {
+  const { kingCall, partner, completedTricks, currentTrick } = state
+  if (!kingCall || partner === null) return null
+  const isCalledKing = ({ card }: { card: Card }) => cardsEqual(card, kingCall.calledKing)
+  const revealed = currentTrick.cards.some(isCalledKing)
+    || completedTricks.some(t => t.cards.some(isCalledKing))
+  return revealed ? partner : null
+}
+
+// Declarer-side card points as `viewer` is allowed to see them mid-hand. A
+// still-hidden partner's captures are left out — counting them would give the
+// partner away the moment they win a trick — and are added in one go when the
+// called king shows. The partner always knows their own role, so a viewer who
+// is the hidden partner sees their own pile counted.
+// Once the declarer has won the called king out of the talon, the talon
+// remainder is theirs too (same routing as adjustCapturedForTalon at scoring).
+export function visibleDeclarerPoints(state: PlayState, viewer: Seat): number {
+  const { declarer, partner, capturedCards, talonRemainder, kingInTalonCaptured } = state
+  const shownPartner = partner !== null && partner === viewer ? partner : revealedPartner(state)
+  const seats: Seat[] = shownPartner !== null && shownPartner !== declarer ? [declarer, shownPartner] : [declarer]
+  return countPoints([
+    ...seats.flatMap(s => capturedCards[s]),
+    ...(kingInTalonCaptured ? talonRemainder : []),
+  ])
 }
 
 export function applyTrickResult(state: PlayState, winner: Seat): PlayState {

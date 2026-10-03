@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { legalCards, resolveTrick, isEmperorTrick, checkMondCapture, playCard, firstLeader, applyTrickResult, isOutcomeDecided } from '../src/engine/play'
+import { legalCards, resolveTrick, isEmperorTrick, checkMondCapture, playCard, firstLeader, applyTrickResult, isOutcomeDecided, revealedPartner, visibleDeclarerPoints } from '../src/engine/play'
 import { countPoints } from '../src/engine/pointcount'
-import type { Card, PlayState, TrickState, Seat, SuitCard, TrumpCard, Trick, Contract } from '../src/engine/types'
+import type { Card, PlayState, TrickState, Seat, SuitCard, TrumpCard, Trick, Contract, KingCall } from '../src/engine/types'
 
 function trump(ordinal: number): TrumpCard {
   const pts: 1 | 5 = (ordinal === 1 || ordinal === 21 || ordinal === 22) ? 5 : 1
@@ -697,5 +697,97 @@ describe('isOutcomeDecided', () => {
       capturedCards: { 0: [], 1: [low()], 2: [], 3: [] },
     })
     expect(isOutcomeDecided(state)).toBe(false)
+  })
+})
+
+describe('visibleDeclarerPoints — hidden partner must not leak through the points gauge', () => {
+  const kingCall: KingCall = {
+    calledSuit: 'hearts', calledKing: king('hearts'), partner: 2,
+    kingInTalon: false, kingInDeclarerHand: false,
+  }
+  const empty = { 0: [], 1: [], 2: [], 3: [] }
+  // Declarer (seat 1) holds 3 kings = 13 pts; partner (seat 2) holds 3 kings = 13 pts.
+  const declarerPile = [king('clubs'), king('spades'), king('diamonds')]
+  const partnerPile = [skis, mond, pagat]
+  const base: Partial<PlayState> = {
+    contract: 'two', declarer: 1, partner: 2, kingCall,
+    capturedCards: { 0: [], 1: declarerPile, 2: partnerPile, 3: [] },
+  }
+
+  it('hidden partner: their captured points are NOT counted', () => {
+    const state = makeState(empty, {}, base)
+    expect(revealedPartner(state)).toBeNull()
+    expect(visibleDeclarerPoints(state, 0)).toBe(countPoints(declarerPile))
+  })
+
+  it('called king in the current trick: partner revealed, points added', () => {
+    const state = makeState(empty, { cards: [{ seat: 2, card: king('hearts') }], ledSuit: 'hearts' }, base)
+    expect(revealedPartner(state)).toBe(2)
+    expect(visibleDeclarerPoints(state, 0)).toBe(countPoints([...declarerPile, ...partnerPile]))
+  })
+
+  it('called king in a completed trick: partner revealed, points added', () => {
+    const done: Trick = { cards: [{ seat: 2, card: king('hearts') }], winner: 3 }
+    const state = makeState(empty, {}, { ...base, completedTricks: [done] })
+    expect(revealedPartner(state)).toBe(2)
+    expect(visibleDeclarerPoints(state, 0)).toBe(countPoints([...declarerPile, ...partnerPile]))
+  })
+
+  it('a different king being played does not reveal the partner', () => {
+    const done: Trick = { cards: [{ seat: 2, card: king('clubs') }], winner: 3 }
+    const state = makeState(empty, {}, { ...base, completedTricks: [done] })
+    expect(revealedPartner(state)).toBeNull()
+    expect(visibleDeclarerPoints(state, 0)).toBe(countPoints(declarerPile))
+  })
+
+  it('viewer who IS the hidden partner sees their own pile counted', () => {
+    const state = makeState(empty, {}, base)
+    expect(visibleDeclarerPoints(state, 2)).toBe(countPoints([...declarerPile, ...partnerPile]))
+  })
+
+  it('no partner (solo / king in talon): declarer pile only', () => {
+    const state = makeState(empty, {}, { ...base, partner: null, kingCall: null, contract: 'solo-two' })
+    expect(revealedPartner(state)).toBeNull()
+    expect(visibleDeclarerPoints(state, 0)).toBe(countPoints(declarerPile))
+  })
+})
+
+describe('visibleDeclarerPoints — no lag behind the trick just won', () => {
+  it('includes the trick in the same state update as the 4th card', () => {
+    // Declarer (seat 0) wins with the king; the gauge must count it immediately.
+    const state = makeState(
+      { 0: [king('clubs')], 1: [], 2: [], 3: [] },
+      {
+        ledSeat: 1, ledSuit: 'clubs',
+        cards: [{ seat: 1, card: low('clubs') }, { seat: 2, card: low('clubs') }, { seat: 3, card: low('clubs') }],
+      },
+      { contract: 'solo-two', declarer: 0 },
+    )
+    expect(visibleDeclarerPoints(state, 0)).toBe(0)
+    const { newState, trickComplete, trickWinner } = playCard(state, 0, king('clubs'))
+    expect(trickComplete).toBe(true)
+    expect(trickWinner).toBe(0)
+    expect(visibleDeclarerPoints(newState, 0)).toBe(countPoints([king('clubs'), low('clubs'), low('clubs'), low('clubs')]))
+  })
+})
+
+describe('visibleDeclarerPoints — talon remainder won with the called king', () => {
+  const remainder = [suit('hearts', 'C', 3), low('clubs'), t5]
+  const pile = [king('spades'), low('spades'), suit('spades', 'Q', 4), low('spades')]
+
+  it('remainder is NOT counted while the king-in-talon has not been captured', () => {
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'three', declarer: 0, talonRemainder: remainder,
+      capturedCards: { 0: pile, 1: [], 2: [], 3: [] },
+    })
+    expect(visibleDeclarerPoints(state, 0)).toBe(countPoints(pile))
+  })
+
+  it('remainder IS counted once kingInTalonCaptured — matches the final score pile', () => {
+    const state = makeState({ 0: [], 1: [], 2: [], 3: [] }, {}, {
+      contract: 'three', declarer: 0, talonRemainder: remainder, kingInTalonCaptured: true,
+      capturedCards: { 0: pile, 1: [], 2: [], 3: [] },
+    })
+    expect(visibleDeclarerPoints(state, 0)).toBe(countPoints([...pile, ...remainder]))
   })
 })

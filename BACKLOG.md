@@ -356,6 +356,30 @@ groups (all 3, correct one highlighted) in the latter case.
 
 ---
 
+### UI-020 — Status bar points gauge revealed the hidden partner
+**Added:** 2026-10-03
+**Fixed:** 2026-10-03
+**Version:** 1.6.2
+
+**Problem:** The "Declarer · N / 36" gauge in `StatusBar.tsx` summed
+`capturedCards` for the declarer *and* `playState.partner` regardless of
+whether the partnership was public yet. Whenever the still-hidden partner won
+a trick the gauge went up, so the human could identify the partner long before
+the called king was played.
+
+**Fix:** New pure `revealedPartner(state)` and `visibleDeclarerPoints(state,
+viewer)` in `play.ts`. The gauge counts the declarer's pile only until the
+called king appears in `currentTrick` or `completedTricks`, then adds the
+partner's pile in one go. A viewer who is the hidden partner still sees their
+own pile counted (they know their own role, so nothing leaks). 6 new tests in
+`tests/play.test.ts`. End-of-hand scoring (`store.ts`, `ScoreDialog`) is
+unchanged — it runs after all cards are played, when the partner is public.
+
+**Files changed:** `src/engine/play.ts`, `src/ui/StatusBar.tsx`,
+`tests/play.test.ts`.
+
+---
+
 ## UI Text
 
 ### TXT-001 — Compulsory Klop bidding dialog shows incorrect trigger description
