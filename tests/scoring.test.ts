@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   calcDifference, scoreKlop, mondPenalty, applyRadli, updateRadliAfterHand,
   radliEndOfSession, missdealPenalty, scoreFlatContract, initRadli, roundToNearest5,
-  countDeclarerPoints, computeHandScore,
+  countDeclarerPoints, computeHandScore, isMondLeftInTalon,
 } from '../src/engine/scoring'
+import { recommendTalonGroup } from '../src/ai/bidding-heuristic'
 import { buildDeck } from '../src/engine/deck'
 import { countPoints } from '../src/engine/pointcount'
 import { initAnnouncements } from '../src/engine/announce'
@@ -508,5 +509,71 @@ describe('radl end-of-session wiring (SCO-001)', () => {
     const projected = updateRadliAfterHand(afterCancel, 'beggar', false)
     const penalty = radliEndOfSession(projected)[0]
     expect(sessionScore + handDelta + penalty).toBe(-170)
+  })
+})
+
+describe('Mond left in the unchosen talon (ENG-008)', () => {
+  const mond = trump(21)
+  const remainderWithMond: Card[] = [mond, low(), low()]
+
+  it('isMondLeftInTalon: true for every talon contract when the Mond stays behind', () => {
+    for (const c of ['three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one'] as const) {
+      expect(isMondLeftInTalon(c, remainderWithMond, false)).toBe(true)
+    }
+  })
+
+  it('isMondLeftInTalon: false when the Mond is not in the remainder', () => {
+    expect(isMondLeftInTalon('three', [low(), low(), low()], false)).toBe(false)
+  })
+
+  it('isMondLeftInTalon: exception — remainder won back with the called king', () => {
+    expect(isMondLeftInTalon('three', remainderWithMond, true)).toBe(false)
+  })
+
+  it('isMondLeftInTalon: never in solo-without or other no-talon contracts', () => {
+    for (const c of ['solo-without', 'beggar', 'open-beggar', 'valat-without', 'color-valat-without', 'klop'] as const) {
+      expect(isMondLeftInTalon(c, remainderWithMond, false)).toBe(false)
+    }
+  })
+
+  function makeTrick(winner: Seat): Trick {
+    return { cards: [0, 1, 2, 3].map(i => ({ seat: ((winner + i) % 4) as Seat, card: low() })), winner }
+  }
+  const tricks = [makeTrick(2), ...Array.from({ length: 11 }, () => makeTrick(0))]
+  const base = {
+    contract: 'three' as const, declarer: 0 as Seat, partner: 1 as Seat,
+    capturedCards: { 0: [king('clubs'), king('spades'), king('hearts'), trump(22)], 1: [], 2: [], 3: [] } as Record<Seat, Card[]>,
+    mondCapturedWithSkis: false, mondPlayedBySeat: null,
+    announcementState: initAnnouncements(), completedTricks: tricks, calledKing: null,
+    contractBase: CONTRACT_BASE['three'], won: false,
+  }
+  const noRadli = { uncancelled: { 0: 0, 1: 0, 2: 0, 3: 0 } }
+  const oneRadl = { uncancelled: { 0: 1, 1: 0, 2: 0, 3: 0 } }
+
+  it('computeHandScore: -20 to the declarer only, partner untouched', () => {
+    const clean = computeHandScore({ ...base, radliState: noRadli, talonRemainder: [low(), low(), low()] })
+    const left = computeHandScore({ ...base, radliState: noRadli, talonRemainder: remainderWithMond })
+    expect(left.mondLeftInTalon).toBe(true)
+    expect(clean.mondLeftInTalon).toBe(false)
+    expect(left.declarerScore).toBe(clean.declarerScore - 20)
+    expect(left.partnerScore).toBe(clean.partnerScore)
+    expect(left.mondPenalties).toEqual({ 0: -20, 1: 0, 2: 0, 3: 0 })
+  })
+
+  it('computeHandScore: the penalty is not doubled by a radl', () => {
+    const clean = computeHandScore({ ...base, radliState: oneRadl, talonRemainder: [low(), low(), low()] })
+    const left = computeHandScore({ ...base, radliState: oneRadl, talonRemainder: remainderWithMond })
+    expect(left.declarerScore).toBe(clean.declarerScore - 20)
+  })
+
+  it('computeHandScore: no penalty when the called king won the remainder back', () => {
+    const left = computeHandScore({ ...base, radliState: noRadli, talonRemainder: remainderWithMond, kingInTalonCaptured: true })
+    expect(left.mondLeftInTalon).toBe(false)
+    expect(left.mondPenalties[0]).toBe(0)
+  })
+
+  it('bot takes the Mond group even when another group has more card points', () => {
+    const richer: Card[] = [king('clubs'), king('spades'), king('hearts')]
+    expect(recommendTalonGroup([richer, [mond, low(), low()]])).toBe(1)
   })
 })

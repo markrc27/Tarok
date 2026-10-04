@@ -194,6 +194,9 @@ export interface HandScore {
   partnerScore: number | null
   opponentScores: Record<Seat, number>
   mondPenalties: Record<Seat, number>
+  // ENG-008: the declarer's mond penalty came from leaving the Mond in the
+  // unchosen talon rather than losing it to the Škis (display only).
+  mondLeftInTalon: boolean
   bonusBreakdown: {
     bonus: BonusName
     announced: boolean

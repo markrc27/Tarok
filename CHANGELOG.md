@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.6.3 — 2026-10-04
+
+### Engine / Scoring
+- **Mond left in the talon now costs the declarer 20 (ENG-008)**: per pagat.com, if the Mond is in the talon and the declarer takes a part that doesn't include it, the declarer takes the same individual −20 as losing it to the Škis (never doubled by radli or kontra). Exception: if the called king is also in the talon, in a different part, and the declarer takes the king and wins a trick with it, they win the rest of the talon including the Mond and there is no penalty. Solo Without is unaffected. The score breakdown and copied log show it as "Mond left in talon".
+- **Talon window warns before you confirm**: highlighting a group that leaves the Mond behind shows the −20 warning (and mentions the called-king way out when it applies); highlighting a group that leaves your called king behind warns that you will play alone.
+- **Bots avoid leaving the Mond**: a bot declarer now takes the talon group containing the Mond.
+- **Help**: both Mond-penalty passages describe the talon rule and its exception.
+
+### UI
+- **Partner line names the declarer when they hold their own called king**: if the declarer takes the called king out of the talon, the status bar now shows the declarer's name as Partner straight away (the talon is exposed, so it's public) instead of "Hidden". If the called king is left in the unchosen talon it shows "None". A declarer who secretly called a king from their own dealt hand still shows "Hidden" until that king is played, then their name.
+- **Talon selection needs a confirm**: clicking a talon group now only highlights it; a blue **Select** button takes it. A stray click can no longer lock you into a group.
+- **Accidental double-click guard in play**: your hand ignores clicks while the finished trick is still on the table and for a moment (0.6 s) after it becomes your turn, so a double click can't play a second card into the next trick.
+- **Score breakdown — "(opponents)"**: opponent-won bonuses no longer say "(opponents, unannounced)" — opponents can't announce bonuses. Same change in the copied game log.
+- **Bidding window**: "Passed: Nobody Yet" capitalised.
+
 ## v1.6.2 — 2026-10-03
 
 ### UI

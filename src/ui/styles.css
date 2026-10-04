@@ -637,3 +637,16 @@ body {
   }
   .idle-screen h1 { font-size: 26px; }
 }
+
+/* Talon pick warning (Mond or called king left behind) */
+.talon-warning {
+  margin: 10px 0 0;
+  padding: 6px 10px;
+  max-width: 440px;
+  background: rgba(240, 192, 64, 0.12);
+  border: 1px solid #f0c040;
+  border-radius: 4px;
+  color: #f0c040;
+  font-size: 13px;
+  line-height: 1.4;
+}

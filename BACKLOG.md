@@ -95,6 +95,37 @@ radli awarded to all four players.
 
 ---
 
+### ENG-008 — Mond left in the unchosen talon: -20 penalty not implemented
+**Added:** 2026-10-04
+**Fixed:** 2026-10-04
+**Version:** 1.6.3
+
+**Problem:** Per pagat.com (authoritative), the captured-mond penalty "also
+applies if the mond is found in the talon when it is exposed and the declarer
+chooses not take the part of the talon which includes the mond, thus giving it
+to the opponents." Exception: "if the called king and the mond are found in
+different parts of the talon, and the declarer takes the king and wins a trick
+with it, thus winning the rest of the talon including the untaken mond, there
+is no penalty." In solo-without the declarer suffers no penalty for a Mond in
+the talon (the talon is never exposed). CLAUDE.md and AGENT.md both document
+the rule, but the engine only penalises Škis+Mond in the same trick
+(`checkMondCapture` -> `mondPenalty`); nothing inspects `talonRemainder`.
+
+**Messaging gaps (same item):** HelpDialog's two Mond-penalty paragraphs only
+mention capture by the Škis; ScoreDialog's only penalty line is "Mond lost
+with Škis"; TalonDialog gives no warning when a group other than the Mond's is
+picked.
+
+**Fix direction:** In `computeHandScore`, for three/two/one/solo-three/two/one,
+apply -20 to the declarer when `talonRemainder` contains the Mond and
+`kingInTalonCaptured` is false (individual, never doubled, same as the Škis
+case). Add a distinct ScoreDialog/copy-log line ("Mond left in talon"), update
+Help, warn in TalonDialog, and make bot talon selection weigh it. Tests: Mond
+left -> -20; Mond left but remainder won via called king -> 0; solo-without
+-> 0.
+
+---
+
 ## Bot Difficulty System
 
 ### BOT-003 — Add Hard difficulty mode with meaningfully smarter bot logic

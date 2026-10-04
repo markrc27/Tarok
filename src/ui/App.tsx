@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useGameStore } from '../state/store'
 import type { Seat, Card, SuitCard } from '../engine/types'
 import { legalCards } from '../engine/play'
@@ -121,6 +121,21 @@ export default function App() {
     const order: Seat[] = [ledSeat, ((ledSeat+1)%4) as Seat, ((ledSeat+2)%4) as Seat, ((ledSeat+3)%4) as Seat]
     return order.find(s => !playedSeats.has(s)) === 0
   })()
+
+  // Guard against an accidental double click playing a second card: the hand
+  // only accepts a click once the previous trick has cleared from the table and
+  // the turn has been the human's for a moment.
+  const PLAY_INPUT_DELAY = 600
+  const humanTurnKey = isHumanPlaying && playState && !store.pendingTrick
+    ? `${playState.completedTricks.length}-${playState.currentTrick.cards.length}`
+    : null
+  const playInputReady = useRef(false)
+  useEffect(() => {
+    playInputReady.current = false
+    if (humanTurnKey === null) return
+    const t = setTimeout(() => { playInputReady.current = true }, PLAY_INPUT_DELAY)
+    return () => clearTimeout(t)
+  }, [humanTurnKey])
 
   const humanHand = (phase === 'playing' && playState ? playState.hands[0] : dealResult?.hands[0]) ?? []
   const contract = biddingState?.highestBid ?? playState?.contract
@@ -257,7 +272,7 @@ export default function App() {
               cards={humanHand}
               faceUp
               legalCards={isHumanPlaying ? humanLegal : []}
-              onPlay={isHumanPlaying ? (c) => store.playCardAction(c) : undefined}
+              onPlay={isHumanPlaying ? (c) => { if (playInputReady.current) { playInputReady.current = false; store.playCardAction(c) } } : undefined}
               cardW={cardLayout.cardW}
               cardH={cardLayout.cardH}
               handStep={cardLayout.handStep}
@@ -370,6 +385,7 @@ export default function App() {
             exchange={talonExchange}
             hand={dealResult.hands[0]}
             groupSize={groupSize}
+            kingCall={kingCall}
             onSelectGroup={(i) => store.chooseTalonGroup(i)}
             onDiscard={(cards) => store.applyDiscard(cards)}
           />

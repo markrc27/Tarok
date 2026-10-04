@@ -1,6 +1,6 @@
 import React from 'react'
-import type { PlayState, BiddingState, Seat, SuitCard } from '../engine/types'
-import { visibleDeclarerPoints } from '../engine/play'
+import type { PlayState, BiddingState, Seat } from '../engine/types'
+import { visibleDeclarerPoints, publicPartner } from '../engine/play'
 import { CONTRACT_LABEL } from './labels'
 
 const SUIT_NAME: Record<string, string> = { clubs: 'Clubs', spades: 'Spades', hearts: 'Hearts', diamonds: 'Diamonds' }
@@ -21,18 +21,8 @@ export default function StatusBar({ playState, biddingState, playerNames, sessio
 
   let partnerLabel = '—'
   if (playState) {
-    if (playState.contract === 'klop' || !playState.kingCall) {
-      partnerLabel = 'None'
-    } else if (playState.partner === null) {
-      partnerLabel = 'Hidden'
-    } else {
-      const ck = playState.kingCall.calledKing
-      const kingSeen = (c: { card: { kind: string } }) =>
-        c.card.kind === 'suit' && (c.card as SuitCard).suit === ck.suit && (c.card as SuitCard).rank === 'K'
-      const revealed = playState.completedTricks.some(t => t.cards.some(kingSeen))
-        || playState.currentTrick.cards.some(kingSeen)
-      partnerLabel = revealed ? playerNames[playState.partner] : 'Hidden'
-    }
+    const partner = publicPartner(playState)
+    partnerLabel = partner === 'none' ? 'None' : partner === 'hidden' ? 'Hidden' : playerNames[partner]
   }
 
   const calledKingSuit = playState?.kingCall

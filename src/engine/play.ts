@@ -271,6 +271,29 @@ export function revealedPartner(state: PlayState): Seat | null {
   return revealed ? partner : null
 }
 
+// What the whole table is entitled to know about the partnership right now.
+//  - 'none'   no partner exists and that is public (klop, solo, flat contracts,
+//             or the called king was left in the unchosen talon — the talon is
+//             exposed, so everyone saw it stay there).
+//  - 'hidden' a king was called and it has not shown yet. Covers a declarer who
+//             secretly called a king from their own dealt hand.
+//  - a Seat   the publicly known holder of the called king. This is the
+//             declarer themself when they took the called king out of the
+//             exposed talon (public at once) or have since played their own
+//             called king.
+export function publicPartner(state: PlayState): Seat | 'none' | 'hidden' {
+  const { contract, kingCall, declarer, talonRemainder, completedTricks, currentTrick } = state
+  if (contract === 'klop' || !kingCall) return 'none'
+  const isCalledKing = ({ card }: { card: Card }) => cardsEqual(card, kingCall.calledKing)
+  if (kingCall.kingInTalon) {
+    return talonRemainder.some(c => cardsEqual(c, kingCall.calledKing)) ? 'none' : declarer
+  }
+  const kingShown = currentTrick.cards.some(isCalledKing)
+    || completedTricks.some(t => t.cards.some(isCalledKing))
+  if (!kingShown) return 'hidden'
+  return kingCall.partner ?? declarer
+}
+
 // Declarer-side card points as `viewer` is allowed to see them mid-hand. A
 // still-hidden partner's captures are left out — counting them would give the
 // partner away the moment they win a trick — and are added in one go when the

@@ -4,7 +4,7 @@ import type {
 } from './types'
 import { countPoints } from './pointcount'
 import { getKontraMultiplier, evaluateBonus, evaluateBonusForSeats, bonusBaseValue } from './announce'
-import { isPagat, cardsEqual } from './deck'
+import { isPagat, isMond, cardsEqual } from './deck'
 
 export function adjustCapturedForTalon(
   capturedCards: Record<Seat, Card[]>,
@@ -139,6 +139,22 @@ export function mondPenalty(
   return result
 }
 
+// ENG-008 (pagat.com): the mond penalty "also applies if the mond is found in
+// the talon when it is exposed and the declarer chooses not take the part of
+// the talon which includes the mond, thus giving it to the opponents."
+// Exception: the declarer took the called king from the talon and won a trick
+// with it, "thus winning the rest of the talon including the untaken mond".
+// Only the six talon contracts can trigger it — solo-without never exposes the
+// talon ("the declarer does not suffer any penalty if the mond is in the talon").
+export function isMondLeftInTalon(
+  contract: Contract,
+  talonRemainder: Card[],
+  kingInTalonCaptured: boolean,
+): boolean {
+  const exposesTalon = ['three', 'two', 'one', 'solo-three', 'solo-two', 'solo-one'].includes(contract)
+  return exposesTalon && !kingInTalonCaptured && talonRemainder.some(isMond)
+}
+
 export function applyRadli(
   baseScore: number,
   radliState: RadliState,
@@ -219,6 +235,7 @@ export function computeHandScore(params: {
   radliState: RadliState
   contractBase: number
   won: boolean
+  kingInTalonCaptured?: boolean
 }): HandScore {
   const {
     contract, declarer, partner, capturedCards, talonRemainder,
@@ -248,6 +265,9 @@ export function computeHandScore(params: {
   const mPenalties = hasMondPenalty
     ? mondPenalty(mondCapturedWithSkis, mondPlayedBySeat)
     : ({ 0: 0, 1: 0, 2: 0, 3: 0 } as Record<Seat, number>)
+  // There is one Mond, so this never stacks with the Škis-capture penalty.
+  const mondLeftInTalon = isMondLeftInTalon(contract, talonRemainder, params.kingInTalonCaptured ?? false)
+  if (mondLeftInTalon) mPenalties[declarer] -= 20
 
   const opponentSeats = ([0, 1, 2, 3] as Seat[]).filter(s => s !== declarer && s !== partner)
   const opponentBonusResults: Record<BonusName, boolean> = {
@@ -388,6 +408,7 @@ export function computeHandScore(params: {
     partnerScore,
     opponentScores,
     mondPenalties: mPenalties,
+    mondLeftInTalon,
     bonusBreakdown,
     totalDifference: difference,
     radliApplied: radliState.uncancelled[declarer] > 0,

@@ -109,7 +109,9 @@ export function recommendTalonGroup(groups: Card[][]): number {
   let bestIdx = 0
   let bestScore = -1
   for (let i = 0; i < groups.length; i++) {
-    const score = groups[i].reduce((sum, c) => sum + cardPoints(c), 0)
+    // ENG-008: leaving the Mond in the unchosen talon costs the declarer 20.
+    const mondLeftPenalty = groups[i].some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 21) ? 20 : 0
+    const score = groups[i].reduce((sum, c) => sum + cardPoints(c), 0) + mondLeftPenalty
     if (score > bestScore) { bestScore = score; bestIdx = i }
   }
   return bestIdx

@@ -393,8 +393,11 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     },
 
     playCardAction: (card) => {
-      const { playState } = get()
+      const { playState, pendingTrick } = get()
       if (!playState) return
+      // The finished trick is still on the table — don't let a stray click
+      // play into the next one.
+      if (pendingTrick) return
       const { newState, trickComplete, trickWinner, handComplete, outcomeDecided } = playCard(playState, HUMAN, card)
       set({ playState: newState })
       if (trickComplete && trickWinner !== null) {
@@ -442,7 +445,7 @@ export const useGameStore = create<Store>()(persist((set, get) => {
           mondCapturedWithSkis, mondPlayedBySeat: mondCapturedBy,
           announcementState: ann, completedTricks,
           calledKing: kingCall?.calledKing ?? null,
-          radliState, contractBase: CONTRACT_BASE[contract], won: declarerWon,
+          radliState, contractBase: CONTRACT_BASE[contract], won: declarerWon, kingInTalonCaptured,
         })
         delta[declarer] = handScore.declarerScore
         if (partner !== null) {
@@ -547,7 +550,7 @@ export const useGameStore = create<Store>()(persist((set, get) => {
             mondCapturedWithSkis, mondPlayedBySeat: mondCapturedBy,
             announcementState: ann, completedTricks: playState.completedTricks,
             calledKing: kingCall?.calledKing ?? null,
-            radliState, contractBase: CONTRACT_BASE[contract], won: declarerWon,
+            radliState, contractBase: CONTRACT_BASE[contract], won: declarerWon, kingInTalonCaptured,
           })
           delta[declarer] = handScore.declarerScore
           if (partner !== null) {

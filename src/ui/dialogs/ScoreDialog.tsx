@@ -87,7 +87,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       mondCapturedWithSkis, mondPlayedBySeat: mondCapturedBy,
       announcementState, completedTricks,
       calledKing: kingCall?.calledKing ?? null,
-      radliState, contractBase: CONTRACT_BASE[contract], won,
+      radliState, contractBase: CONTRACT_BASE[contract], won, kingInTalonCaptured,
     })
 
     delta[declarer] = handScore.declarerScore
@@ -133,8 +133,8 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
         const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
         if (b.side === 'opponent') {
           lines.push(b.achieved
-            ? `${BONUS_LABEL[b.bonus] ?? b.bonus} (opponents, ${tag}): won = -${net}`
-            : `${BONUS_LABEL[b.bonus] ?? b.bonus} (opponents attempted, beaten, ${tag}): +${net}`)
+            ? `${BONUS_LABEL[b.bonus] ?? b.bonus} (opponents): won = -${net}`
+            : `${BONUS_LABEL[b.bonus] ?? b.bonus} (opponents attempted, beaten): +${net}`)
         } else {
           lines.push(`${BONUS_LABEL[b.bonus] ?? b.bonus} (${tag}): ${b.achieved ? 'Successful' : 'Unsuccessful'} = ${b.achieved ? '+' : '-'}${net}`)
         }
@@ -144,7 +144,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
       lines.push(`Declarer net: ${sideScoreLog >= 0 ? '+' : ''}${sideScoreLog}`)
       for (const s of seats) {
         if (handScore.mondPenalties[s] !== 0) {
-          lines.push(`Mond lost with Škis: ${playerNames[s]} (individual) = ${handScore.mondPenalties[s]}`)
+          lines.push(`${handScore.mondLeftInTalon ? 'Mond left in talon' : 'Mond lost with Škis'}: ${playerNames[s]} (individual) = ${handScore.mondPenalties[s]}`)
         }
       }
       if (talonDiscard.length > 0) {
@@ -292,11 +292,12 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
               const kontraStr = kontraMultLabel(b.kontraLevel)
               const tag = b.announced ? `announced${kontraStr}` : 'unannounced'
               if (b.side === 'opponent') {
+                // Opponents can't announce bonuses, so no announced/unannounced tag.
                 // Opponents won the bonus → subtracted from the declarer's side.
                 // Opponents attempted it and were beaten → added to the declarer's side.
                 return (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{label} (opponents, {tag}): {b.achieved ? '✓ won' : '✗ beaten'}</span>
+                    <span>{label} (opponents): {b.achieved ? '✓ won' : '✗ beaten'}</span>
                     <span style={{ color: b.achieved ? '#f44' : '#4f4' }}>{b.achieved ? '−' : '+'}{net}</span>
                   </div>
                 )
@@ -326,7 +327,7 @@ export default function ScoreDialog({ playState, announcementState, sessionScore
             })()}
             {seats.filter(s => handScore.mondPenalties[s] !== 0).map(s => (
               <div key={s} style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
-                <span>Mond lost with Škis: {playerNames[s]} (individual)</span>
+                <span>{handScore.mondLeftInTalon ? 'Mond left in talon' : 'Mond lost with Škis'}: {playerNames[s]} (individual)</span>
                 <span style={{ color: '#f44' }}>{handScore.mondPenalties[s]}</span>
               </div>
             ))}

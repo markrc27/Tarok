@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { legalCards, resolveTrick, isEmperorTrick, checkMondCapture, playCard, firstLeader, applyTrickResult, isOutcomeDecided, revealedPartner, visibleDeclarerPoints } from '../src/engine/play'
+import { legalCards, resolveTrick, isEmperorTrick, checkMondCapture, playCard, firstLeader, applyTrickResult, isOutcomeDecided, revealedPartner, visibleDeclarerPoints, publicPartner } from '../src/engine/play'
 import { countPoints } from '../src/engine/pointcount'
 import type { Card, PlayState, TrickState, Seat, SuitCard, TrumpCard, Trick, Contract, KingCall } from '../src/engine/types'
 
@@ -789,5 +789,48 @@ describe('visibleDeclarerPoints — talon remainder won with the called king', (
       capturedCards: { 0: pile, 1: [], 2: [], 3: [] },
     })
     expect(visibleDeclarerPoints(state, 0)).toBe(countPoints([...pile, ...remainder]))
+  })
+})
+
+describe('publicPartner — what the table may know about the partnership', () => {
+  const empty = { 0: [], 1: [], 2: [], 3: [] }
+  const kc = (over: Partial<KingCall>): KingCall => ({
+    calledSuit: 'hearts', calledKing: king('hearts'), partner: null,
+    kingInTalon: false, kingInDeclarerHand: false, ...over,
+  })
+  const played: Trick = { cards: [{ seat: 1, card: king('hearts') }], winner: 1 }
+
+  it('klop / no king call: none', () => {
+    expect(publicPartner(makeState(empty, {}, { contract: 'klop' as Contract }))).toBe('none')
+    expect(publicPartner(makeState(empty, {}, { contract: 'solo-two', declarer: 1 }))).toBe('none')
+  })
+
+  it('declarer took the called king from the talon: declarer, public immediately', () => {
+    const state = makeState(empty, {}, {
+      contract: 'three', declarer: 1, kingCall: kc({ kingInTalon: true }),
+      talonRemainder: [low('clubs'), low('spades'), t5],
+    })
+    expect(publicPartner(state)).toBe(1)
+  })
+
+  it('called king left in the unchosen talon: none (declarer alone, publicly)', () => {
+    const state = makeState(empty, {}, {
+      contract: 'three', declarer: 1, kingCall: kc({ kingInTalon: true }),
+      talonRemainder: [king('hearts'), low('spades'), t5],
+    })
+    expect(publicPartner(state)).toBe('none')
+  })
+
+  it('declarer called a king from their own dealt hand: hidden until it is played', () => {
+    const base = { contract: 'two' as Contract, declarer: 1 as Seat, kingCall: kc({ kingInDeclarerHand: true }) }
+    expect(publicPartner(makeState(empty, {}, base))).toBe('hidden')
+    expect(publicPartner(makeState(empty, {}, { ...base, completedTricks: [played] }))).toBe(1)
+  })
+
+  it('real partner: hidden, then their seat once the king shows', () => {
+    const base = { contract: 'two' as Contract, declarer: 1 as Seat, partner: 3 as Seat, kingCall: kc({ partner: 3 }) }
+    expect(publicPartner(makeState(empty, {}, base))).toBe('hidden')
+    const shown = makeState(empty, { cards: [{ seat: 3, card: king('hearts') }], ledSuit: 'hearts' }, base)
+    expect(publicPartner(shown)).toBe(3)
   })
 })

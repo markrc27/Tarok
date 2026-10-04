@@ -209,7 +209,7 @@ const SECTIONS: Section[] = [
         </ul>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Special rules</h4>
         <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
-          <li><strong>Captured Mond penalty:</strong> If the Mond (XXI) is captured by the Škis, the player who held the Mond loses 20 points.</li>
+          <li><strong>Captured Mond penalty:</strong> If the Mond (XXI) is captured by the Škis, the player who held the Mond loses 20 points. The declarer also loses 20 points for leaving the Mond in the unchosen part of the talon.</li>
           <li><strong>Pagat Ultimo:</strong> Winning the last trick with the Pagat scores the pagat-ultimo bonus.</li>
         </ul>
       </>
@@ -277,6 +277,7 @@ const SECTIONS: Section[] = [
         </ul>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Mond penalty</h4>
         <p>If the Mond (XXI) is captured by the Škis, the player who played the Mond loses <strong>20 points</strong>. This applies to any player — declarer, partner, or opponent — and is separate from bonus scoring.</p>
+        <p>The same 20-point penalty applies to the <strong>declarer</strong> if the Mond is in the talon and they take a part of the talon that does not include it, giving it to the opponents. The one exception: if the called king is also in the talon, in a different part, and the declarer takes the king and wins a trick with it, they win the rest of the talon — Mond included — and there is no penalty. Solo Without never exposes the talon, so a Mond lying there costs nothing. The talon window warns you before you confirm a pick that leaves the Mond behind.</p>
         <h4 style={{ color: '#ccc', margin: '10px 0 4px' }}>Klop scoring</h4>
         <p>Klop is the exception to normal scoring: <strong>all four players score individually</strong> — there is no declarer and no team. Everyone tries to avoid taking card points.</p>
         <p>Card points are counted the same way as any other contract: sort your captured cards into <strong>groups of three</strong>, each group scoring the total of its cards' values minus 2 (see the Cards section for examples). The pack still totals 70.</p>

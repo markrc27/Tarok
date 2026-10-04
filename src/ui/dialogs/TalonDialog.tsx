@@ -1,18 +1,21 @@
 import React, { useState } from 'react'
-import type { TalonExchange, Card } from '../../engine/types'
+import type { TalonExchange, Card, KingCall } from '../../engine/types'
 import { canDiscard } from '../../engine/talon'
-import { cardId } from '../../engine/deck'
+import { cardId, isMond, cardsEqual } from '../../engine/deck'
 import CardSprite from '../CardSprite'
 
 interface Props {
   exchange: TalonExchange
   hand: Card[]
   groupSize: number
+  kingCall?: KingCall | null
   onSelectGroup: (index: number) => void
   onDiscard: (cards: Card[]) => void
 }
 
-export default function TalonDialog({ exchange, hand, groupSize, onSelectGroup, onDiscard }: Props) {
+const SUIT_NAME: Record<string, string> = { clubs: 'Clubs', spades: 'Spades', hearts: 'Hearts', diamonds: 'Diamonds' }
+
+export default function TalonDialog({ exchange, hand, groupSize, kingCall, onSelectGroup, onDiscard }: Props) {
   const [selectedGroup, setSelectedGroup] = useState<number | null>(exchange.selectedGroup)
   const [discardSelected, setDiscardSelected] = useState<Set<string>>(new Set())
 
@@ -26,17 +29,29 @@ export default function TalonDialog({ exchange, hand, groupSize, onSelectGroup, 
     setDiscardSelected(next)
   }
 
-  const handleGroupSelect = (i: number) => {
-    setSelectedGroup(i)
-    onSelectGroup(i)
-  }
-
   const handleDiscard = () => {
     const toDiscard = hand.filter(c => discardSelected.has(cardId(c)))
     onDiscard(toDiscard)
   }
 
   if (phase === 'select-group') {
+    // Warn before the pick is confirmed when it leaves the Mond (-20, ENG-008)
+    // or the called king (declarer then plays alone) behind in the talon.
+    const mondGroup = exchange.groups.findIndex(g => g.some(isMond))
+    const calledKing = kingCall?.calledKing ?? null
+    const kingGroup = calledKing ? exchange.groups.findIndex(g => g.some(c => cardsEqual(c, calledKing))) : -1
+    const kingName = calledKing ? `King of ${SUIT_NAME[calledKing.suit] ?? calledKing.suit}` : ''
+    const warnings: string[] = []
+    if (selectedGroup !== null) {
+      if (mondGroup >= 0 && selectedGroup !== mondGroup) {
+        warnings.push(kingGroup === selectedGroup
+          ? `This leaves the Mond in the talon. That costs you 20 points — unless you win a trick with your called ${kingName}, which wins you the rest of the talon, Mond included.`
+          : 'This leaves the Mond in the talon. That costs you 20 points.')
+      }
+      if (kingGroup >= 0 && selectedGroup !== kingGroup) {
+        warnings.push(`This leaves your called ${kingName} in the talon. You will play this hand alone, with no partner.`)
+      }
+    }
     return (
       <div className="modal-overlay">
         <div className="modal" style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)' }}>
@@ -46,13 +61,26 @@ export default function TalonDialog({ exchange, hand, groupSize, onSelectGroup, 
               <div
                 key={i}
                 className={`talon-group ${selectedGroup === i ? 'selected' : ''}`}
-                onClick={() => handleGroupSelect(i)}
+                onClick={() => setSelectedGroup(i)}
               >
                 {group.map(c => (
                   <CardSprite key={cardId(c)} card={c} faceUp />
                 ))}
               </div>
             ))}
+          </div>
+          {warnings.map((w, i) => (
+            <p key={i} className="talon-warning">⚠ {w}</p>
+          ))}
+          {/* Clicking only highlights a group; taking it needs an explicit confirm. */}
+          <div className="modal-actions" style={{ flexShrink: 0 }}>
+            <button
+              className="btn"
+              disabled={selectedGroup === null}
+              onClick={() => selectedGroup !== null && onSelectGroup(selectedGroup)}
+            >
+              Select
+            </button>
           </div>
         </div>
       </div>

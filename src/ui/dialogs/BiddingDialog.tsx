@@ -73,7 +73,7 @@ export default function BiddingDialog({ legalBids, onBid, isForehandChoice, curr
       )}
       {!isForehandChoice && passedNames && (
         <p style={{ marginBottom: 10, color: '#aaa', fontSize: 12 }}>
-          Passed: <strong style={{ color: '#f0f0f0' }}>{passedNames.length > 0 ? passedNames.join(', ') : 'nobody yet'}</strong>
+          Passed: <strong style={{ color: '#f0f0f0' }}>{passedNames.length > 0 ? passedNames.join(', ') : 'Nobody Yet'}</strong>
         </p>
       )}
 
