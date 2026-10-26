@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.9 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: endgame trump squeeze** — when all regular trumps (T2-T20) are exhausted outside the bot's hand, the bot leads a trump even if suit cards are available; this forces the declarer side to spend their remaining trula cards (Pagat/Mond/Škis). Skips the squeeze when Škis is still unseen and the only available trump is Mond (to avoid handing the Mond to the Škis).
+- **5 new tests** (375 → 380): squeeze fires correctly, skips when Škis unseen, EASY mode unaffected, no-fire when regular trumps remain.
+
 ## v1.6.8 — 2026-10-26
 
 ### AI / Bot Strategy

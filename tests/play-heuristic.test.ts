@@ -1472,3 +1472,80 @@ describe('hard mode declarer side following — cheapest beater when ally still 
     expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })  // Škis (easy mode: strongest)
   })
 })
+
+// ── Hard mode opponent leading: endgame trump squeeze ────────────────────────
+// When all regular trumps (T2-T20) are gone, the opponent leads a trump to force
+// the declarer side to spend any remaining trula cards (Pagat, Mond, Škis).
+
+describe('hard mode opponent leading — endgame trump squeeze', () => {
+  function playedTrumps(ordinals: number[]): Trick[] {
+    return ordinals.map(o => ({
+      cards: [{ seat: 1 as Seat, card: trump(o) }],
+      winner: 1 as Seat,
+    }))
+  }
+
+  it('HARD: leads Mond when all T2-T20 played and Škis already played', () => {
+    // All T2-T20 and Škis (T22) are in completed tricks. Seat0 holds [Mond, Q♣].
+    // Only T1 (Pagat) could remain on the declarer side — lead Mond to force it out.
+    const ordinals = [...Array.from({ length: 19 }, (_, i) => i + 2), 22]  // T2-T20 + T22
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [mond, suit('clubs', 'Q', 4)],
+      completedTricks: playedTrumps(ordinals),
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })  // Mond squeeze
+  })
+
+  it('HARD: leads lowest trump (T3) when T3 + Mond in hand and Škis played', () => {
+    // T3 is cheapest sacrifice — draws the declarer to spend a high trump.
+    const ordinals = [...Array.from({ length: 17 }, (_, i) => i + 4), 22]  // T4-T20 + T22 played
+    // Wait: need T2-T20 ALL unseen = 0. Let's include T2 through T20 except T3.
+    // T3 is in our hand, rest T2 + T4-T20 are played. Plus T22.
+    const ordinals2 = [2, ...Array.from({ length: 17 }, (_, i) => i + 4), 22]  // T2, T4-T20, T22
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [trump(3), mond, suit('clubs', 'Q', 4)],
+      completedTricks: playedTrumps(ordinals2),
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 3 })  // cheapest trump (T3), not Mond
+  })
+
+  it('HARD: skips squeeze when Škis unseen and only Mond in hand — leads suit instead', () => {
+    // T2-T20 all played, but Škis (T22) was NOT played. Seat0 holds [Mond, Q♣].
+    // Leading Mond risks it being captured by the unseen Škis → fall through to Q♣.
+    const ordinals = Array.from({ length: 19 }, (_, i) => i + 2)  // T2-T20 only
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [mond, suit('clubs', 'Q', 4)],
+      completedTricks: playedTrumps(ordinals),
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'Q' })  // suit lead (safe)
+  })
+
+  it('EASY: no endgame squeeze — leads suit card as normal', () => {
+    // Same exhausted setup but easy mode → leads suit (highest).
+    const ordinals = [...Array.from({ length: 19 }, (_, i) => i + 2), 22]
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [mond, suit('clubs', 'Q', 4)],
+      completedTricks: playedTrumps(ordinals),
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy' })
+    expect(card).toMatchObject({ kind: 'suit' })  // non-trump lead in easy mode
+  })
+
+  it('HARD: does not fire when regular trumps are still outstanding', () => {
+    // Only T2-T5 played; T6-T20 still unseen → unseenRegular >> 0 → no squeeze.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [mond, suit('clubs', 'Q', 4)],
+      completedTricks: playedTrumps([2, 3, 4, 5]),
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit' })  // regular trumps still out → suit lead
+  })
+})

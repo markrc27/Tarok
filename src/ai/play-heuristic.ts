@@ -399,6 +399,37 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
       }
       return candidates.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
     } else {
+      // Hard mode: endgame trump squeeze — when all regular (non-trula) trumps T2-T20 are
+      // exhausted outside our hand, only trula cards could remain in the declarer side's
+      // hand. Leading any trump now forces them to spend Pagat/Mond/Škis, draining 5pt
+      // cards from their pile. Skip when Škis is unseen and we only hold Mond — we'd
+      // be throwing Mond straight into the Škis.
+      if (difficulty === 'hard' && !isColourValat) {
+        const myTrumps = candidates.filter(c => c.kind === 'trump') as TrumpCard[]
+        if (myTrumps.length > 0) {
+          const played = playedTrumpOrdinals(state)
+          const myOrdinals: Set<number> = new Set(myTrumps.map(c => c.ordinal))
+          let unseenRegular = 0
+          for (let o = 2; o <= 20; o++) {
+            if (!played.has(o) && !myOrdinals.has(o)) unseenRegular++
+          }
+          if (unseenRegular === 0) {
+            const weHoldSkis = myOrdinals.has(22)
+            const skisPlayed = played.has(22)
+            let pool = myTrumps.filter(c => !isPagat(c))
+            if (pool.length === 0) pool = myTrumps
+            if (!weHoldSkis && !skisPlayed) {
+              const noMond = pool.filter(c => c.ordinal !== 21)
+              if (noMond.length > 0) pool = noMond
+              else pool = []  // only Mond and Škis is outstanding — fall through to suit lead
+            }
+            if (pool.length > 0) {
+              return pool.sort((a, b) => cardStrength(a) - cardStrength(b))[0]
+            }
+          }
+        }
+      }
+
       const nonTrumps = candidates.filter(c => !effectiveIsTrump(c, isColourValat))
       if (nonTrumps.length > 0) {
         const safeNonTrumps = nonTrumps.filter(c => !isCalledKingCard(c))
