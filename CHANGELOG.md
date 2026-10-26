@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.10 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: opponent uses strongest beater on high-value tricks** — when an opponent bot can beat the current trick winner AND a declarer-side player (declarer or partner) is still to play after them AND the trick already holds ≥5 pts, the bot plays its strongest beater instead of the cheapest; this prevents the declarer side from trivially overtrumping a high-value trick by spending a marginally higher trump last.
+- **4 new tests** (380 → 384): strongest beater fires correctly, EASY mode unaffected, cheap tricks still use cheapest beater, no-enemy-after case uses cheapest beater.
+
 ## v1.6.9 — 2026-10-26
 
 ### AI / Bot Strategy

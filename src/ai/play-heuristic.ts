@@ -588,6 +588,20 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
         return beaters.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
       }
 
+      // Hard mode: the trick already has ≥5 pts AND a declarer-side player is still
+      // to play after us — use our strongest beater to prevent them overtrumping a
+      // high-value trick. Using cheapest here lets the declarer win the trick for free.
+      if (difficulty === 'hard' && !isLastToPlay && trickPts >= 5) {
+        const playOrder: Seat[] = [0, 1, 2, 3].map(i => ((currentTrick.ledSeat + i) % 4) as Seat)
+        const myIndex = playOrder.indexOf(seat)
+        const hasEnemyAfterMe = playOrder.slice(myIndex + 1).some(
+          s => isDeclarerSide(s, declarer, effectivePartner),
+        )
+        if (hasEnemyAfterMe) {
+          return beaters.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
+        }
+      }
+
       return lowestBeater
     }
   }

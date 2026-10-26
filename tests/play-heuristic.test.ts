@@ -1549,3 +1549,71 @@ describe('hard mode opponent leading — endgame trump squeeze', () => {
     expect(card).toMatchObject({ kind: 'suit' })  // regular trumps still out → suit lead
   })
 })
+
+// ── Hard mode opponent following — fight high-value tricks ───────────────────
+// When a declarer-side player is still to play after us AND the trick already
+// holds ≥5 pts, use our strongest beater — prevents the declarer from
+// overtrumping a high-value trick for free.
+
+describe('hard mode opponent following — fight high-value tricks', () => {
+  it('HARD: uses strongest beater when declarer winning a valuable trick and partner still to play', () => {
+    // ledSeat=0, play order [0,1,2,3]. Seat0 leads K♠, seat1 (declarer) plays T2.
+    // trickPts = 5(K)+1(T2) = 6. Seat2 (opponent) follows with [T5,T10].
+    // Seat3 (partner, enemy) is still to play → use strongest beater (T10)
+    // so the declarer+partner tandem can't take this high-value trick for free.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 3 as Seat,
+      hand2: [trump(5), trump(10)],
+      trickCards: [
+        { seat: 0 as Seat, card: suit('spades', 'K', 5) },
+        { seat: 1 as Seat, card: trump(2) },
+      ],
+    })
+    const card = chooseCard(state, 2, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: 3 as Seat })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })  // strongest, not T5
+  })
+
+  it('EASY: uses lowest beater regardless of trick value or play order', () => {
+    // Same setup but easy mode → always cheapest beater.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 3 as Seat,
+      hand2: [trump(5), trump(10)],
+      trickCards: [
+        { seat: 0 as Seat, card: suit('spades', 'K', 5) },
+        { seat: 1 as Seat, card: trump(2) },
+      ],
+    })
+    const card = chooseCard(state, 2, { difficultyBias: 0.5, difficulty: 'easy', knownPartner: 3 as Seat })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 5 })  // cheapest (easy mode)
+  })
+
+  it('HARD: uses lowest beater when trick is cheap (<5pts) even with enemy after', () => {
+    // trickPts = 2(J♠)+1(T2) = 3 < 5 → condition does not fire → lowestBeater T5.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 3 as Seat,
+      hand2: [trump(5), trump(10)],
+      trickCards: [
+        { seat: 0 as Seat, card: suit('spades', 'J', 2) },
+        { seat: 1 as Seat, card: trump(2) },
+      ],
+    })
+    const card = chooseCard(state, 2, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: 3 as Seat })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 5 })  // cheap trick → don't overspend
+  })
+
+  it('HARD: uses lowest beater when no declarer-side player is left to play after us', () => {
+    // solo-one: declarer=1, no partner. ledSeat=0, play order [0,1,2,3].
+    // Seat0 leads K♠, seat1 (declarer) trumps with T2. Seat2 has [T5,T10].
+    // After seat2: only seat3 (opponent) → no enemy after → lowestBeater T5.
+    const state = makeState({
+      contract: 'solo-one', declarer: 1, partner: null,
+      hand2: [trump(5), trump(10)],
+      trickCards: [
+        { seat: 0 as Seat, card: suit('spades', 'K', 5) },
+        { seat: 1 as Seat, card: trump(2) },
+      ],
+    })
+    const card = chooseCard(state, 2, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 5 })  // no enemy after → cheapest safe
+  })
+})
