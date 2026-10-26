@@ -122,7 +122,22 @@ function openBeggarOpponentLead(candidates: Card[], declarerHand: Card[]): Card 
   if (ourSuitCards.length === 0) return null
 
   const suits = [...new Set(ourSuitCards.map(c => c.suit))]
+  const declarerHasTrumps = declarerHand.some(c => c.kind === 'trump')
 
+  // Best case: declarer is void in this suit AND still holds trumps — forcing them
+  // to trump means they WIN the trick, which is exactly the opponent goal in beggar.
+  if (declarerHasTrumps) {
+    for (const s of suits) {
+      const declInSuit = declarerHand.filter((c): c is SuitCard => c.kind === 'suit' && c.suit === s)
+      if (declInSuit.length === 0) {
+        const inSuit = ourSuitCards.filter(c => c.suit === s)
+        // Lead highest to maximise chance of surviving until the declarer trumps it
+        return inSuit.sort((a, b) => suitStrength(b) - suitStrength(a))[0]
+      }
+    }
+  }
+
+  // Second best: suit where ALL of declarer's cards beat ALL of ours — they must take it.
   for (const s of suits) {
     const ourInSuit = ourSuitCards.filter(c => c.suit === s)
     const declInSuit = declarerHand.filter((c): c is SuitCard => c.kind === 'suit' && c.suit === s)
@@ -134,6 +149,7 @@ function openBeggarOpponentLead(candidates: Card[], declarerHand: Card[]): Card 
     }
   }
 
+  // Fallback: suit where declarer has fewest cards (most likely to be void on second lead).
   const suitsWithDeclCards = suits
     .filter(s => declarerHand.some(c => c.kind === 'suit' && (c as SuitCard).suit === s))
     .sort((a, b) => {

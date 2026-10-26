@@ -459,6 +459,23 @@ describe('open beggar — opponent uses revealed hand to find forced-win leads',
     // Standard path: lead highest by points → K♥(5pt)
     expect(card).toMatchObject({ kind: 'suit', suit: 'hearts', rank: 'K' })
   })
+
+  it('prefers void suit lead when declarer still has trumps (forces trump win)', () => {
+    // Declarer has T5 + T6 (trumps) and only hearts cards.
+    // Clubs: opponent has K♣, declarer void → if we lead clubs, declarer must trump and WIN.
+    // Hearts: declarer has 7♥ which is lower than K♥ (declarer can duck).
+    // New priority: void suit + declarer-has-trumps = best case → lead K♣.
+    const state = makeState({
+      contract: 'open-beggar',
+      declarer: 1,
+      openBeggarRevealed: true,
+      hand0: [suit('clubs', 'K', 5), suit('hearts', 'K', 5)],
+      hand1: [trump(5), trump(6), suit('hearts', 7)],
+    })
+    const card = chooseCard(state, 0, cfg())
+    // Clubs void + declarer has trumps → lead K♣ (forces trump)
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })
+  })
 })
 
 // ── 8. Colour Valat — taroks treated as plain suit when leading ───────────
