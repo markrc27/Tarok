@@ -327,6 +327,61 @@ describe('point-counting fold — opponent does not waste Mond/Škis on a cheap 
   })
 })
 
+// ── 5b. Endgame near-win threshold ────────────────────────────────────────
+// In the last 2–3 tricks, opponents fight even when declarerPts < 28.
+
+describe('hard mode endgame near-win threshold — opponents fight late', () => {
+  function makeEndgameState(declarerPts: number, completedTrickCount: number): PlayState {
+    // Trick only needs cards + winner for our counting purposes.
+    const dummyTricks: Trick[] = Array.from({ length: completedTrickCount }, () => ({
+      cards: [],
+      winner: 2 as Seat,
+    }))
+    // Build captured pile with the right total points (5-pt cards + 1-pt fillers).
+    const fivePoint: Card[] = Array.from({ length: Math.floor(declarerPts / 5) }, (_, i) =>
+      ({ kind: 'trump', ordinal: (22 - i) as TrumpCard['ordinal'], points: 5 } as TrumpCard),
+    )
+    const onePoint: Card[] = Array.from({ length: declarerPts % 5 }, () =>
+      ({ kind: 'trump', ordinal: 10 as TrumpCard['ordinal'], points: 1 } as TrumpCard),
+    )
+    return makeState({
+      contract: 'one', declarer: 1, partner: null,
+      hand0: [mond, trump(2)],
+      trickCards: [{ seat: 1, card: trump(5) }],
+      completedTricks: dummyTricks,
+      capturedCards: { 1: [...fivePoint, ...onePoint] },
+    })
+  }
+
+  it('HARD: 10 tricks done, declarerPts=26 — opponents fight (near-win ≤2 tricks left)', () => {
+    // 10 completed + current = trick 11, 2 remaining. declarerPts=26 ≥ 26 threshold → fight.
+    const state = makeEndgameState(26, 10)
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })  // fights with Mond, not T2
+  })
+
+  it('HARD: 9 tricks done, declarerPts=23 — opponents fight (near-win ≤3 tricks left)', () => {
+    // 9 completed + current = trick 10, 3 remaining. declarerPts=23 ≥ 23 threshold → fight.
+    const state = makeEndgameState(23, 9)
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })
+  })
+
+  it('HARD: 9 tricks done, declarerPts=22 — opponents still fold (below ≤3-trick threshold)', () => {
+    // 9 completed, declarerPts=22 < 23 threshold and < 28. Fold condition still applies.
+    const state = makeEndgameState(22, 9)
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 2 })  // folds: dumps T2
+  })
+
+  it('EASY: endgame threshold does not apply — uses static 28pt cutoff only', () => {
+    // Same as first test but easy mode: declarerPts=26, 2 tricks remaining → still folds.
+    const state = makeEndgameState(26, 10)
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 2 })  // folds in easy mode
+  })
+})
+
 // ── 6. computeKnownPartner ────────────────────────────────────────────────
 
 describe('computeKnownPartner', () => {

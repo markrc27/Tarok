@@ -504,7 +504,12 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
       const skisIsOnlyBeater = beaters.length === 1 &&
         beaters[0].kind === 'trump' && (beaters[0] as TrumpCard).ordinal === 22
 
-      const declarerNearWin = declarerPts >= 28
+      // In the endgame (≤3 tricks left) the declarer can coast from a lower score.
+      // Tighten the near-win threshold so opponents fight every trick.
+      const tricksRemaining = 12 - state.completedTricks.length
+      const declarerNearWin = declarerPts >= 28 ||
+        (difficulty === 'hard' && tricksRemaining <= 2 && declarerPts >= 26) ||
+        (difficulty === 'hard' && tricksRemaining <= 3 && declarerPts >= 23)
       const trickPts = currentTrickPoints(state)
       if (!isValatContract && !isLastToPlay && !declarerNearWin && trickPts <= 1 && cardPoints(lowestBeater) >= 5 && !skisIsOnlyBeater) {
         return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]

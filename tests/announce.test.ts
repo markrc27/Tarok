@@ -288,3 +288,43 @@ describe('announcements record who called them', () => {
     expect(state.kontraTargets[0].by).toBe(0)
   })
 })
+
+// ── Opponent kontras pagat-ultimo (Škis-holder strategy) ─────────────────────
+
+describe('opponent kontras pagat-ultimo', () => {
+  it('opponent can kontra a declared pagat-ultimo (raises kontraLevel to 2)', () => {
+    // Declarer (seat 1) announces pagat-ultimo.
+    let state = applyAnnouncement(
+      initAnnouncements(),
+      { kind: 'announce', seat: 1 as Seat, bonus: 'pagat-ultimo' },
+      1 as Seat, null,
+    )
+    expect(state.announcements[0].kontraLevel).toBe(1)
+
+    // Opponent (seat 0) kontras pagat-ultimo (holds Škis, can beat Pagat on trick 12).
+    state = applyAnnouncement(
+      state,
+      { kind: 'kontra', seat: 0 as Seat, target: 'pagat-ultimo' },
+      1 as Seat, null,
+    )
+    expect(state.kontraTargets.find(k => k.target === 'pagat-ultimo')?.level).toBe(2)
+    expect(state.announcements.find(a => a.bonus === 'pagat-ultimo')?.kontraLevel).toBe(2)
+  })
+
+  it('kontra targets are tracked independently: pagat-ultimo kontra does not affect game kontra', () => {
+    let state = initAnnouncements()
+    state = applyAnnouncement(state, { kind: 'announce', seat: 1 as Seat, bonus: 'pagat-ultimo' }, 1 as Seat, null)
+    state = applyAnnouncement(state, { kind: 'kontra', seat: 0 as Seat, target: 'game' }, 1 as Seat, null)
+    state = applyAnnouncement(state, { kind: 'kontra', seat: 0 as Seat, target: 'pagat-ultimo' }, 1 as Seat, null)
+    expect(state.kontraTargets.find(k => k.target === 'game')?.level).toBe(2)
+    expect(state.kontraTargets.find(k => k.target === 'pagat-ultimo')?.level).toBe(2)
+  })
+
+  it('declarer rekontra pagat-ultimo after opponent kontra', () => {
+    let state = initAnnouncements()
+    state = applyAnnouncement(state, { kind: 'announce', seat: 1 as Seat, bonus: 'pagat-ultimo' }, 1 as Seat, null)
+    state = applyAnnouncement(state, { kind: 'kontra', seat: 0 as Seat, target: 'pagat-ultimo' }, 1 as Seat, null)
+    state = applyAnnouncement(state, { kind: 'kontra', seat: 1 as Seat, target: 'pagat-ultimo' }, 1 as Seat, null)
+    expect(state.kontraTargets.find(k => k.target === 'pagat-ultimo')?.level).toBe(4)  // rekontra
+  })
+})

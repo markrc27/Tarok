@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.6 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: endgame near-win threshold** — in the last 3 tricks opponents no longer fold on cheap tricks once the declarer has ≥23 pts (≤3 tricks left) or ≥26 pts (≤2 tricks left), preventing the declarer from coasting to 36.
+- **Hard mode: opponent kontras pagat-ultimo when holding Škis** — a bot holding the Škis can definitively beat the Pagat on trick 12, so it now automatically kontras any announced pagat-ultimo before the announcing dialog opens.
+- **7 new tests** (354 → 361): 4 for endgame threshold, 3 for pagat-ultimo kontra chain.
+
 ## v1.6.5 — 2026-10-26
 
 ### AI / Bot Strategy

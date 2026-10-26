@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { GameState, GamePhase } from './gameState'
-import type { Seat, BidAction, Contract, Suit, Card, PlayState, BonusName } from '../engine/types'
+import type { Seat, BidAction, Contract, Suit, Card, PlayState, BonusName, TrumpCard } from '../engine/types'
 import { deal } from '../engine/deal'
 import { initBidding, applyBid, resolveBidding, legalBids, forehandChoiceContracts } from '../engine/bidding'
 import {
@@ -115,17 +115,33 @@ export const useGameStore = create<Store>()(persist((set, get) => {
           }
         }
       }
+      const opponentBots = ([0, 1, 2, 3] as Seat[]).filter(
+        s => s !== HUMAN && s !== declarer && (partner === null || s !== partner),
+      )
+
       // Opponent bots kontra when holding a dominant defensive hand.
       // Beggar/open-beggar: trump count isn't a defensive advantage (opponents want
       // to give tricks to the declarer, not win them), so skip kontra for those.
       const BEGGAR_CONTRACTS = new Set(['beggar', 'open-beggar'])
       if (!BEGGAR_CONTRACTS.has(contract)) {
-        const opponentBots = ([0, 1, 2, 3] as Seat[]).filter(
-          s => s !== HUMAN && s !== declarer && (partner === null || s !== partner),
-        )
         for (const oppBot of opponentBots) {
           if (shouldBotKontra(dealResult.hands[oppBot], options.botDifficulty)) {
             ann = applyAnnouncement(ann, { kind: 'kontra', seat: oppBot, target: 'game' }, declarer, partner)
+            break
+          }
+        }
+      }
+
+      // Opponent holding Škis kontras an announced pagat-ultimo: the Škis can
+      // definitively beat the Pagat on any trick including trick 12.
+      const pagatUltimoAnn = ann.announcements.find(a => a.bonus === 'pagat-ultimo')
+      if (pagatUltimoAnn) {
+        for (const oppBot of opponentBots) {
+          const holdsSkis = dealResult.hands[oppBot].some(
+            c => c.kind === 'trump' && (c as TrumpCard).ordinal === 22,
+          )
+          if (holdsSkis) {
+            ann = applyAnnouncement(ann, { kind: 'kontra', seat: oppBot, target: 'pagat-ultimo' }, declarer, partner)
             break
           }
         }
