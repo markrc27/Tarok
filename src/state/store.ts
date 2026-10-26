@@ -15,7 +15,7 @@ import {
   scoreKlop, countDeclarerPoints, adjustCapturedForTalon, radliEndOfSession,
 } from '../engine/scoring'
 import { CONTRACT_BASE } from '../engine/types'
-import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard, recommendAnnouncements, shouldBotKontra } from '../ai/bidding-heuristic'
+import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard, recommendAnnouncements, shouldBotKontra, shouldBotRekontra } from '../ai/bidding-heuristic'
 import { pickNames } from '../ui/names'
 import { chooseCard, computeKnownPartner } from '../ai/play-heuristic'
 import { saveGameRecord, consumeDraftRecord, postGameToApi } from './persistence'
@@ -233,7 +233,11 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     const seat = order.find(s => !playedSeats.has(s))
     if (!seat || seat === HUMAN) return
     const pagatUltimoAnnounced = !!(get().announcementState?.announcements.some(a => a.bonus === 'pagat-ultimo'))
-    const card = chooseCard(playState, seat, { difficultyBias: 0.5, difficulty: options.botDifficulty, knownPartner: computeKnownPartner(playState), pagatUltimoAnnounced })
+    // Secret partner: the bot privately knows it IS the partner (holds the called king)
+    // even before the king is publicly played — enables quiet cooperation in hard mode.
+    const selfIsPartner = options.botDifficulty === 'hard' &&
+      playState.partner !== null && playState.partner !== HUMAN && seat === playState.partner
+    const card = chooseCard(playState, seat, { difficultyBias: 0.5, difficulty: options.botDifficulty, knownPartner: computeKnownPartner(playState), pagatUltimoAnnounced, selfIsPartner })
     const { newState, trickComplete, trickWinner, handComplete, outcomeDecided } = playCard(playState, seat, card)
     set({ playState: newState })
     if (trickComplete && trickWinner !== null) {
@@ -414,6 +418,19 @@ export const useGameStore = create<Store>()(persist((set, get) => {
       }
       if (kontraGame) {
         ann = applyAnnouncement(ann, { kind: 'kontra', seat: HUMAN, target: 'game' }, declarer, partner)
+        // Hard mode: bot declarer or partner rekontra when holding a very strong hand.
+        // Skip beggar contracts — trump strength doesn't help in a "take 0 tricks" game.
+        const BEGGAR_CONTRACTS = new Set(['beggar', 'open-beggar'])
+        if (options.botDifficulty === 'hard' && dealResult && !BEGGAR_CONTRACTS.has(contract)) {
+          const declarerSideBots = ([declarer, partner] as (Seat | null)[])
+            .filter((s): s is Seat => s !== null && s !== HUMAN)
+          for (const bot of declarerSideBots) {
+            if (shouldBotRekontra(dealResult.hands[bot], options.botDifficulty)) {
+              ann = applyAnnouncement(ann, { kind: 'kontra', seat: bot, target: 'game' }, declarer, partner)
+              break
+            }
+          }
+        }
       }
       // Hard mode: if human is the declarer and the partner is a bot, the partner
       // announces here (advanceToAnnouncing only handles the bot-declarer path).

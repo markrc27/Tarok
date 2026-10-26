@@ -10,6 +10,9 @@ export interface BotConfig {
   knownPartner?: Seat | null
   // True when pagat-ultimo is announced in the current hand (any side).
   pagatUltimoAnnounced?: boolean
+  // Hard mode: true when this specific bot privately knows it IS the called partner
+  // (it holds the called king). Enables secret cooperation before the king is played.
+  selfIsPartner?: boolean
 }
 
 function isDeclarerSide(seat: Seat, declarer: Seat, partner: Seat | null): boolean {
@@ -234,7 +237,13 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
   const difficulty = _config.difficulty ?? 'easy'
   const isLeading = currentTrick.cards.length === 0
   const knownPartner = _config.knownPartner ?? null
+  const selfIsPartner = _config.selfIsPartner ?? false
+  // For FOLLOWING: if we privately know we're the partner (hold the called king),
+  // cooperate with the declarer even before the king is publicly revealed.
+  // For LEADING: keep using knownPartner only (don't reveal by leading like a declarer).
+  const effectivePartner = (selfIsPartner && difficulty === 'hard') ? seat : knownPartner
   const onDeclarerSide = isDeclarerSide(seat, declarer, knownPartner)
+  const effectiveOnDeclarerSide = isDeclarerSide(seat, declarer, effectivePartner)
 
   // ── Klop ─────────────────────────────────────────────────────────────────
   if (contract === 'klop') {
@@ -435,7 +444,7 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
   const forcedToTrump = ledSuit !== 'trump' && candidates.every(c => effectiveIsTrump(c, isColourValat))
   const isLastToPlay = currentTrick.cards.length === 3
 
-  if (winner !== null && onMySide(winner, seat, declarer, knownPartner)) {
+  if (winner !== null && onMySide(winner, seat, declarer, effectivePartner)) {
     if (difficulty === 'hard') {
       // Cutthroat Mond capture: a teammate is winning THIS trick with the Mond
       // and we hold the Škis. The −20 Mond penalty is individual, so taking it
@@ -480,7 +489,7 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
     : []
 
   if (beaters.length > 0) {
-    if (onDeclarerSide) {
+    if (effectiveOnDeclarerSide) {
       // Last to play: cheapest beater is sufficient — nobody can overtrump. Preserve
       // high cards (Škis, Mond) for future tricks where they must beat earlier players.
       if (difficulty === 'hard' && isLastToPlay) {

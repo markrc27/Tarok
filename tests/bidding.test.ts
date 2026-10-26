@@ -3,7 +3,7 @@ import {
   initBidding, applyBid, resolveBidding, legalBids,
   biddingOrder, contractStrength, availableContracts, forehandChoiceContracts,
 } from '../src/engine/bidding'
-import { evaluateHand, recommendBid, recommendAnnouncements, shouldBotKontra } from '../src/ai/bidding-heuristic'
+import { evaluateHand, recommendBid, recommendAnnouncements, shouldBotKontra, shouldBotRekontra } from '../src/ai/bidding-heuristic'
 import type { Seat, BidAction, Card, SuitCard, TrumpCard } from '../src/engine/types'
 
 function trump(ordinal: number): TrumpCard {
@@ -540,5 +540,72 @@ describe('shouldBotKontra', () => {
       ],
     )
     expect(shouldBotKontra(hand, 'hard')).toBe(false)
+  })
+})
+
+// ── shouldBotRekontra ─────────────────────────────────────────────────────────
+
+describe('shouldBotRekontra', () => {
+  function t(n: number): TrumpCard { return { kind: 'trump', ordinal: n as TrumpCard['ordinal'], points: 1 } }
+
+  function handWith(trumps: TrumpCard[], extras: Card[]): Card[] {
+    return [...trumps, ...extras].slice(0, 12)
+  }
+
+  it('easy mode: never rekontra regardless of hand strength', () => {
+    const hand = handWith(
+      [t(1),t(2),t(3),t(4),t(5),t(6),t(7),t(8),t(9),t(10)],  // 10 trumps
+      [suit('clubs', 'K'), suit('spades', 'K')],
+    )
+    expect(shouldBotRekontra(hand, 'easy')).toBe(false)
+  })
+
+  it('hard mode: ≥9 trumps rekontra (dominant trump control)', () => {
+    const hand = handWith(
+      [t(2),t(3),t(4),t(5),t(6),t(7),t(8),t(9),t(10)],  // 9 trumps
+      [suit('clubs', 7), suit('spades', 7), suit('hearts', 7)],
+    )
+    expect(shouldBotRekontra(hand, 'hard')).toBe(true)
+  })
+
+  it('hard mode: 8 trumps alone does NOT rekontra (below threshold)', () => {
+    const hand = handWith(
+      [t(2),t(3),t(4),t(5),t(6),t(7),t(8),t(9)],  // 8 trumps
+      [suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7)],
+    )
+    expect(shouldBotRekontra(hand, 'hard')).toBe(false)
+  })
+
+  it('hard mode: 7 trumps + ≥12 HCP rekontra (strong combined hand)', () => {
+    const hand = handWith(
+      [t(2),t(3),t(4),t(5),t(6),t(7),t(8)],  // 7 trumps
+      [
+        suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'K'),  // 4+4+4 = 12 HCP
+        suit('diamonds', 7), suit('clubs', 7),
+      ],
+    )
+    expect(shouldBotRekontra(hand, 'hard')).toBe(true)
+  })
+
+  it('hard mode: 7 trumps + 11 HCP does NOT rekontra (HCP just below threshold)', () => {
+    const hand = handWith(
+      [t(2),t(3),t(4),t(5),t(6),t(7),t(8)],  // 7 trumps
+      [
+        suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'Q'),  // 4+4+3 = 11 HCP
+        suit('diamonds', 7), suit('clubs', 7),
+      ],
+    )
+    expect(shouldBotRekontra(hand, 'hard')).toBe(false)
+  })
+
+  it('hard mode: 6 trumps + max HCP does NOT rekontra (trump count too low)', () => {
+    const hand = handWith(
+      [t(2),t(3),t(4),t(5),t(6),t(7)],  // 6 trumps
+      [
+        suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'K'), suit('diamonds', 'K'),
+        suit('clubs', 'Q'), suit('spades', 'Q'),
+      ],
+    )
+    expect(shouldBotRekontra(hand, 'hard')).toBe(false)
   })
 })

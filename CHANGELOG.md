@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.5 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: bot rekontra** — after the human kontras (×2), a bot declarer or partner with ≥9 trumps, or ≥7 trumps and ≥12 HCP, now answers with a rekontra (×4).
+- **Hard mode: secret partner cooperation** — the bot holding the called king privately knows it is the partner and silently cooperates before the king is publicly played: it sloughs its highest suit card onto the declarer's winning tricks and fights with its strongest beater when an enemy is winning. On its own leads it behaves like an opponent to avoid revealing itself early.
+- **9 new tests** (345 → 354): 6 for `shouldBotRekontra`, 3 for secret partner following/leading.
+
 ## v1.6.4 — 2026-10-26
 
 ### AI / Bot Strategy

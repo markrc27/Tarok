@@ -203,6 +203,16 @@ export function shouldBotKontra(hand: Card[], difficulty: BotDifficulty): boolea
   return trumpCount >= 8 || (trumpCount >= 6 && highCardPoints >= 8)
 }
 
+// Returns true when a bot on the declarer side should rekontra (×4) after an opponent
+// has already kontrad (×2) in hard mode. Higher threshold than kontra: ≥9 trumps gives
+// near-certain trump dominance; ≥7 trumps + ≥12 HCP combines deep trump length with
+// very strong court cards. Only called for non-beggar contracts.
+export function shouldBotRekontra(hand: Card[], difficulty: BotDifficulty): boolean {
+  if (difficulty !== 'hard') return false
+  const { trumpCount, highCardPoints } = evaluateHand(hand)
+  return trumpCount >= 9 || (trumpCount >= 7 && highCardPoints >= 12)
+}
+
 // Returns bonuses the bot should announce given its hand (hard mode only).
 // Pass `calledKing` when the bot holds the called king (is the partner) so
 // king-ultimo can be considered.

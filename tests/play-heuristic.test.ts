@@ -1137,3 +1137,67 @@ describe('hard mode declarer side following last — cheapest beater preserves h
     expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })
   })
 })
+
+// ── Hard mode: secret partner cooperation ────────────────────────────────────
+// The bot that holds the called king knows it is the partner even before the
+// king has been publicly played. With selfIsPartner=true and difficulty=hard,
+// it cooperates silently: sloughs highest suit card onto the declarer's trick
+// and fights with its strongest beater when the enemy is winning.
+
+describe('hard mode secret partner — follows as declarer side before king revealed', () => {
+  it('secret partner sloughs highest suit card onto declarer winning trick', () => {
+    // Contract: two; seat1=declarer, seat2=secret partner (selfIsPartner).
+    // Trick: seat1 (declarer) leads T20 and is winning.
+    // Seat2 has Q♣(4pt) and 7♦(1pt) — neither is trump so both are legal.
+    // Opponent mode (no selfIsPartner): dumps 7♦ (lowest, saves Q♣ to fight later).
+    // Secret partner mode: sloughs Q♣ (highest) to maximise declarer's pile.
+    const state = makeState({
+      contract: 'two', declarer: 1, partner: 2,
+      hand2: [suit('clubs', 'Q', 4), suit('diamonds', 7)],
+      trickCards: [{ seat: 1, card: trump(20) }],
+    })
+    const cardOpponent = chooseCard(state, 2,
+      { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null, selfIsPartner: false })
+    expect(cardOpponent).toMatchObject({ kind: 'suit', rank: 7 })  // dumps cheap card
+
+    const cardPartner = chooseCard(state, 2,
+      { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null, selfIsPartner: true })
+    expect(cardPartner).toMatchObject({ kind: 'suit', rank: 'Q' })  // sloughs valuable card
+  })
+
+  it('secret partner fights with highest beater when enemy is winning', () => {
+    // Contract: one; seat1=declarer, seat2=secret partner.
+    // Trick: seat0 (enemy) led T8 and is winning. Seat2 has T10 and T18 — both beat T8.
+    // Opponent mode: plays LOWEST beater (T10, save resources).
+    // Secret partner mode: plays HIGHEST beater (T18) to win the trick for the declarer side.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 2,
+      hand2: [trump(10), trump(18)],
+      trickCards: [{ seat: 0, card: trump(8) }],
+    })
+    const cardOpponent = chooseCard(state, 2,
+      { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null, selfIsPartner: false })
+    expect(cardOpponent).toMatchObject({ kind: 'trump', ordinal: 10 })  // lowest beater
+
+    const cardPartner = chooseCard(state, 2,
+      { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null, selfIsPartner: true })
+    expect(cardPartner).toMatchObject({ kind: 'trump', ordinal: 18 })  // highest beater
+  })
+
+  it('secret partner still leads like an opponent (maintains cover, no trump first)', () => {
+    // When LEADING, the secret partner must not reveal itself by leading trumps
+    // (which is the declarer-side pattern). It uses the opponent leading logic instead.
+    // Contract: two; seat1=declarer, seat2=secret partner.
+    // Seat2 has T15 and Q♥ (suit card). As declarer side it would lead T15; as
+    // opponent it leads Q♥ (non-trump first).
+    const state = makeState({
+      contract: 'two', declarer: 1, partner: 2,
+      hand2: [trump(15), suit('hearts', 'Q', 4)],
+      trickCards: [],
+    })
+    // selfIsPartner=true → leading still picks non-trump (cover maintained)
+    const card = chooseCard(state, 2,
+      { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null, selfIsPartner: true })
+    expect(card).toMatchObject({ kind: 'suit' })  // non-trump, not T15
+  })
+})
