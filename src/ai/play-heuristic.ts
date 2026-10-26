@@ -302,10 +302,16 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
     const winner = currentWinner(state)
     const declarerIsWinning = winner === declarer
     if (declarerIsWinning) {
+      // Declarer currently winning — play LOW to let them keep the trick.
       return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
-    } else {
-      return candidates.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
     }
+    // A fellow opponent is winning. Hard mode: yield (play lowest) — the must-beat
+    // rule will force the declarer to overtrump their own side if they can, which is
+    // self-defeating. Easy mode: try to take the trick to guarantee a winner.
+    if (difficulty === 'hard') {
+      return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
+    }
+    return candidates.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
   }
 
   // ── Standard positive contracts ───────────────────────────────────────────
@@ -459,6 +465,11 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
 
   if (beaters.length > 0) {
     if (onDeclarerSide) {
+      // Last to play: cheapest beater is sufficient — nobody can overtrump. Preserve
+      // high cards (Škis, Mond) for future tricks where they must beat earlier players.
+      if (difficulty === 'hard' && isLastToPlay) {
+        return beaters.sort((a, b) => cardStrength(a) - cardStrength(b))[0]
+      }
       return beaters.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
     } else {
       const lowestBeater = beaters.sort((a, b) => cardStrength(a) - cardStrength(b))[0]

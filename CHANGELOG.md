@@ -10,8 +10,10 @@
 - **Hard mode: shortest-suit lead (opponents + klop)** — opponent bots and klop players now lead from their shortest suit first to create voids for point-dumping.
 - **Hard mode: Mond protection** — bots on both sides avoid leading the Mond when the Škis is still unseen.
 - **Hard mode: beggar declarer longest-suit lead** — beggar declarer now leads the lowest card in their longest suit, maximising the chance an opponent holds a beater.
+- **Hard mode: beggar opponent yields to fellow winner** — when a fellow opponent is already winning a beggar trick, the bot plays low rather than trying to take it (the must-beat rule then forces the declarer to self-defeatingly overbid).
+- **Hard mode: declarer uses cheapest beater when last to play** — preserves high cards (Škis, Mond) for future leading tricks rather than spending them unnecessarily.
 - **Klop following fix** — when forced to win a klop trick (all candidates beat the current leader), the bot plays the cheapest beater instead of the most expensive.
-- **38 new tests** (290 → 338) covering all new heuristics.
+- **54 new tests** (290 → 344) covering all new heuristics.
 
 ## v1.6.3 — 2026-10-04
 

@@ -1028,3 +1028,95 @@ describe('hard mode beggar declarer leading — longest suit (give away tricks)'
     expect(card).toMatchObject({ kind: 'suit', suit: 'hearts', rank: 'Q' })
   })
 })
+
+// ── 17. Beggar opponent following: yield when fellow opponent is winning ──────
+
+describe('hard mode beggar opponent following — yield when fellow opponent winning', () => {
+  it('HARD: opponent yields (plays low) when fellow opponent (not declarer) is winning', () => {
+    // Beggar: declarer=0. Trick: seat3 (opponent) led 7♣ and is winning.
+    // Seat1 (opponent) follows. In hard mode → yield, play lowest.
+    // Candidates: K♣(5pt), J♣(2pt). Both beat 7♣. Current winner = seat3.
+    // Hard: play J♣ (lowest) to avoid winning, letting seat3 keep the trick.
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand1: [suit('clubs', 'K', 5), suit('clubs', 'J', 2)],
+      trickCards: [{ seat: 3, card: suit('clubs', 7) }],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'J' })
+  })
+
+  it('EASY: opponent plays HIGH when fellow opponent is winning (try to win)', () => {
+    // Same setup; easy mode plays highest to try to win.
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand1: [suit('clubs', 'K', 5), suit('clubs', 'J', 2)],
+      trickCards: [{ seat: 3, card: suit('clubs', 7) }],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'easy' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })
+  })
+
+  it('HARD: opponent still plays low when declarer is winning (original behaviour preserved)', () => {
+    // Declarer(0) led 7♣ and is winning. Seat1 follows with K♣, J♣.
+    // Must beat: both beat 7♣. Hard: play low → J♣.
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand1: [suit('clubs', 'K', 5), suit('clubs', 'J', 2)],
+      trickCards: [{ seat: 0, card: suit('clubs', 7) }],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'J' })
+  })
+})
+
+// ── 18. Declarer side following last: use cheapest beater ─────────────────────
+
+describe('hard mode declarer side following last — cheapest beater preserves high cards', () => {
+  it('HARD: last to play uses cheapest beater (T10) over Škis when both beat enemy', () => {
+    // Trick: seat2 (opponent) led T8 and is winning.
+    // Seat1 (declarer, last to play) has T10 and Škis. Both beat T8.
+    // Hard, last: use T10 (cheapest), preserve Škis for later leads.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand1: [trump(10), skis],
+      trickCards: [
+        { seat: 2, card: trump(8) },   // opponent leading
+        { seat: 3, card: trump(9) },   // another opponent
+        { seat: 0, card: suit('clubs', 7) }, // partner (void in trump... wait, they played suit so not forced)
+      ],
+    })
+    // seat1 is last (3 cards already played), declarer wins with T10 cheapest
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })
+  })
+
+  it('EASY: last to play still uses highest beater', () => {
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand1: [trump(10), skis],
+      trickCards: [
+        { seat: 2, card: trump(8) },
+        { seat: 3, card: trump(9) },
+        { seat: 0, card: suit('clubs', 7) },
+      ],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'easy', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })  // Škis (highest)
+  })
+
+  it('HARD: 3rd player (not last) still uses highest beater', () => {
+    // Only 2 cards played — seat1 is 3rd (index 2), not last (index 3).
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand1: [trump(10), skis],
+      trickCards: [
+        { seat: 2, card: trump(8) },
+        { seat: 3, card: trump(9) },
+      ],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    // Not last → use highest beater (Škis)
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })
+  })
+})
