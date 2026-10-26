@@ -15,7 +15,7 @@ import {
   scoreKlop, countDeclarerPoints, adjustCapturedForTalon, radliEndOfSession,
 } from '../engine/scoring'
 import { CONTRACT_BASE } from '../engine/types'
-import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard, recommendAnnouncements } from '../ai/bidding-heuristic'
+import { evaluateHand, recommendBid, recommendKingCall, recommendTalonGroup, recommendDiscard, recommendAnnouncements, shouldBotKontra } from '../ai/bidding-heuristic'
 import { pickNames } from '../ui/names'
 import { chooseCard, computeKnownPartner } from '../ai/play-heuristic'
 import { saveGameRecord, consumeDraftRecord, postGameToApi } from './persistence'
@@ -97,21 +97,44 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     const partner = kingCall?.partner ?? null
     const humanOnDeclarerSide = HUMAN === declarer || HUMAN === partner
 
-    // Flat contracts have no announceable bonuses; skip the dialog when the human
-    // is on the declaring side (they can't kontra themselves either).
-    if (FLAT_CONTRACTS.has(contract) && humanOnDeclarerSide) {
-      set({ announcementState: initAnnouncements() })
-      advanceToPlay()
-      return
+    // Build all bot announcements before deciding whether to show the dialog.
+    let ann = initAnnouncements()
+    if (options.botDifficulty === 'hard') {
+      // Bonus announcements only apply to non-flat contracts.
+      if (!FLAT_CONTRACTS.has(contract)) {
+        if (declarer !== HUMAN) {
+          for (const bonus of recommendAnnouncements(dealResult.hands[declarer])) {
+            ann = applyAnnouncement(ann, { kind: 'announce', seat: declarer, bonus }, declarer, partner)
+          }
+        }
+        // Partner bot announces independently; pass called king for king-ultimo consideration.
+        if (partner !== null && partner !== HUMAN) {
+          const calledKing = kingCall?.calledKing ?? null
+          for (const bonus of recommendAnnouncements(dealResult.hands[partner], calledKing)) {
+            ann = applyAnnouncement(ann, { kind: 'announce', seat: partner, bonus }, declarer, partner)
+          }
+        }
+      }
+      // Opponent bots kontra when holding a dominant defensive hand — applies to
+      // both flat and non-flat contracts (kontra multiplier is always in effect).
+      // Only one kontra per opponent side: stop at the first willing bot.
+      const opponentBots = ([0, 1, 2, 3] as Seat[]).filter(
+        s => s !== HUMAN && s !== declarer && (partner === null || s !== partner),
+      )
+      for (const oppBot of opponentBots) {
+        if (shouldBotKontra(dealResult.hands[oppBot], options.botDifficulty)) {
+          ann = applyAnnouncement(ann, { kind: 'kontra', seat: oppBot, target: 'game' }, declarer, partner)
+          break
+        }
+      }
     }
 
-    // Hard mode: bot declarer auto-announces bonuses before the dialog opens.
-    let ann = initAnnouncements()
-    if (options.botDifficulty === 'hard' && declarer !== HUMAN && !FLAT_CONTRACTS.has(contract)) {
-      const botHand = dealResult.hands[declarer]
-      for (const bonus of recommendAnnouncements(botHand)) {
-        ann = applyAnnouncement(ann, { kind: 'announce', seat: declarer, bonus }, declarer, partner)
-      }
+    // Flat contracts have no announceable bonuses; skip the dialog when the human
+    // is on the declaring side (they can't kontra themselves and there's nothing to announce).
+    if (FLAT_CONTRACTS.has(contract) && humanOnDeclarerSide) {
+      set({ announcementState: ann })
+      advanceToPlay()
+      return
     }
 
     set({ phase: 'announcing', announcementState: ann })
@@ -378,8 +401,9 @@ export const useGameStore = create<Store>()(persist((set, get) => {
 
     finishAnnouncements: (bonuses, kontraGame) => {
       let ann = get().announcementState ?? initAnnouncements()
-      const { biddingState, kingCall } = get()
+      const { biddingState, kingCall, dealResult, options } = get()
       if (!biddingState) return
+      const contract = biddingState.highestBid ?? 'klop'
       const declarer = biddingState.highestBidder ?? biddingState.forehand
       const partner = kingCall?.partner ?? null
       for (const bonus of bonuses) {
@@ -387,6 +411,19 @@ export const useGameStore = create<Store>()(persist((set, get) => {
       }
       if (kontraGame) {
         ann = applyAnnouncement(ann, { kind: 'kontra', seat: HUMAN, target: 'game' }, declarer, partner)
+      }
+      // Hard mode: if human is the declarer and the partner is a bot, the partner
+      // announces here (advanceToAnnouncing only handles the bot-declarer path).
+      if (
+        options.botDifficulty === 'hard' &&
+        declarer === HUMAN &&
+        partner !== null && partner !== HUMAN &&
+        dealResult && !FLAT_CONTRACTS.has(contract)
+      ) {
+        const calledKing = kingCall?.calledKing ?? null
+        for (const bonus of recommendAnnouncements(dealResult.hands[partner], calledKing)) {
+          ann = applyAnnouncement(ann, { kind: 'announce', seat: partner, bonus }, declarer, partner)
+        }
       }
       set({ announcementState: ann })
       advanceToPlay()

@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.6.4 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: HCP-adjusted bidding** — bots now factor court-card strength (K=4, Q=3, Kn=2, J=1) into bid ceilings: ≥8 HCP boosts the ceiling one level; ≤1 HCP lowers it.
+- **Hard mode: partner bot announces bonuses** — bot partners now independently announce trula, kings, pagat-ultimo, and king-ultimo before the dialog opens (was never announcing anything).
+- **Hard mode: opponent bot kontra** — opponent bots with ≥8 trumps, or ≥6 trumps and ≥8 HCP, now kontra the game contract before the announcing dialog opens.
+- **Hard mode: trump exhaustion switch** — declarer bots switch from drawing trumps to leading suit winners once ≤3 unseen opponent trumps remain.
+- **Hard mode: shortest-suit lead (opponents + klop)** — opponent bots and klop players now lead from their shortest suit first to create voids for point-dumping.
+- **Hard mode: Mond protection** — bots on both sides avoid leading the Mond when the Škis is still unseen.
+- **Hard mode: beggar declarer longest-suit lead** — beggar declarer now leads the lowest card in their longest suit, maximising the chance an opponent holds a beater.
+- **Klop following fix** — when forced to win a klop trick (all candidates beat the current leader), the bot plays the cheapest beater instead of the most expensive.
+- **38 new tests** (290 → 338) covering all new heuristics.
+
 ## v1.6.3 — 2026-10-04
 
 ### Engine / Scoring

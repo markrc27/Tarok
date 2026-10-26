@@ -3,7 +3,7 @@ import {
   initBidding, applyBid, resolveBidding, legalBids,
   biddingOrder, contractStrength, availableContracts, forehandChoiceContracts,
 } from '../src/engine/bidding'
-import { evaluateHand, recommendBid } from '../src/ai/bidding-heuristic'
+import { evaluateHand, recommendBid, recommendAnnouncements, shouldBotKontra } from '../src/ai/bidding-heuristic'
 import type { Seat, BidAction, Card, SuitCard, TrumpCard } from '../src/engine/types'
 
 function trump(ordinal: number): TrumpCard {
@@ -273,5 +273,272 @@ describe('recommendBid — all four kings (BOT-001)', () => {
     const legal: import('../src/engine/types').Contract[] = ['two', 'one', 'solo-three']
     const rec = recommendBid(evaluateHand(hand), legal, false, hand)
     expect(rec).toBe('pass')
+  })
+})
+
+// ── HCP-adjusted bidding (hard mode) ─────────────────────────────────────────
+
+describe('recommendBid — HCP adjustment (hard mode)', () => {
+  // Hand helpers: N trumps plus various courts
+  function handWithTrumpsAndCourts(trumpCount: number, courts: Card[]): Card[] {
+    return [
+      ...Array.from({ length: trumpCount }, (_, i) => trump(i + 2)),
+      ...courts,
+    ]
+  }
+
+  it('hard mode: 6 trumps + high HCP (≥8) bids one instead of two', () => {
+    // 6 trumps normally → ceiling 'two'. With ≥8 HCP in hard mode → ceiling 'one'.
+    const hand = handWithTrumpsAndCourts(6, [
+      suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'Q'), suit('diamonds', 'Q'),
+      suit('clubs', 'Kn'), suit('spades', 'J'),
+    ])
+    // HCP: K+K+Q+Q+Kn+J = 4+4+3+3+2+1 = 17
+    const ev = evaluateHand(hand)
+    expect(ev.highCardPoints).toBeGreaterThanOrEqual(8)
+    const legal: import('../src/engine/types').Contract[] = ['two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('one')
+  })
+
+  it('easy mode: 6 trumps + high HCP still bids two (HCP ignored)', () => {
+    const hand = handWithTrumpsAndCourts(6, [
+      suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'Q'), suit('diamonds', 'Q'),
+      suit('clubs', 'Kn'), suit('spades', 'J'),
+    ])
+    const ev = evaluateHand(hand)
+    const legal: import('../src/engine/types').Contract[] = ['two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'easy')
+    expect(rec).toBe('two')
+  })
+
+  it('hard mode: 5 trumps + high HCP (≥8) bids two instead of three', () => {
+    const hand = handWithTrumpsAndCourts(5, [
+      suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'Q'), suit('diamonds', 'Q'),
+      suit('clubs', 'Kn'), suit('spades', 'J'), suit('hearts', 'J'),
+    ])
+    const ev = evaluateHand(hand)
+    expect(ev.highCardPoints).toBeGreaterThanOrEqual(8)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('two')
+  })
+
+  it('hard mode: 4 trumps + high HCP (≥8) bids three (borderline rescued by courts)', () => {
+    // Deliberately NOT all four kings — that path exits early via holdsAllFourKings.
+    // Three kings + courts gives ≥8 HCP without triggering the all-four-kings branch.
+    const hand = handWithTrumpsAndCourts(4, [
+      suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'K'),
+      suit('clubs', 'Q'), suit('spades', 'Q'), suit('hearts', 'Q'),
+      suit('diamonds', 'Kn'), suit('clubs', 'J'),
+    ])
+    // HCP: K+K+K+Q+Q+Q+Kn+J = 4+4+4+3+3+3+2+1 = 24 ≥ 8
+    const ev = evaluateHand(hand)
+    expect(ev.highCardPoints).toBeGreaterThanOrEqual(8)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('three')
+  })
+
+  it('hard mode: 4 trumps + low HCP (<8) still passes', () => {
+    const hand = handWithTrumpsAndCourts(4, [
+      suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7),
+      suit('clubs', 8), suit('spades', 8), suit('hearts', 8), suit('diamonds', 8),
+    ])
+    const ev = evaluateHand(hand)
+    expect(ev.highCardPoints).toBe(0)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('pass')
+  })
+
+  it('hard mode: 6 trumps + very low HCP (≤1) bids three (conservative)', () => {
+    const hand = handWithTrumpsAndCourts(6, [
+      suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7),
+      suit('clubs', 8), suit('spades', 'J'),  // only 1 HCP (one J)
+    ])
+    const ev = evaluateHand(hand)
+    expect(ev.highCardPoints).toBeLessThanOrEqual(1)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('three')
+  })
+})
+
+// ── recommendAnnouncements ───────────────────────────────────────────────────
+
+describe('recommendAnnouncements', () => {
+  function pagat(): TrumpCard { return { kind: 'trump', ordinal: 1, points: 5 } }
+  function mond(): TrumpCard  { return { kind: 'trump', ordinal: 21, points: 5 } }
+  function skis(): TrumpCard  { return { kind: 'trump', ordinal: 22, points: 5 } }
+  function t(n: number): TrumpCard { return { kind: 'trump', ordinal: n as TrumpCard['ordinal'], points: 1 } }
+
+  it('recommends trula when holding Škis + Mond + Pagat', () => {
+    const hand: Card[] = [skis(), mond(), pagat(), t(10), t(11), t(12), t(13), suit('clubs', 'K'), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7), suit('clubs', 7)]
+    expect(recommendAnnouncements(hand)).toContain('trula')
+  })
+
+  it('does NOT recommend trula without all three (missing Mond)', () => {
+    const hand: Card[] = [skis(), pagat(), t(10), t(11), suit('clubs', 'K'), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7)]
+    expect(recommendAnnouncements(hand)).not.toContain('trula')
+  })
+
+  it('recommends kings when holding all four kings', () => {
+    const hand: Card[] = [
+      suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'K'), suit('diamonds', 'K'),
+      t(5), t(6), t(7), t(8), t(9), t(10), suit('clubs', 7), suit('spades', 7),
+    ]
+    expect(recommendAnnouncements(hand)).toContain('kings')
+  })
+
+  it('does NOT recommend kings with only three kings', () => {
+    const hand: Card[] = [
+      suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'K'),
+      t(5), t(6), t(7), t(8), suit('diamonds', 7), suit('clubs', 7), suit('spades', 7),
+    ]
+    expect(recommendAnnouncements(hand)).not.toContain('kings')
+  })
+
+  it('recommends pagat-ultimo when holding Pagat + 9+ trumps', () => {
+    const hand: Card[] = [pagat(), t(2), t(3), t(4), t(5), t(6), t(7), t(8), t(9), t(10), suit('clubs', 7), suit('spades', 7)]
+    expect(hand.filter(c => c.kind === 'trump')).toHaveLength(10)  // 10 trumps including Pagat
+    expect(recommendAnnouncements(hand)).toContain('pagat-ultimo')
+  })
+
+  it('does NOT recommend pagat-ultimo with only 8 trumps (Pagat included)', () => {
+    const hand: Card[] = [pagat(), t(2), t(3), t(4), t(5), t(6), t(7), t(8), suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7)]
+    expect(hand.filter(c => c.kind === 'trump')).toHaveLength(8)
+    expect(recommendAnnouncements(hand)).not.toContain('pagat-ultimo')
+  })
+
+  it('does NOT recommend pagat-ultimo without the Pagat', () => {
+    const hand: Card[] = [t(2), t(3), t(4), t(5), t(6), t(7), t(8), t(9), t(10), t(11), suit('clubs', 7), suit('spades', 7)]
+    expect(recommendAnnouncements(hand)).not.toContain('pagat-ultimo')
+  })
+
+  it('returns empty for a weak hand with no special cards', () => {
+    const hand: Card[] = [t(5), t(6), t(7), suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7), suit('clubs', 8), suit('spades', 8), suit('hearts', 8), suit('diamonds', 8), suit('clubs', 9)]
+    expect(recommendAnnouncements(hand)).toHaveLength(0)
+  })
+
+  it('can recommend multiple bonuses in one hand (trula + kings + pagat-ultimo)', () => {
+    // Škis, Mond, Pagat + 7 more trumps + all 4 kings = 12 cards
+    const hand: Card[] = [
+      skis(), mond(), pagat(),
+      t(2), t(3), t(4), t(5), t(6), t(7),
+      suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'K'), // only 3 kings → no 'kings'
+    ]
+    const bonuses = recommendAnnouncements(hand)
+    expect(bonuses).toContain('trula')
+    expect(bonuses).toContain('pagat-ultimo')  // 9 trumps (with pagat)
+    expect(bonuses).not.toContain('kings')      // only 3 kings
+  })
+
+  it('recommends king-ultimo when holding called king + ≥7 trumps', () => {
+    const calledKing: Card = suit('clubs', 'K')
+    const hand: Card[] = [
+      calledKing,  // holds the called king
+      t(5), t(6), t(7), t(8), t(9), t(10), t(11),  // 7 other trumps
+      suit('spades', 7), suit('hearts', 7), suit('diamonds', 7), suit('clubs', 7),
+    ]
+    expect(recommendAnnouncements(hand, calledKing)).toContain('king-ultimo')
+  })
+
+  it('does NOT recommend king-ultimo without the called king in hand', () => {
+    const calledKing: Card = suit('clubs', 'K')
+    const hand: Card[] = [
+      // no K♣ in hand
+      t(5), t(6), t(7), t(8), t(9), t(10), t(11), t(12),
+      suit('spades', 'K'), suit('hearts', 7), suit('diamonds', 7), suit('clubs', 7),
+    ]
+    expect(recommendAnnouncements(hand, calledKing)).not.toContain('king-ultimo')
+  })
+
+  it('does NOT recommend king-ultimo with fewer than 7 trumps', () => {
+    const calledKing: Card = suit('clubs', 'K')
+    const hand: Card[] = [
+      calledKing,
+      t(5), t(6), t(7), t(8), t(9), t(10),  // only 6 trumps
+      suit('spades', 7), suit('hearts', 7), suit('diamonds', 7), suit('clubs', 7), suit('spades', 8),
+    ]
+    expect(recommendAnnouncements(hand, calledKing)).not.toContain('king-ultimo')
+  })
+
+  it('does NOT recommend king-ultimo when calledKing is not provided', () => {
+    const hand: Card[] = [
+      suit('clubs', 'K'),
+      t(5), t(6), t(7), t(8), t(9), t(10), t(11),
+      suit('spades', 7), suit('hearts', 7), suit('diamonds', 7), suit('clubs', 7),
+    ]
+    // no calledKing argument → can't know which king is called
+    expect(recommendAnnouncements(hand)).not.toContain('king-ultimo')
+  })
+})
+
+// ── shouldBotKontra ──────────────────────────────────────────────────────────
+
+describe('shouldBotKontra', () => {
+  function t(n: number): TrumpCard { return { kind: 'trump', ordinal: n as TrumpCard['ordinal'], points: 1 } }
+
+  function handWith(trumps: TrumpCard[], extras: Card[]): Card[] {
+    return [...trumps, ...extras].slice(0, 12)
+  }
+
+  it('easy mode: never kontras regardless of trump count', () => {
+    // 10 trumps — dominant hand in easy mode → no kontra
+    const hand = handWith(
+      [t(1), t(2), t(3), t(4), t(5), t(6), t(7), t(8), t(9), t(10)],
+      [suit('clubs', 7), suit('spades', 7)],
+    )
+    expect(shouldBotKontra(hand, 'easy')).toBe(false)
+  })
+
+  it('hard mode: ≥8 trumps kontras (dominant trump control)', () => {
+    const hand = handWith(
+      [t(2), t(3), t(4), t(5), t(6), t(7), t(8), t(9)],  // 8 trumps
+      [suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7)],
+    )
+    expect(shouldBotKontra(hand, 'hard')).toBe(true)
+  })
+
+  it('hard mode: 7 trumps alone does NOT kontra (below threshold)', () => {
+    const hand = handWith(
+      [t(2), t(3), t(4), t(5), t(6), t(7), t(8)],  // 7 trumps
+      [suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7), suit('clubs', 8)],
+    )
+    expect(shouldBotKontra(hand, 'hard')).toBe(false)
+  })
+
+  it('hard mode: 6 trumps + ≥8 HCP kontras (strong combined hand)', () => {
+    const hand = handWith(
+      [t(2), t(3), t(4), t(5), t(6), t(7)],  // 6 trumps
+      [
+        suit('clubs', 'K'), suit('spades', 'K'),   // 4+4 = 8 HCP
+        suit('hearts', 7), suit('diamonds', 7), suit('clubs', 7), suit('spades', 7),
+      ],
+    )
+    expect(shouldBotKontra(hand, 'hard')).toBe(true)
+  })
+
+  it('hard mode: 6 trumps + 7 HCP does NOT kontra (HCP just below threshold)', () => {
+    const hand = handWith(
+      [t(2), t(3), t(4), t(5), t(6), t(7)],  // 6 trumps
+      [
+        suit('clubs', 'K'), suit('spades', 'Q'),  // 4+3 = 7 HCP
+        suit('hearts', 7), suit('diamonds', 7), suit('clubs', 7), suit('spades', 7),
+      ],
+    )
+    expect(shouldBotKontra(hand, 'hard')).toBe(false)
+  })
+
+  it('hard mode: 5 trumps + high HCP does NOT kontra (trump count too low)', () => {
+    const hand = handWith(
+      [t(2), t(3), t(4), t(5), t(6)],  // 5 trumps
+      [
+        suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'K'), suit('diamonds', 'K'),
+        suit('clubs', 'Q'), suit('spades', 'Q'), suit('hearts', 'Q'),
+      ],
+    )
+    expect(shouldBotKontra(hand, 'hard')).toBe(false)
   })
 })

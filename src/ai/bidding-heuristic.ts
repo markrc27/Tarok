@@ -1,5 +1,5 @@
 import type { Card, Contract, Suit, SuitCard, TrumpCard, BonusName } from '../engine/types'
-import { isTrump, isPagat, isKing, cardPoints } from '../engine/deck'
+import { isTrump, isPagat, isKing, cardPoints, cardsEqual } from '../engine/deck'
 import { contractStrength } from '../engine/bidding'
 import { canDiscard } from '../engine/talon'
 
@@ -52,7 +52,7 @@ function countKings(hand: Card[]): number {
 
 // Returns the highest contract this hand can safely support, or null to pass.
 function handCeiling(ev: HandEvaluation, hand: Card[], difficulty: BotDifficulty): Contract | null {
-  const { trumpCount, trulaPotential } = ev
+  const { trumpCount, trulaPotential, highCardPoints } = ev
 
   // Exceptional: near-complete trump run
   if (trumpCount >= 10 && trulaPotential >= 2) return 'solo-without'
@@ -74,10 +74,22 @@ function handCeiling(ev: HandEvaluation, hand: Card[], difficulty: BotDifficulty
     return null
   }
 
-  // Partner contracts — share the burden with a called king
+  // Partner contracts — share the burden with a called king.
+  // Hard mode: strong courts (≥8 HCP) mean extra material that makes the 36-point
+  // threshold more achievable, so bump the ceiling up one level. Conversely, very
+  // weak courts (≤1 HCP) in hard mode signal a hand that relies entirely on trump
+  // length — knock the ceiling down one level.
+  const hcpBoost   = difficulty === 'hard' && highCardPoints >= 8
+  const hcpPenalty = difficulty === 'hard' && highCardPoints <= 1
+
   if (trumpCount >= 7)  return 'one'
-  if (trumpCount >= 6)  return 'two'
-  if (trumpCount >= 5)  return 'three'   // forehand-only; non-forehand bots will pass
+  if (trumpCount >= 6)  {
+    if (hcpBoost)    return 'one'
+    if (hcpPenalty)  return 'three'
+    return 'two'
+  }
+  if (trumpCount >= 5)  return hcpBoost ? 'two' : 'three'  // forehand-only; non-forehand bots will pass
+  if (trumpCount >= 4 && hcpBoost) return 'three'  // borderline trump count rescued by strong courts
 
   return null  // weak hand — pass
 }
@@ -182,8 +194,19 @@ export function recommendKingCall(
   return legalSuits.reduce((best, s) => score(s) > score(best) ? s : best, legalSuits[0])
 }
 
+// Returns true when an opponent bot should kontra the game in hard mode.
+// ≥8 trumps gives dominant trump control; ≥6 trumps + ≥8 HCP combines
+// trump length with strong suit winners for a well-rounded defensive hand.
+export function shouldBotKontra(hand: Card[], difficulty: BotDifficulty): boolean {
+  if (difficulty !== 'hard') return false
+  const { trumpCount, highCardPoints } = evaluateHand(hand)
+  return trumpCount >= 8 || (trumpCount >= 6 && highCardPoints >= 8)
+}
+
 // Returns bonuses the bot should announce given its hand (hard mode only).
-export function recommendAnnouncements(hand: Card[]): BonusName[] {
+// Pass `calledKing` when the bot holds the called king (is the partner) so
+// king-ultimo can be considered.
+export function recommendAnnouncements(hand: Card[], calledKing?: Card | null): BonusName[] {
   const bonuses: BonusName[] = []
   const hasSkis = hand.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 22)
   const hasMond = hand.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 21)
@@ -195,6 +218,12 @@ export function recommendAnnouncements(hand: Card[]): BonusName[] {
   if (allKings) bonuses.push('kings')
   // Pagat ultimo only when holding enough trumps to plausibly win the last trick
   if (hasPagat && trumpCount >= 9) bonuses.push('pagat-ultimo')
+  // King ultimo: holding the called king with strong trump support (≥7 trumps)
+  // means the engine will reserve the king until the last trick — high probability
+  // of success. The engine enforces the obligation once announced.
+  if (calledKing && trumpCount >= 7 && hand.some(c => cardsEqual(c, calledKing))) {
+    bonuses.push('king-ultimo')
+  }
 
   return bonuses
 }

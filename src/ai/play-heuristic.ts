@@ -166,6 +166,20 @@ function playedTrumpOrdinals(state: PlayState): Set<number> {
   return played
 }
 
+// Count trump ordinals that are neither played nor in the given seat's hand.
+// A low count means opponents are likely out of trumps — safe to switch to suit leads.
+function unseenOpponentTrumps(state: PlayState, seat: Seat): number {
+  const played = playedTrumpOrdinals(state)
+  const inHand = new Set<number>(
+    state.hands[seat].filter(c => c.kind === 'trump').map(c => (c as TrumpCard).ordinal),
+  )
+  let count = 0
+  for (let o = 1; o <= 22; o++) {
+    if (!played.has(o) && !inHand.has(o)) count++
+  }
+  return count
+}
+
 // Cheapest trump in `myTrumps` that beats the highest unseen trump an opponent might hold.
 // If no safe trump exists, returns lowest trump.
 function cheapestSafeHoldingTrump(myTrumps: TrumpCard[], played: Set<number>): TrumpCard {
@@ -211,14 +225,71 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
     if (isLeading) {
       const nonTrumps = candidates.filter(c => !isTrump(c))
       const pool = nonTrumps.length > 0 ? nonTrumps : candidates
+      const suitPool = pool.filter((c): c is SuitCard => c.kind === 'suit')
+      if (suitPool.length > 0) {
+        // Lead from shortest suit: creates a void quickly so high cards in other
+        // suits can be dumped onto future tricks rather than having to be led.
+        const suitCounts: Partial<Record<Suit, number>> = {}
+        for (const c of state.hands[seat]) {
+          if (c.kind === 'suit') {
+            const s = (c as SuitCard).suit
+            suitCounts[s] = (suitCounts[s] ?? 0) + 1
+          }
+        }
+        const suits = [...new Set(suitPool.map(c => c.suit))]
+        const shortestSuit = suits.reduce((best, s) =>
+          (suitCounts[s] ?? Infinity) < (suitCounts[best] ?? Infinity) ? s : best,
+        )
+        const inSuit = suitPool.filter(c => c.suit === shortestSuit)
+        return inSuit.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
+      }
       return pool.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
     }
+
+    // Following in klop: the engine has already applied must-beat filtering, so
+    // candidates are either ALL beaters (we will win the trick) or ALL non-beaters
+    // (we cannot win).  When forced to win, play the CHEAPEST card to save
+    // high-value cards for dumping onto future tricks we won't win.
+    // When we can't win, dump the most valuable card we have.
+    const trickEntries = currentTrick.cards
+    if (trickEntries.length > 0 && currentTrick.ledSuit) {
+      const currentBestSeat = currentWinner(state)
+      const currentBestCard = currentBestSeat !== null
+        ? trickEntries.find(e => e.seat === currentBestSeat)?.card ?? null
+        : null
+      if (currentBestCard !== null &&
+          cardBeatsCard(candidates[0], currentBestCard, currentTrick.ledSuit, false)) {
+        // All candidates are beaters — we'll take this trick regardless; minimise cost.
+        return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
+      }
+    }
+    // Can't win (or leading) — dump highest-value card to shed it from the hand.
     return candidates.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
   }
 
   // ── Beggar / Open Beggar ──────────────────────────────────────────────────
   if (contract === 'beggar' || contract === 'open-beggar') {
     if (seat === declarer) {
+      if (isLeading && difficulty === 'hard') {
+        // Lead lowest card from the longest suit: more opponents likely hold that
+        // suit and the must-beat rule forces the highest-holding opponent to take the trick.
+        const suitCandidates = candidates.filter((c): c is SuitCard => c.kind === 'suit')
+        if (suitCandidates.length > 0) {
+          const suitCounts: Partial<Record<Suit, number>> = {}
+          for (const c of state.hands[seat]) {
+            if (c.kind === 'suit') {
+              const s = (c as SuitCard).suit
+              suitCounts[s] = (suitCounts[s] ?? 0) + 1
+            }
+          }
+          const suits = [...new Set(suitCandidates.map(c => c.suit))]
+          const longestSuit = suits.reduce((best, s) =>
+            (suitCounts[s] ?? 0) > (suitCounts[best] ?? 0) ? s : best,
+          )
+          const inSuit = suitCandidates.filter(c => c.suit === longestSuit)
+          return inSuit.sort((a, b) => suitStrength(a) - suitStrength(b))[0]
+        }
+      }
       return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
     }
     if (isLeading && contract === 'open-beggar' && state.openBeggarRevealed) {
@@ -254,6 +325,19 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
   if (isLeading) {
     if (onDeclarerSide) {
       const trumps = candidates.filter(c => effectiveIsTrump(c, isColourValat))
+
+      // Hard mode: once opponents are nearly out of trumps, switch to leading suit
+      // winners instead of continuing to draw — opponents can no longer ruff them.
+      if (difficulty === 'hard' && trumps.length > 0 && !isColourValat && !isValatContract) {
+        const unseen = unseenOpponentTrumps(state, seat)
+        if (unseen <= 3) {
+          const suitWinners = candidates.filter(c => !effectiveIsTrump(c, isColourValat))
+          if (suitWinners.length > 0) {
+            return suitWinners.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
+          }
+        }
+      }
+
       if (trumps.length > 0) {
         let usable = trumps.length > 1 ? trumps.filter(c => !isPagat(c)) : trumps
 
@@ -275,10 +359,47 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
       if (nonTrumps.length > 0) {
         const safeNonTrumps = nonTrumps.filter(c => !isCalledKingCard(c))
         const pool = safeNonTrumps.length > 0 ? safeNonTrumps : nonTrumps
+
+        // Hard mode: lead from the shortest non-trump suit to create voids quickly.
+        // A void lets us slough high-value cards onto future tricks we won't win,
+        // maximising the point drain on the declarer's side.
+        if (difficulty === 'hard' && pool.some(c => c.kind === 'suit')) {
+          const suitPool = pool.filter((c): c is SuitCard => c.kind === 'suit')
+          const suitCounts: Partial<Record<Suit, number>> = {}
+          for (const c of state.hands[seat]) {
+            if (c.kind === 'suit') {
+              const s = (c as SuitCard).suit
+              suitCounts[s] = (suitCounts[s] ?? 0) + 1
+            }
+          }
+          const suits = [...new Set(suitPool.map(c => c.suit))]
+          const shortestSuit = suits.reduce((best, s) =>
+            (suitCounts[s] ?? Infinity) < (suitCounts[best] ?? Infinity) ? s : best,
+          )
+          const inSuit = suitPool.filter(c => c.suit === shortestSuit)
+          if (inSuit.length > 0) {
+            // Lead highest in the shortest suit — either wins the trick outright or
+            // forces opponents to spend trumps, creating the void in one lead.
+            return inSuit.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
+          }
+        }
+
         return pool.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
       }
       const trumps = candidates.filter(c => effectiveIsTrump(c, isColourValat))
-      const usable = trumps.length > 1 ? trumps.filter(c => !isPagat(c)) : trumps
+      let usable = trumps.length > 1 ? trumps.filter(c => !isPagat(c)) : trumps
+
+      // Hard mode: protect Mond when Škis is still unseen — same guard as the
+      // declarer-side path, since opponents also lose −20 if the Mond falls to the Škis.
+      if (difficulty === 'hard' && usable.length > 1 && !isColourValat) {
+        const weHoldSkis = candidates.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 22)
+        const skisPlayed = playedTrumpOrdinals(state).has(22)
+        if (!weHoldSkis && !skisPlayed) {
+          const noMond = usable.filter(c => !(c.kind === 'trump' && (c as TrumpCard).ordinal === 21))
+          if (noMond.length > 0) usable = noMond
+        }
+      }
+
       return usable.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
     }
   }

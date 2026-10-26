@@ -701,3 +701,330 @@ describe('Mond capture with Škis', () => {
     expect(card).not.toMatchObject({ kind: 'trump', ordinal: 22 })
   })
 })
+
+// ── 11. Klop following: lowest beater when forced to win ──────────────────────
+
+describe('klop following — cheapest beater when forced to win', () => {
+  it('forced to win (all candidates beat current leader): plays cheapest, saves Mond for dump', () => {
+    // Trick: seat1 led T5(1pt). seat0 follows. Both T10(1pt) and Mond(5pt) beat T5.
+    // Engine must-beat: candidates = [T10, Mond]. We're going to win → play T10 (cheapest).
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [mond, trump(10)],
+      trickCards: [{ seat: 1, card: trump(5) }],
+    })
+    const card = chooseCard(state, 0, cfg())
+    // Should play cheapest beater (T10) to preserve Mond for dumping later
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })
+  })
+
+  it('cannot beat current leader: dumps highest-value card', () => {
+    // Trick: seat1 led T20(1pt). seat0 has T5(1pt) and Mond(5pt). Neither beats T20.
+    // Engine: must-beat finds no beaters → candidates are both. Dump Mond(5pt).
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [mond, trump(5)],
+      trickCards: [{ seat: 1, card: trump(20) }],
+    })
+    const card = chooseCard(state, 0, cfg())
+    // Can't win → dump highest value = Mond(5pt)
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })
+  })
+
+  it('forced to win with suit cards: plays cheapest suit beater', () => {
+    // Trick: seat1 led 7♣ (1pt). seat0 has J♣(2pt) and Q♣(4pt). Both beat 7♣.
+    // Must win → play J♣ (cheapest), save Q♣ for dumping.
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [suit('clubs', 'J', 2), suit('clubs', 'Q', 4)],
+      trickCards: [{ seat: 1, card: suit('clubs', 7) }],
+    })
+    const card = chooseCard(state, 0, cfg())
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'J' })
+  })
+
+  it('single candidate in klop: returns it unconditionally', () => {
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [mond],
+      trickCards: [{ seat: 1, card: trump(5) }],
+    })
+    const card = chooseCard(state, 0, cfg())
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })
+  })
+})
+
+// ── 12. Klop leading: shortest suit first ─────────────────────────────────────
+
+describe('klop leading — lead from shortest suit to create voids', () => {
+  it('leads from 1-card suit (hearts) over 3-card suit (clubs)', () => {
+    // Hand: K♣, Q♣, J♣ (clubs: 3) and Q♥ (hearts: 1).
+    // Shortest = hearts → lead Q♥.
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [
+        suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('clubs', 'J', 2),
+        suit('hearts', 'Q', 4),
+      ],
+    })
+    const card = chooseCard(state, 0, cfg())
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts' })
+  })
+
+  it('leads from 1-card suit (hearts) over 2-card suit (clubs)', () => {
+    // Clubs: K♣, Q♣ (2). Hearts: J♥ (1). Shortest = hearts → lead J♥.
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('hearts', 'J', 2)],
+    })
+    const card = chooseCard(state, 0, cfg())
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts' })
+  })
+
+  it('leads lowest card within the shortest suit', () => {
+    // Shortest suit has Q♥(4pt) and J♥(2pt) → leads J♥ (lowest).
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [
+        suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('clubs', 'J', 2),
+        suit('hearts', 'Q', 4), suit('hearts', 'J', 2),
+        suit('spades', 7),   // single-card spades would be shortest
+      ],
+    })
+    // Spades (1 card) is shortest, leads 7♠
+    const card = chooseCard(state, 0, cfg())
+    expect(card).toMatchObject({ kind: 'suit', suit: 'spades' })
+  })
+
+  it('leads lowest trump when no non-trump available', () => {
+    // Hand: only T5 and T10. Leads T5 (lowest).
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [trump(5), trump(10)],
+    })
+    const card = chooseCard(state, 0, cfg())
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 5 })
+  })
+})
+
+// ── 13. Hard mode opponent leading: shortest suit ─────────────────────────────
+
+describe('hard mode opponent leading — shortest suit creates voids', () => {
+  it('HARD: leads from 1-card suit (hearts) over 3-card suit (clubs)', () => {
+    // Opponent (seat0) leading. Contract=one, declarer=1.
+    // Clubs: K♣,Q♣,J♣ (3 cards). Hearts: Q♥ (1 card). Hard → leads Q♥.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [
+        suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('clubs', 'J', 2),
+        suit('hearts', 'Q', 4),
+      ],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts' })
+  })
+
+  it('EASY: ignores suit lengths — leads highest-value non-trump (K♣ not Q♥)', () => {
+    // Same hand but easy mode → highest by points = K♣(5pt) over Q♥(4pt).
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [
+        suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('clubs', 'J', 2),
+        suit('hearts', 'Q', 4),
+      ],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })
+  })
+
+  it('HARD: all suits equal length — falls back to highest-value non-trump', () => {
+    // Clubs: K♣,Q♣ (2). Hearts: Q♥,J♥ (2). Equal → fall back to highest = K♣(5pt).
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [
+        suit('clubs', 'K', 5), suit('clubs', 'Q', 4),
+        suit('hearts', 'Q', 4), suit('hearts', 'J', 2),
+      ],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    // Both suits are 2 cards. Reduce picks clubs (first alphabetically in reduce), leads K♣.
+    expect(card).toMatchObject({ kind: 'suit', rank: 'K' })
+  })
+
+  it('HARD: only one non-trump suit — leads highest in it (no shortest-suit branch fires differently)', () => {
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [suit('clubs', 'K', 5), suit('clubs', 'Q', 4), trump(5)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })
+  })
+})
+
+// ── 14. Hard mode declarer: switches to suit leads when trumps exhausted ──────
+
+describe('hard mode declarer leading — switches to suit when opponent trumps exhausted', () => {
+  function manyCompletedTricks(trumpsPlayed: number[]): Trick[] {
+    // Pack the played trumps into completed tricks (1 each for simplicity)
+    return trumpsPlayed.map(ord => ({
+      cards: [{ seat: 1 as Seat, card: trump(ord) }],
+      winner: 1 as Seat,
+    }))
+  }
+
+  it('HARD: ≤3 unseen opponent trumps → leads highest suit card over leading trump', () => {
+    // Own hand: T18, T19, T20 (ordinals 18-20) + K♣.
+    // Played: ordinals 1..17 in completed tricks (no overlap with hand).
+    // Unseen = 22 total − 17 played − 3 in hand = 2 ≤ 3 → switch to suit leads.
+    const tricks = manyCompletedTricks(Array.from({ length: 17 }, (_, i) => i + 1))
+    const state = makeState({
+      contract: 'one', declarer: 0,
+      hand0: [trump(18), trump(19), trump(20), suit('clubs', 'K', 5)],
+      completedTricks: tricks,
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })
+  })
+
+  it('HARD: many unseen opponent trumps → continues leading trump not suit', () => {
+    // Only 5 played → unseen = 22 − 5 − 3 = 14 > 3 → stay with trumps.
+    const tricks = manyCompletedTricks(Array.from({ length: 5 }, (_, i) => i + 1))
+    const state = makeState({
+      contract: 'one', declarer: 0,
+      hand0: [trump(18), trump(19), trump(20), suit('clubs', 'K', 5)],
+      completedTricks: tricks,
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card.kind).toBe('trump')
+  })
+
+  it('EASY: never switches to suit based on trump count (unchanged behaviour)', () => {
+    // Same exhausted-trump setup (only 2 unseen); easy mode should still lead trump.
+    const tricks = manyCompletedTricks(Array.from({ length: 17 }, (_, i) => i + 1))
+    const state = makeState({
+      contract: 'one', declarer: 0,
+      hand0: [trump(18), trump(19), trump(20), suit('clubs', 'K', 5)],
+      completedTricks: tricks,
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy', knownPartner: null })
+    expect(card.kind).toBe('trump')
+  })
+})
+
+// ── 15. Hard mode opponent trump lead: Mond protection ─────────────────────
+
+describe('hard mode opponent trump lead — Mond protection (same as declarer side)', () => {
+  it('HARD: opponent avoids leading Mond when Škis is unseen and not in hand', () => {
+    // Opponent (seat0) has no suit cards — must lead trump.
+    // Hand: Mond(5pt) + T10(1pt). Škis is unseen (not played, not in hand).
+    // Leading Mond risks it falling to the Škis for −20 → skip it, lead T10.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [mond, trump(10)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })
+  })
+
+  it('EASY: opponent leads Mond when it is highest (no protection in easy mode)', () => {
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [mond, trump(10)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })
+  })
+
+  it('HARD: opponent leads Mond when holding Škis (no need to protect)', () => {
+    // We hold the Škis, so Mond cannot be captured by it — safe to lead Mond.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [mond, skis, trump(10)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })  // leads Škis (highest)
+  })
+
+  it('HARD: opponent leads Mond when Škis is already played (safe)', () => {
+    // Škis was played in a previous trick — can no longer capture Mond.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [mond, trump(10)],
+      completedTricks: [{ cards: [{ seat: 1 as Seat, card: skis }], winner: 1 as Seat }],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })  // safe to lead Mond
+  })
+})
+
+// ── 16. Beggar declarer leading: longest suit ─────────────────────────────────
+
+describe('hard mode beggar declarer leading — longest suit (give away tricks)', () => {
+  it('HARD: leads lowest card in the longest suit', () => {
+    // Clubs: K♣,Q♣,J♣ (3 cards — longest). Hearts: Q♥ (1 card).
+    // Hard mode: leads from clubs (longest) to maximise opponents having that suit.
+    // Lowest in clubs = J♣ (rank lowest = highest suitStrength = lowest ordinal… actually
+    // for "lowest" in the suit the rank ordering is 7<8<9<10<J<Kn<Q<K).
+    // So J♣ is lower than Q♣ and K♣ → leads J♣.
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand0: [
+        suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('clubs', 'J', 2),
+        suit('hearts', 'Q', 4),
+      ],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'J' })
+  })
+
+  it('EASY: does not use suit-length logic — plays lowest card overall', () => {
+    // Easy mode: just sorts by cardPoints ascending → J♣(2pt) tied with other 1pt cards.
+    // Q♥(4pt) and K♣(5pt) are higher. With J♣ lowest points in suit, it wins.
+    // Actually J♣(2pt) vs Q♣(4pt) vs K♣(5pt) vs Q♥(4pt) — easiest = J♣(2pt).
+    // Both easy and hard pick J♣ here — use a cleaner differentiator.
+    // Different example: clubs has 1-pt cards only, hearts has Q♥(4pt) alone.
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand0: [
+        suit('clubs', 7), suit('clubs', 8), suit('clubs', 9),   // clubs: 3 cards, 1pt each
+        suit('hearts', 'K', 5),                                   // hearts: 1 card, 5pt (high value)
+      ],
+    })
+    // EASY: picks lowest points = 7♣(1pt) not K♥(5pt)
+    const easyCard = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy' })
+    // HARD: picks lowest in LONGEST suit = clubs (3) → 7♣(1pt) — same result here
+    // because clubs is both longest and has lowest cards. Test the contrasting case below.
+    expect(easyCard).toMatchObject({ kind: 'suit', suit: 'clubs' })
+  })
+
+  it('HARD: prefers longest suit over suit with globally lowest card', () => {
+    // Clubs: K♣ (1 card, 5pt). Hearts: 7♥,8♥,9♥ (3 cards, 1pt each).
+    // Easy: picks K♣ (lowest by points? No: 7♥=1pt < K♣=5pt → picks 7♥ in easy too).
+    // Use: clubs 1pt card, hearts 5pt cards x3 — then hard picks hearts(longest, 5pt) over clubs(shortest, 1pt).
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand0: [
+        suit('clubs', 7),                                          // clubs: 1 card, 1pt
+        suit('hearts', 'K', 5), suit('hearts', 'Q', 4), suit('hearts', 'J', 2), // hearts: 3 cards
+      ],
+    })
+    // HARD: longest = hearts (3) → lowest in hearts = J♥(rank=J, lowest suit rank in hearts here)
+    const hardCard = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(hardCard).toMatchObject({ kind: 'suit', suit: 'hearts' })
+    // EASY: lowest points overall = 7♣(1pt)
+    const easyCard = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy' })
+    expect(easyCard).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 7 })
+  })
+
+  it('HARD: when following (not leading), uses normal lowest-card logic', () => {
+    // Declarer following: trick led with 7♥. Declarer has K♣ and Q♥.
+    // Must follow suit → candidates reduced to Q♥. Plays Q♥.
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand0: [suit('clubs', 'K', 5), suit('hearts', 'Q', 4)],
+      trickCards: [{ seat: 1, card: suit('hearts', 7) }],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts', rank: 'Q' })
+  })
+})
