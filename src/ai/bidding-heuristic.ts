@@ -74,6 +74,11 @@ function handCeiling(ev: HandEvaluation, hand: Card[], difficulty: BotDifficulty
     return null
   }
 
+  // Hard mode: 0 trumps + very low courts → beggar. With no trumps the bot
+  // cannot ruff; with only low pip cards it can never beat a suit trick. The
+  // beggar AI already leads lowest-from-longest to shed tricks onto opponents.
+  if (difficulty === 'hard' && trumpCount === 0 && highCardPoints <= 2) return 'beggar'
+
   // Partner contracts — share the burden with a called king.
   // Hard mode: strong courts (≥8 HCP) mean extra material that makes the 36-point
   // threshold more achievable, so bump the ceiling up one level. Conversely, very
@@ -111,6 +116,12 @@ export function recommendBid(
 
   const ceiling = handCeiling(evaluation, hand, difficulty)
   if (!ceiling) return 'pass'
+
+  // Beggar ceiling: only bid 'beggar' itself (never fall back to a normal contract
+  // like 'one' or 'two' — bidding positively with 0 trumps is suicidal).
+  if (ceiling === 'beggar') {
+    return legalBids.includes('beggar') ? 'beggar' : 'pass'
+  }
 
   // Find the highest legal bid at or below our ceiling
   const ceilStrength = contractStrength(ceiling)

@@ -276,6 +276,104 @@ describe('recommendBid — all four kings (BOT-001)', () => {
   })
 })
 
+// ── Beggar bidding (hard mode) ───────────────────────────────────────────────
+
+describe('recommendBid — beggar bidding (hard mode)', () => {
+  it('hard mode: 0 trumps + hcp=0 (all low pips) bids beggar when available', () => {
+    // No trumps, no courts → can't win any trick → ideal beggar hand.
+    const hand: Card[] = [
+      suit('clubs', 7), suit('clubs', 8), suit('clubs', 9),
+      suit('spades', 7), suit('spades', 8), suit('spades', 9),
+      suit('hearts', 1), suit('hearts', 2),
+      suit('diamonds', 1), suit('diamonds', 2), suit('diamonds', 3), suit('diamonds', 4),
+    ]
+    const ev = evaluateHand(hand)
+    expect(ev.trumpCount).toBe(0)
+    expect(ev.highCardPoints).toBe(0)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one', 'beggar']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('beggar')
+  })
+
+  it('hard mode: 0 trumps + hcp=2 (one Knave) still bids beggar', () => {
+    // One Knave adds 2 HCP but is still very low — threshold is ≤2.
+    const hand: Card[] = [
+      suit('clubs', 7), suit('clubs', 8), suit('clubs', 9), suit('clubs', 10),
+      suit('spades', 7), suit('spades', 8), suit('spades', 9),
+      suit('hearts', 1), suit('hearts', 2),
+      suit('diamonds', 1), suit('diamonds', 2),
+      suit('clubs', 'Kn'),  // Knave = 2 HCP
+    ]
+    const ev = evaluateHand(hand)
+    expect(ev.trumpCount).toBe(0)
+    expect(ev.highCardPoints).toBe(2)
+    const legal: import('../src/engine/types').Contract[] = ['one', 'beggar']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('beggar')
+  })
+
+  it('hard mode: 0 trumps + hcp=3 (one Queen) does NOT bid beggar — too risky', () => {
+    // Q=3 HCP > threshold of 2; a Queen can win tricks → avoid beggar.
+    const hand: Card[] = [
+      suit('clubs', 7), suit('clubs', 8), suit('clubs', 9), suit('clubs', 10),
+      suit('spades', 7), suit('spades', 8), suit('spades', 9),
+      suit('hearts', 1), suit('hearts', 2), suit('hearts', 3),
+      suit('diamonds', 1),
+      suit('clubs', 'Q'),  // Queen = 3 HCP → above threshold
+    ]
+    const ev = evaluateHand(hand)
+    expect(ev.trumpCount).toBe(0)
+    expect(ev.highCardPoints).toBe(3)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one', 'beggar']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('pass')
+  })
+
+  it('hard mode: 1 trump + hcp=0 does NOT bid beggar — trump could force a trick win', () => {
+    // Must-beat rule would force the bot to ruff a void suit, winning a trick.
+    const hand: Card[] = [
+      trump(5),  // one trump
+      suit('clubs', 7), suit('clubs', 8), suit('clubs', 9), suit('clubs', 10),
+      suit('spades', 7), suit('spades', 8),
+      suit('hearts', 1), suit('hearts', 2),
+      suit('diamonds', 1), suit('diamonds', 2), suit('diamonds', 3),
+    ]
+    const ev = evaluateHand(hand)
+    expect(ev.trumpCount).toBe(1)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one', 'beggar']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).not.toBe('beggar')
+  })
+
+  it('easy mode: 0 trumps + hcp=0 does NOT bid beggar (easy mode ignores this)', () => {
+    const hand: Card[] = [
+      suit('clubs', 7), suit('clubs', 8), suit('clubs', 9),
+      suit('spades', 7), suit('spades', 8), suit('spades', 9),
+      suit('hearts', 1), suit('hearts', 2),
+      suit('diamonds', 1), suit('diamonds', 2), suit('diamonds', 3), suit('diamonds', 4),
+    ]
+    const ev = evaluateHand(hand)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one', 'beggar']
+    const rec = recommendBid(ev, legal, false, hand, 'easy')
+    expect(rec).toBe('pass')
+  })
+
+  it('hard mode: beggar not in legal bids → passes (no fallback to normal contract)', () => {
+    // Auction advanced past 'beggar' level; bot should pass rather than bid lower.
+    const hand: Card[] = [
+      suit('clubs', 7), suit('clubs', 8), suit('clubs', 9),
+      suit('spades', 7), suit('spades', 8), suit('spades', 9),
+      suit('hearts', 1), suit('hearts', 2),
+      suit('diamonds', 1), suit('diamonds', 2), suit('diamonds', 3), suit('diamonds', 4),
+    ]
+    const ev = evaluateHand(hand)
+    // Only higher contracts available (beggar already overbid)
+    const legal: import('../src/engine/types').Contract[] = ['solo-without', 'open-beggar']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('pass')
+  })
+})
+
 // ── HCP-adjusted bidding (hard mode) ─────────────────────────────────────────
 
 describe('recommendBid — HCP adjustment (hard mode)', () => {

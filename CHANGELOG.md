@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.13 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: bots bid beggar when holding 0 trumps and very low courts** — a hand with no trumps (can't ruff) and at most 2 HCP (no queens or kings, at most one knave) is ideal for beggar; the bot will now bid it instead of passing. A separate guard prevents the beggar-ceiling hand from falling back to a normal contract when 'beggar' isn't available in legal bids (it passes instead of bidding 'one' with a zero-trump hand).
+- **6 new tests** (391 → 397): bidding fires on 0T+hcp=0, fires on hcp=2, skips on hcp=3, skips with 1 trump, easy mode unaffected, passes when 'beggar' not in legal bids.
+
 ## v1.6.12 — 2026-10-26
 
 ### AI / Bot Strategy
