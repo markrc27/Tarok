@@ -115,16 +115,19 @@ export const useGameStore = create<Store>()(persist((set, get) => {
           }
         }
       }
-      // Opponent bots kontra when holding a dominant defensive hand — applies to
-      // both flat and non-flat contracts (kontra multiplier is always in effect).
-      // Only one kontra per opponent side: stop at the first willing bot.
-      const opponentBots = ([0, 1, 2, 3] as Seat[]).filter(
-        s => s !== HUMAN && s !== declarer && (partner === null || s !== partner),
-      )
-      for (const oppBot of opponentBots) {
-        if (shouldBotKontra(dealResult.hands[oppBot], options.botDifficulty)) {
-          ann = applyAnnouncement(ann, { kind: 'kontra', seat: oppBot, target: 'game' }, declarer, partner)
-          break
+      // Opponent bots kontra when holding a dominant defensive hand.
+      // Beggar/open-beggar: trump count isn't a defensive advantage (opponents want
+      // to give tricks to the declarer, not win them), so skip kontra for those.
+      const BEGGAR_CONTRACTS = new Set(['beggar', 'open-beggar'])
+      if (!BEGGAR_CONTRACTS.has(contract)) {
+        const opponentBots = ([0, 1, 2, 3] as Seat[]).filter(
+          s => s !== HUMAN && s !== declarer && (partner === null || s !== partner),
+        )
+        for (const oppBot of opponentBots) {
+          if (shouldBotKontra(dealResult.hands[oppBot], options.botDifficulty)) {
+            ann = applyAnnouncement(ann, { kind: 'kontra', seat: oppBot, target: 'game' }, declarer, partner)
+            break
+          }
         }
       }
     }
