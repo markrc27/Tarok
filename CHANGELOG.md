@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.8 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: partner saves Škis/Mond when ally still to play** — when a declarer-side ally (declarer or partner) is still to play after the current bot in the trick, the bot uses its cheapest beater instead of committing the Škis or Mond; the ally can overbear if needed, preserving the high trumps for future leads.
+- **Hard mode: opponent prefers king-singleton lead** — when leading, if the opponent holds a king as its only card in that suit (singleton), it leads that king first; a king always wins a non-trump trick and simultaneously creates a void in one play, combining two benefits.
+- **8 new tests** (367 → 375): 4 for ally-after-me cheapest beater, 4 for king-singleton lead preference.
+
 ## v1.6.7 — 2026-10-26
 
 ### AI / Bot Strategy

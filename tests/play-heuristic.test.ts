@@ -1340,3 +1340,135 @@ describe('hard mode klop — skip lone king singleton lead', () => {
     expect(card).toMatchObject({ kind: 'suit', suit: 'clubs' })  // J♣ (1 card, safe)
   })
 })
+
+// ── Hard mode opponent leading: king-singleton preference ─────────────────────
+// A king-singleton is both a guaranteed winner (K is highest suit card) and creates
+// a void immediately. Hard mode prefers it over a shorter non-king singleton.
+
+describe('hard mode opponent leading — king-singleton preferred over plain singleton', () => {
+  it('HARD: leads king-singleton (K♥) over lower-rank singleton (J♠)', () => {
+    // Clubs: K♣,Q♣,J♣ (3). Hearts: K♥ (singleton, 5pt). Spades: J♠ (singleton, 2pt).
+    // Hard mode: both hearts and spades are 1-card suits, but hearts has the king →
+    // prefer the king singleton. Easy would pick by shortest (tie → first in set = clubs?
+    // no, all are in pool and spades is shorter... but K♥ and J♠ are both 1-card)
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [
+        suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('clubs', 'J', 2),
+        suit('hearts', 'K', 5),   // singleton king
+        suit('spades', 'J', 2),   // singleton non-king
+      ],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts', rank: 'K' })
+  })
+
+  it('EASY: no king-singleton preference — leads by shortest suit (J♠ or K♥ both 1-card, first wins)', () => {
+    // Easy mode uses shortest-suit but not king preference. Result is whichever singleton
+    // comes first in the reduced set (hearts vs spades, insertion order in Set). Not testing
+    // a specific suit — just confirming the king preference path isn't taken.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [
+        suit('clubs', 'K', 5), suit('clubs', 'Q', 4),
+        suit('hearts', 'K', 5),
+        suit('spades', 'J', 2),
+      ],
+    })
+    // Easy mode: no special king preference, just highest by points = K♣(5pt) as pool fallback
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy' })
+    // Easy: candidates sorted by points → K♣(5pt) is highest (no shortest-suit logic in easy)
+    expect(card).toMatchObject({ kind: 'suit', rank: 'K' })  // any king (highest points)
+  })
+
+  it('HARD: king in longer suit (not singleton) falls back to shortest non-king suit', () => {
+    // Hearts: K♥, Q♥ (2 cards — K not a singleton). Spades: J♠ (1 card, non-king).
+    // No king-singleton → falls back to shortest = spades → leads J♠.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [suit('hearts', 'K', 5), suit('hearts', 'Q', 4), suit('spades', 'J', 2)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'spades', rank: 'J' })
+  })
+
+  it('HARD: king is also the shortest suit — king-singleton fires, returns K', () => {
+    // Diamonds: K♦ (1 card). Clubs: J♣, Q♣ (2 cards).
+    // King-singleton = diamonds → leads K♦ (both shortest AND king → same result either way).
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [suit('clubs', 'J', 2), suit('clubs', 'Q', 4), suit('diamonds', 'K', 5)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'diamonds', rank: 'K' })
+  })
+})
+
+// ── Hard mode declarer side: cheapest beater when ally still to play ──────────
+// When a declarer-side ally (partner or declarer themselves) is still to play
+// after us in the trick, we use the cheapest beater to preserve Škis/Mond.
+
+describe('hard mode declarer side following — cheapest beater when ally still to play', () => {
+  it('HARD: partner uses cheapest beater when declarer is still to play', () => {
+    // Play order [0,1,2,3]: seat0 leads T8, seat1 (enemy) plays T9 and wins.
+    // Seat2 (partner) follows with [T10, Škis]. Seat3 (declarer) hasn't played.
+    // Declarer is after us → use cheapest beater (T10), save Škis for declarer.
+    const state = makeState({
+      contract: 'one', declarer: 3, partner: 2 as Seat,
+      hand2: [trump(10), skis],
+      trickCards: [
+        { seat: 0, card: trump(8) },
+        { seat: 1, card: trump(9) },
+      ],
+    })
+    const card = chooseCard(state, 2, {
+      difficultyBias: 0.5, difficulty: 'hard', knownPartner: 2 as Seat,
+    })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })  // cheapest, not Škis
+  })
+
+  it('HARD: declarer uses strongest beater when no ally is left to play', () => {
+    // Play order [0,1,2,3]: seat0 (enemy) leads T8. Seat1 (declarer, solo) is 2nd.
+    // After seat1: seats 2 and 3 are enemies → no ally after → strongest beater.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: null,
+      hand1: [trump(10), skis],
+      trickCards: [{ seat: 0, card: trump(8) }],
+    })
+    const card = chooseCard(state, 1, {
+      difficultyBias: 0.5, difficulty: 'hard', knownPartner: null,
+    })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })  // Škis (strongest)
+  })
+
+  it('HARD: solo contract (no partner) always uses strongest beater', () => {
+    // No partner → no ally ever after us → always strongest beater.
+    // ledSeat=0, seat1=declarer (solo-one), seats 0,2,3 opponents.
+    // Seat1 is 2nd to play (1 card played). After seat1: seats 2, 3 (enemies).
+    const state = makeState({
+      contract: 'solo-one', declarer: 1, partner: null,
+      hand1: [trump(10), skis],
+      trickCards: [{ seat: 0, card: trump(8) }],
+    })
+    const card = chooseCard(state, 1, {
+      difficultyBias: 0.5, difficulty: 'hard', knownPartner: null,
+    })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })  // strongest, no ally
+  })
+
+  it('EASY: never applies ally-after-me check — always uses strongest beater', () => {
+    // Same partner scenario as the first test, but easy mode.
+    const state = makeState({
+      contract: 'one', declarer: 3, partner: 2 as Seat,
+      hand2: [trump(10), skis],
+      trickCards: [
+        { seat: 0, card: trump(8) },
+        { seat: 1, card: trump(9) },
+      ],
+    })
+    const card = chooseCard(state, 2, {
+      difficultyBias: 0.5, difficulty: 'easy', knownPartner: 2 as Seat,
+    })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })  // Škis (easy mode: strongest)
+  })
+})

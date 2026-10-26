@@ -417,6 +417,16 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
             }
           }
           const suits = [...new Set(suitPool.map(c => c.suit))]
+
+          // King-singleton: guaranteed winner (K is highest suit card) AND creates a void
+          // in one play — both goals in a single card. Prefer this over a non-king singleton.
+          const kingSingletonSuits = suits.filter(
+            s => (suitCounts[s] ?? 0) === 1 && suitPool.some(c => c.suit === s && c.rank === 'K'),
+          )
+          if (kingSingletonSuits.length > 0) {
+            return suitPool.filter(c => c.suit === kingSingletonSuits[0])[0]
+          }
+
           const shortestSuit = suits.reduce((best, s) =>
             (suitCounts[s] ?? Infinity) < (suitCounts[best] ?? Infinity) ? s : best,
           )
@@ -507,6 +517,18 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
       // high cards (Škis, Mond) for future tricks where they must beat earlier players.
       if (difficulty === 'hard' && isLastToPlay) {
         return beaters.sort((a, b) => cardStrength(a) - cardStrength(b))[0]
+      }
+      // Hard mode: a declarer-side ally is still to play after us — use cheapest beater
+      // so they can overbear if needed, keeping our Škis/Mond for future lead tricks.
+      if (difficulty === 'hard' && beaters.length > 1) {
+        const playOrder: Seat[] = [0, 1, 2, 3].map(i => ((currentTrick.ledSeat + i) % 4) as Seat)
+        const myIndex = playOrder.indexOf(seat)
+        const hasAllyAfterMe = playOrder.slice(myIndex + 1).some(
+          s => isDeclarerSide(s, declarer, effectivePartner),
+        )
+        if (hasAllyAfterMe) {
+          return beaters.sort((a, b) => cardStrength(a) - cardStrength(b))[0]
+        }
       }
       return beaters.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
     } else {
