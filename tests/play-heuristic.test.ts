@@ -1617,3 +1617,47 @@ describe('hard mode opponent following — fight high-value tricks', () => {
     expect(card).toMatchObject({ kind: 'trump', ordinal: 5 })  // no enemy after → cheapest safe
   })
 })
+
+// ── Hard mode opponent leading — avoid called suit while partnership hidden ──
+// Leading the called king's suit early can flush out the partner king, giving
+// the declarer side a free 5pt trick and revealing the partnership prematurely.
+// Hard mode avoids the ENTIRE called suit (not just the king) until the
+// partnership becomes public (knownPartner !== null).
+
+describe('hard mode opponent leading — avoid called suit while partnership hidden', () => {
+  it('HARD: avoids called suit (♥) entirely — leads from another suit', () => {
+    // Hand: Q♥(4), J♣(2), J♦(2). Called suit = hearts, knownPartner = null.
+    // Hard mode excludes ALL hearts → pool=[J♣,J♦]. Shortest (clubs=1) → J♣.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [suit('hearts', 'Q', 4), suit('clubs', 'J', 2), suit('diamonds', 'J', 2)],
+      kingCall: kingCall('hearts', 2 as Seat),
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).not.toMatchObject({ suit: 'hearts' })  // avoids called suit
+  })
+
+  it('EASY: does not avoid called suit — leads highest-points card (Q♥)', () => {
+    // Easy mode only filters the king card itself; Q♥ is not the king → included.
+    // Highest points in pool: Q♥(4) > J♣(2) = J♦(2) → leads Q♥.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [suit('hearts', 'Q', 4), suit('clubs', 'J', 2), suit('diamonds', 'J', 2)],
+      kingCall: kingCall('hearts', 2 as Seat),
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts', rank: 'Q' })
+  })
+
+  it('HARD: once partnership is revealed (knownPartner set), leads from called suit normally', () => {
+    // Same hand, hard mode, but knownPartner=2 means partnership is already public.
+    // Q♥ is included in pool (not K♥ = called king). Shortest suit = hearts (1 card) → Q♥.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand0: [suit('hearts', 'Q', 4), suit('clubs', 'J', 2), suit('diamonds', 'J', 2)],
+      kingCall: kingCall('hearts', 2 as Seat),
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: 2 as Seat })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts', rank: 'Q' })
+  })
+})

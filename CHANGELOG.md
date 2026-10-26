@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.12 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: opponent avoids leading called king's suit while partnership is hidden** — previously only the called king card itself was excluded from opponent leads; now the entire called suit is avoided until the partnership becomes public. Leading any card in that suit risks flushing out the partner's king early and gifting the declarer side a free high-point trick. Once the partnership is revealed (`knownPartner` is set), leading the called suit is no longer restricted.
+- **3 new tests** (388 → 391): hard mode avoids called suit, easy mode unaffected, hard mode with revealed partnership leads normally.
+
 ## v1.6.11 — 2026-10-26
 
 ### AI / Bot Strategy

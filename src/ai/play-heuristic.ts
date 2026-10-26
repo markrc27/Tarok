@@ -432,7 +432,17 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
 
       const nonTrumps = candidates.filter(c => !effectiveIsTrump(c, isColourValat))
       if (nonTrumps.length > 0) {
-        const safeNonTrumps = nonTrumps.filter(c => !isCalledKingCard(c))
+        // Hard mode with hidden partnership: avoid the ENTIRE called suit — leading
+        // any card there could flush out the partner king early, helping the declarer
+        // side establish their strongest suit. Easy mode + revealed partnership: only
+        // avoid the king card itself (to not accidentally play the called king out of turn).
+        const calledSuit = calledKingCard?.kind === 'suit' ? (calledKingCard as SuitCard).suit : null
+        const safeNonTrumps = nonTrumps.filter(c => {
+          if (c.kind !== 'suit') return true
+          const sc = c as SuitCard
+          if (difficulty === 'hard' && calledSuit && knownPartner === null) return sc.suit !== calledSuit
+          return !isCalledKingCard(c)
+        })
         const pool = safeNonTrumps.length > 0 ? safeNonTrumps : nonTrumps
 
         // Hard mode: lead from the shortest non-trump suit to create voids quickly.
