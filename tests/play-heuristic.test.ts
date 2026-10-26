@@ -1256,3 +1256,87 @@ describe('hard mode secret partner — follows as declarer side before king reve
     expect(card).toMatchObject({ kind: 'suit' })  // non-trump, not T15
   })
 })
+
+// ── Hard mode valat: opponents use highest beater ─────────────────────────────
+
+describe('hard mode valat contracts — opponent uses highest beater', () => {
+  it('HARD valat: opponent uses highest beater (not lowest)', () => {
+    // Contract: valat-without; seat1=declarer (no partner).
+    // Trick: seat1 led T5. Seat0 (opponent) has T10 and T20 — both beat T5.
+    // Normal mode: plays T10 (lowest beater, saves T20).
+    // Valat hard mode: plays T20 (highest) to guarantee winning the trick.
+    const state = makeState({
+      contract: 'valat-without', declarer: 1, partner: null,
+      hand0: [trump(10), trump(20)],
+      trickCards: [{ seat: 1, card: trump(5) }],
+    })
+    const cardEasy = chooseCard(state, 0,
+      { difficultyBias: 0.5, difficulty: 'easy', knownPartner: null })
+    expect(cardEasy).toMatchObject({ kind: 'trump', ordinal: 10 })  // lowest beater in easy
+
+    const cardHard = chooseCard(state, 0,
+      { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(cardHard).toMatchObject({ kind: 'trump', ordinal: 20 })  // highest beater in hard
+  })
+
+  it('HARD color-valat: opponent also uses highest beater', () => {
+    // color-valat-without: same behaviour as valat for the highest-beater heuristic.
+    const state = makeState({
+      contract: 'color-valat-without', declarer: 1, partner: null,
+      hand0: [trump(10), trump(20)],
+      trickCards: [{ seat: 1, card: trump(5) }],
+    })
+    const card = chooseCard(state, 0,
+      { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 20 })
+  })
+})
+
+// ── Hard mode klop: avoid leading a lone king ─────────────────────────────────
+
+describe('hard mode klop — skip lone king singleton lead', () => {
+  it('HARD: prefers a 2-card suit over a 1-card king singleton', () => {
+    // Clubs: K♣ alone (1 card, dangerous — will win the trick).
+    // Hearts: 7♥, 8♥ (2 cards, safer lead).
+    // Hard mode: leads from hearts (avoids the lone king).
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [suit('clubs', 'K', 5), suit('hearts', 7), suit('hearts', 8)],
+    })
+    const cardHard = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(cardHard).toMatchObject({ kind: 'suit', suit: 'hearts' })
+  })
+
+  it('EASY: still leads from shortest suit (1-card clubs = K♣, even in easy mode)', () => {
+    // Easy mode ignores the king-singleton heuristic → leads K♣ as shortest suit.
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [suit('clubs', 'K', 5), suit('hearts', 7), suit('hearts', 8)],
+    })
+    const cardEasy = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy' })
+    expect(cardEasy).toMatchObject({ kind: 'suit', suit: 'clubs' })  // shortest regardless
+  })
+
+  it('HARD: when ALL singletons are kings, falls back to shortest suit', () => {
+    // K♣ (1 card) and K♥ (1 card) — both are dangerous singletons.
+    // No safe suit → fall back to shortest. Both are length 1, picks first (clubs).
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [suit('clubs', 'K', 5), suit('hearts', 'K', 5)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    // Both are dangerous, no safe suit — falls back and picks one of the two (either is OK)
+    expect(card).toMatchObject({ kind: 'suit' })
+  })
+
+  it('HARD: 1-card non-king singleton is preferred over 2-card suit', () => {
+    // J♣ (1 card, non-king singleton) and K♥, Q♥ (2 cards).
+    // J♣ is short (1 card) and NOT a dangerous singleton → leads J♣.
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [suit('clubs', 'J', 2), suit('hearts', 'K', 5), suit('hearts', 'Q', 4)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs' })  // J♣ (1 card, safe)
+  })
+})

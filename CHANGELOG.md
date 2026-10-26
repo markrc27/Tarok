@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.7 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: valat opponent uses strongest beater** — in valat-without and colour-valat-without, opponents play their highest available beater to guarantee winning at least one trick, rather than saving a cheap beater that could be overtrumped.
+- **Hard mode: klop avoids leading a lone king** — when the only card left in a suit is a King, the klop bot skips that suit and leads from a safer one; kings can't be beaten by same-suit cards and will win the trick.
+- **6 new tests** (361 → 367): 2 for valat highest-beater, 4 for klop king-singleton avoidance.
+
 ## v1.6.6 — 2026-10-26
 
 ### AI / Bot Strategy

@@ -262,7 +262,20 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
           }
         }
         const suits = [...new Set(suitPool.map(c => c.suit))]
-        const shortestSuit = suits.reduce((best, s) =>
+
+        // Hard mode: avoid leading a lone king — it wins the trick (kings cannot be beaten
+        // by any other card in the same suit) and klop players want to AVOID winning tricks.
+        const dangerousSingletons = new Set(
+          suits.filter(s =>
+            difficulty === 'hard' &&
+            (suitCounts[s] ?? 0) === 1 &&
+            suitPool.some(c => c.suit === s && c.rank === 'K'),
+          ),
+        )
+        const safeLeadSuits = suits.filter(s => !dangerousSingletons.has(s))
+        const leadCandidateSuits = safeLeadSuits.length > 0 ? safeLeadSuits : suits
+
+        const shortestSuit = leadCandidateSuits.reduce((best, s) =>
           (suitCounts[s] ?? Infinity) < (suitCounts[best] ?? Infinity) ? s : best,
         )
         const inSuit = suitPool.filter(c => c.suit === shortestSuit)
@@ -513,6 +526,13 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
       const trickPts = currentTrickPoints(state)
       if (!isValatContract && !isLastToPlay && !declarerNearWin && trickPts <= 1 && cardPoints(lowestBeater) >= 5 && !skisIsOnlyBeater) {
         return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
+      }
+
+      // Hard mode: in valat contracts opponents must win at least one trick — use
+      // the strongest available beater to guarantee winning THIS trick rather than
+      // risking a cheap beater being overtrumped by a later declarer-side player.
+      if (difficulty === 'hard' && isValatContract) {
+        return beaters.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
       }
 
       return lowestBeater
