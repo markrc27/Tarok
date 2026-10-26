@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.11 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: void-suit distribution bonus in bidding** — when the bot is void in any suit (holds zero cards in it), it treats its effective trump count as +1 for partner-contract evaluation (capped at 7 so it stays in the partner range). A void suit allows immediate ruffing, equivalent in practice to holding an extra trump. A bot that would bid 'three' now bids 'two', a 'two' bids 'one', when void.
+- **4 new tests** (384 → 388): void bonus fires in hard mode, no-void baseline unchanged, easy mode unaffected, 6T+void reaches 'one'.
+
 ## v1.6.10 — 2026-10-26
 
 ### AI / Bot Strategy

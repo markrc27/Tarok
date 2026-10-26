@@ -609,3 +609,70 @@ describe('shouldBotRekontra', () => {
     expect(shouldBotRekontra(hand, 'hard')).toBe(false)
   })
 })
+
+// ── Void-suit distribution bonus in bidding (hard mode) ──────────────────────
+// A void suit effectively adds +1 to the partner-contract trump threshold:
+// when void, the bot can ruff that suit immediately — similar to one extra trump.
+
+describe('recommendBid — void suit bonus (hard mode)', () => {
+  it('hard mode: 5 trumps + void suit bids two instead of three', () => {
+    // 5 trumps (ceiling = three). Void in diamonds → ptTrumps=6 → ceiling = two.
+    // HCP = 5 (J+Kn) — no HCP boost (< 8).
+    const hand: Card[] = [
+      trump(2), trump(3), trump(4), trump(5), trump(6),
+      suit('clubs', 7), suit('clubs', 8), suit('clubs', 9),
+      suit('spades', 7), suit('spades', 8),
+      suit('hearts', 'J'), suit('hearts', 'Kn'),  // no diamonds → void
+    ]
+    const ev = evaluateHand(hand)
+    expect(ev.trumpCount).toBe(5)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('two')
+  })
+
+  it('hard mode: 5 trumps + no void still bids three (unaffected)', () => {
+    // Same trump count but all 4 suits covered → no void bonus → ceiling = three.
+    const hand: Card[] = [
+      trump(2), trump(3), trump(4), trump(5), trump(6),
+      suit('clubs', 7), suit('clubs', 8),
+      suit('spades', 7), suit('spades', 8),
+      suit('hearts', 'J'),
+      suit('diamonds', 1), suit('clubs', 9),  // diamonds present → no void
+    ]
+    const ev = evaluateHand(hand)
+    expect(ev.trumpCount).toBe(5)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('three')
+  })
+
+  it('easy mode: 5 trumps + void still bids three (void bonus is hard-mode only)', () => {
+    // Same hand as first test — easy mode ignores void bonus.
+    const hand: Card[] = [
+      trump(2), trump(3), trump(4), trump(5), trump(6),
+      suit('clubs', 7), suit('clubs', 8), suit('clubs', 9),
+      suit('spades', 7), suit('spades', 8),
+      suit('hearts', 'J'), suit('hearts', 'Kn'),  // no diamonds → void
+    ]
+    const ev = evaluateHand(hand)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'easy')
+    expect(rec).toBe('three')
+  })
+
+  it('hard mode: 6 trumps + void bids one instead of two (effective 7 trumps)', () => {
+    // 6 trumps (ceiling = two). Void in diamonds → ptTrumps=min(7,7)=7 → ceiling = one.
+    const hand: Card[] = [
+      trump(2), trump(3), trump(4), trump(5), trump(6), trump(7),
+      suit('clubs', 7), suit('clubs', 8), suit('clubs', 9),
+      suit('spades', 7), suit('spades', 8),
+      suit('hearts', 'J'),  // no diamonds → void
+    ]
+    const ev = evaluateHand(hand)
+    expect(ev.trumpCount).toBe(6)
+    const legal: import('../src/engine/types').Contract[] = ['two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('one')
+  })
+})

@@ -79,17 +79,23 @@ function handCeiling(ev: HandEvaluation, hand: Card[], difficulty: BotDifficulty
   // threshold more achievable, so bump the ceiling up one level. Conversely, very
   // weak courts (≤1 HCP) in hard mode signal a hand that relies entirely on trump
   // length — knock the ceiling down one level.
+  // Hard mode void bonus: being void in any suit is worth +1 effective trump for
+  // partner contracts — the bot can ruff immediately when that suit is led. Capped
+  // at +1 and at 7 total so we stay in the partner range.
   const hcpBoost   = difficulty === 'hard' && highCardPoints >= 8
   const hcpPenalty = difficulty === 'hard' && highCardPoints <= 1
+  const hasVoid    = difficulty === 'hard' &&
+    SUITS.some(s => !hand.some(c => c.kind === 'suit' && (c as SuitCard).suit === s))
+  const ptTrumps   = Math.min(trumpCount + (hasVoid ? 1 : 0), 7)
 
-  if (trumpCount >= 7)  return 'one'
-  if (trumpCount >= 6)  {
+  if (ptTrumps >= 7)  return 'one'
+  if (ptTrumps >= 6)  {
     if (hcpBoost)    return 'one'
     if (hcpPenalty)  return 'three'
     return 'two'
   }
-  if (trumpCount >= 5)  return hcpBoost ? 'two' : 'three'  // forehand-only; non-forehand bots will pass
-  if (trumpCount >= 4 && hcpBoost) return 'three'  // borderline trump count rescued by strong courts
+  if (ptTrumps >= 5)  return hcpBoost ? 'two' : 'three'  // forehand-only; non-forehand bots will pass
+  if (ptTrumps >= 4 && hcpBoost) return 'three'  // borderline trump count rescued by strong courts
 
   return null  // weak hand — pass
 }
