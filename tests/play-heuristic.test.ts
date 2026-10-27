@@ -1575,6 +1575,76 @@ describe('hard mode valat-without — opponent leads highest trump', () => {
   })
 })
 
+// ── BOT-011: colour-valat opponent leading — unbeatable tarok first ───────────
+// In colour-valat (isColourValat=true), taroks act as a plain suit. The opponent
+// holding T22 (Škis) can lead it to IMMEDIATELY win a trick and break the
+// colour-valat declaration — T22 is the highest tarok and unbeatable.
+// If T22 is gone, the highest remaining tarok (all above it played/held) is equally safe.
+
+describe('BOT-011 colour-valat opponent leading — unbeatable tarok lead', () => {
+  it('HARD: opponent holds T22 + K♣ → leads T22 (unbeatable, breaks valat)', () => {
+    // T22 is the highest tarok; no higher ordinal exists → immediately wins the trick.
+    const state = makeState({
+      contract: 'color-valat-without', declarer: 1, partner: null,
+      isColourValat: true,
+      hand0: [skis, suit('clubs', 'K', 5)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })  // Škis leads first
+  })
+
+  it('HARD: T22 and T21 already played; opponent holds T20 → leads T20 (now top remaining)', () => {
+    // Both T22 and T21 have been played → T20 is the highest remaining tarok → unbeatable.
+    const completedTricks: Trick[] = [
+      { cards: [
+        { seat: 0 as Seat, card: trump(22) },   // T22 played
+        { seat: 1 as Seat, card: trump(5) },
+        { seat: 2 as Seat, card: trump(3) },
+        { seat: 3 as Seat, card: trump(4) },
+      ], winner: 0 },
+      { cards: [
+        { seat: 1 as Seat, card: trump(21) },   // T21 played
+        { seat: 2 as Seat, card: trump(2) },
+        { seat: 3 as Seat, card: trump(6) },
+        { seat: 0 as Seat, card: trump(7) },
+      ], winner: 1 },
+    ]
+    const state = makeState({
+      contract: 'color-valat-without', declarer: 1, partner: null,
+      isColourValat: true,
+      hand0: [trump(20), suit('clubs', 'K', 5)],
+      completedTricks,
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 20 })  // T20 is now top remaining
+  })
+
+  it('HARD: opponent holds T21 but T22 not played → does NOT lead T21 (T22 still out there)', () => {
+    // T22 is unaccounted for (not in our hand, not in played list) → T21 might lose to T22.
+    // Bot falls back to suit heuristic → leads K♣ (king-singleton, unconditional winner).
+    const state = makeState({
+      contract: 'color-valat-without', declarer: 1, partner: null,
+      isColourValat: true,
+      hand0: [mond, suit('clubs', 'K', 5)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })  // K♣ (T22 still out)
+  })
+
+  it('EASY: no colour-valat tarok check — returns a valid card without crashing', () => {
+    // Easy mode does not apply the colour-valat tarok lead heuristic.
+    // Just assert the easy fallback returns a legal card (no crash).
+    const state = makeState({
+      contract: 'color-valat-without', declarer: 1, partner: null,
+      isColourValat: true,
+      hand0: [skis, suit('clubs', 'K', 5)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy', knownPartner: null })
+    expect(card).toBeDefined()
+    expect(['trump', 'suit']).toContain(card.kind)  // either is a valid legal card
+  })
+})
+
 // ── Hard mode klop: avoid leading a lone king ─────────────────────────────────
 
 describe('hard mode klop — skip lone king singleton lead', () => {

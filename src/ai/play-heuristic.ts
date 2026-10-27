@@ -612,6 +612,24 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
         })
         const pool = safeNonTrumps.length > 0 ? safeNonTrumps : nonTrumps
 
+        // Hard mode (colour-valat only): taroks are a plain suit, so T22 (Škis) is the
+        // highest card in the tarok "suit" and unbeatable — leading it immediately wins
+        // a trick and breaks the colour-valat declaration. Prioritise over any suit lead.
+        if (difficulty === 'hard' && isColourValat) {
+          const highestTarok = (pool.filter(c => c.kind === 'trump') as TrumpCard[])
+            .sort((a, b) => b.ordinal - a.ordinal)[0]
+          if (highestTarok) {
+            // Only lead the tarok if it's the top remaining — all higher ordinals played or in our hand.
+            const played = playedTrumpOrdinals(state)
+            const myOrdinals = new Set(state.hands[seat].filter(c => c.kind === 'trump').map(c => (c as TrumpCard).ordinal))
+            let topRemaining = true
+            for (let o = highestTarok.ordinal + 1; o <= 22; o++) {
+              if (!played.has(o as TrumpOrdinal) && !myOrdinals.has(o as TrumpOrdinal)) { topRemaining = false; break }
+            }
+            if (topRemaining) return highestTarok
+          }
+        }
+
         // Hard mode: lead from the shortest non-trump suit to create voids quickly.
         // A void lets us slough high-value cards onto future tricks we won't win,
         // maximising the point drain on the declarer's side.

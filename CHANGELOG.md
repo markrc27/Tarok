@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.32 — 2026-10-27
+
+### AI / Bot Strategy
+- **BOT-011: Colour-valat opponent leading — unbeatable tarok first** — in colour-valat (taroks are a plain suit), the opponent bot now checks whether their highest tarok is the top remaining in the ordinal sequence (all higher taroks played or in their own hand). If so, it's unbeatable and leads it immediately to win the trick and break the colour-valat declaration. Previously the hard-mode suit heuristic only considered suit cards, ignoring taroks like T22 (Škis) even though T22 in colour-valat is an unconditional trick winner. The check applies to any ordinal (T22 early game; T20 after T21+T22 are played, etc.). Falls back to suit-card heuristics when no unbeatable tarok is available.
+- **4 new tests** (458 → 462): T22 held → leads T22; T22+T21 played → T20 leads; T21 held but T22 out → falls back to K♣; easy mode returns legal card.
+
 ## v1.6.31 — 2026-10-27
 
 ### AI / Bot Strategy
