@@ -1729,3 +1729,57 @@ describe('hard mode opponent leading — avoid called suit while partnership hid
     expect(card).toMatchObject({ kind: 'suit', suit: 'hearts', rank: 'Q' })
   })
 })
+
+// ── Hard mode declarer leading — prefers called suit when partner known ───────
+// After trump exhaustion (≤3 unseen opponent trumps), the declarer leads suit.
+// When the partnership is known, leading the called suit lets the partner win
+// the trick with their called king — the safest high-value trick for the team.
+
+describe('hard mode declarer leading — calls suit when partner known', () => {
+  function manyPlayedTrumps(): Trick[] {
+    // Play T2-T4,T6-T20 (18 trumps). Combined with T5 in declarer's hand,
+    // unseenOpponentTrumps = 22 - 18 - 1 = 3 → trump exhaustion fires.
+    const ordinals = [2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    return ordinals.map(o => ({
+      cards: [{ seat: 0 as Seat, card: trump(o) }],
+      winner: 0 as Seat,
+    }))
+  }
+
+  it('HARD: leads called suit (♥) over higher-point non-called suit card (K♣) when partner known', () => {
+    // T5 triggers the trump-exhaustion switch (unseen=3). Suit candidates: K♣(5pt), Q♥(4pt).
+    // Called suit = hearts, partner=3 (known). Called-suit preference → Q♥ (not K♣).
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 3 as Seat,
+      hand1: [trump(5), suit('clubs', 'K', 5), suit('hearts', 'Q', 4)],
+      completedTricks: manyPlayedTrumps(),
+      kingCall: { calledSuit: 'hearts', calledKing: suit('hearts', 'K', 5), partner: 3 as Seat, kingInTalon: false, kingInDeclarerHand: false },
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: 3 as Seat })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts' })  // called suit preferred
+  })
+
+  it('HARD: no partner (solo) — leads highest-points suit card (K♣)', () => {
+    // Solo contract: effectivePartner=null → called-suit preference does not apply.
+    const state = makeState({
+      contract: 'solo-one', declarer: 1, partner: null,
+      hand1: [trump(5), suit('clubs', 'K', 5), suit('hearts', 'Q', 4)],
+      completedTricks: manyPlayedTrumps(),
+      kingCall: { calledSuit: 'hearts', calledKing: suit('hearts', 'K', 5), partner: null, kingInTalon: true, kingInDeclarerHand: false },
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })  // no preference → highest pts
+  })
+
+  it('HARD: partner known but no called-suit cards in hand — falls back to highest-points', () => {
+    // Called suit = hearts, but declarer holds no hearts → inCalled=[]; leads K♣(5pt).
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 3 as Seat,
+      hand1: [trump(5), suit('clubs', 'K', 5), suit('diamonds', 'Q', 4)],
+      completedTricks: manyPlayedTrumps(),
+      kingCall: { calledSuit: 'hearts', calledKing: suit('hearts', 'K', 5), partner: 3 as Seat, kingInTalon: false, kingInDeclarerHand: false },
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: 3 as Seat })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })  // no hearts → highest pts
+  })
+})

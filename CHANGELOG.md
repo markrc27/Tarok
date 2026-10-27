@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.15 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: declarer leads called suit first after trump exhaustion when partner is known** — when the opponent trump count drops to ≤3 and the declarer switches to suit leads, it now prefers the called king's suit over a higher-value non-called suit. The partner holds the called king and will win that trick, keeping the points on the team's side. Falls back to highest-value suit card if no called-suit card is in hand, or if playing solo (no partner).
+- **3 new tests** (400 → 403): called-suit preferred over higher-point card, solo ignores preference, no called-suit card in hand falls back to highest.
+
 ## v1.6.14 — 2026-10-26
 
 ### AI / Bot Strategy

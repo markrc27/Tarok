@@ -377,6 +377,16 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
         if (unseen <= 3) {
           const suitWinners = candidates.filter(c => !effectiveIsTrump(c, isColourValat))
           if (suitWinners.length > 0) {
+            // Prefer the called suit: partner holds the called king and will win the trick.
+            if (effectivePartner !== null) {
+              const cs = state.kingCall?.calledSuit
+              if (cs) {
+                const inCalled = suitWinners.filter(c => c.kind === 'suit' && (c as SuitCard).suit === cs)
+                if (inCalled.length > 0) {
+                  return inCalled.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
+                }
+              }
+            }
             return suitWinners.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
           }
         }
