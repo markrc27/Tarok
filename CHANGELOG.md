@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.20 — 2026-10-27
+
+### AI / Bot Strategy
+- **Hard mode bidding: trulaPotential=3 lifts ceiling by one level** — holding all three trula cards (Škis + Mond + Pagat) indicates ~1 extra trump's worth of trick-power, and the trula bonus (+10 unannounced, +20 announced) significantly raises expected value. Hard mode now bids one level higher in partner-contract range when trulaPotential===3 (e.g., 6 trumps → 'one' instead of 'two'; 5 trumps → 'two' instead of 'three').
+- **Hard mode play: unannounced pagat-ultimo opportunism** — in the last trick, if all T2-T22 are already played or in the bot's own hand, Pagat is the highest remaining trump and is guaranteed to win the trick. Hard mode now plays Pagat in this situation for unannounced pagat-ultimo (+25 to the playing side). Both declarer-side and opponent bots attempt this. Only fires when the win is certain: playing Pagat to the last trick and losing is −25.
+- **8 new tests** (417 → 425): 4 trulaPotential=3 bidding tests (6 trumps → one; 5 trumps → two; easy no bump; trula=2 no bump); 4 pagat-ultimo play tests (leading; following after suit lead; T5 unseen blocks attempt; easy mode skips).
+
 ## v1.6.19 — 2026-10-27
 
 ### AI / Bot Strategy

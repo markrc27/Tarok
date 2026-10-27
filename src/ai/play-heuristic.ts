@@ -378,6 +378,36 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
       (c as SuitCard).rank === 'K'
   }
 
+  // ── Last-trick Pagat opportunism ─────────────────────────────────────────
+  // Hard mode, non-flat contracts: if Pagat is the highest remaining trump (all
+  // T2-T22 are played or in our hand), play it in the last trick for unannounced
+  // pagat-ultimo (+25). Both declarer and opponent sides benefit. Only when safe
+  // (certain win) — playing Pagat to the last trick and losing is −25.
+  if (difficulty === 'hard' && !isValatContract && contract !== 'solo-without' &&
+      state.completedTricks.length === 11) {
+    const pagatCandidate = candidates.find(isPagat)
+    if (pagatCandidate) {
+      const played = playedTrumpOrdinals(state)
+      const myHandOrdinals = new Set(
+        state.hands[seat].filter(c => c.kind === 'trump').map(c => (c as TrumpCard).ordinal)
+      )
+      let allHigherTrumpsOut = true
+      for (let o = 2; o <= 22; o++) {
+        if (!played.has(o) && !myHandOrdinals.has(o as TrumpOrdinal)) { allHigherTrumpsOut = false; break }
+      }
+      if (allHigherTrumpsOut) {
+        if (isLeading) return pagatCandidate
+        if (currentTrick.ledSuit) {
+          const win = currentWinner(state)
+          const best = win !== null ? currentTrick.cards.find(e => e.seat === win)?.card ?? null : null
+          if (best === null || cardBeatsCard(pagatCandidate, best, currentTrick.ledSuit, isColourValat)) {
+            return pagatCandidate
+          }
+        }
+      }
+    }
+  }
+
   // ── Leading ──────────────────────────────────────────────────────────────
   if (isLeading) {
     if (onDeclarerSide) {

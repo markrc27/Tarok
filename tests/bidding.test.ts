@@ -774,3 +774,70 @@ describe('recommendBid — void suit bonus (hard mode)', () => {
     expect(rec).toBe('one')
   })
 })
+
+// ── Trula bump (hard mode) ────────────────────────────────────────────────────
+// Holding all three trula cards (Škis + Mond + Pagat) is worth ~1 extra effective
+// trump in hard mode — Mond/Škis are the two strongest trumps, and the trula bonus
+// (+10 unannounced, +20 announced) significantly raises expected hand value.
+
+describe('recommendBid — trula bump (hard mode)', () => {
+  it('hard mode: 6 trumps + all trula bids one instead of two', () => {
+    // trumpCount=6 → ceiling=two normally. trulaBump lifts to one.
+    const hand: Card[] = [
+      trump(22), trump(21), trump(1),  // Škis, Mond, Pagat (all trula)
+      trump(2), trump(3), trump(4),    // 3 more → 6 total
+      suit('clubs', 7), suit('hearts', 7), suit('spades', 7), suit('diamonds', 7),
+      suit('clubs', 8), suit('hearts', 8),
+    ]
+    const ev = evaluateHand(hand)
+    expect(ev.trulaPotential).toBe(3)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('one')
+  })
+
+  it('hard mode: 5 trumps + all trula bids two instead of three', () => {
+    // trumpCount=5 → ceiling=three normally. trulaBump lifts to two.
+    const hand: Card[] = [
+      trump(22), trump(21), trump(1),
+      trump(2), trump(3),
+      suit('clubs', 7), suit('hearts', 7), suit('spades', 7), suit('diamonds', 7),
+      suit('clubs', 8), suit('hearts', 8), suit('spades', 8),
+    ]
+    const ev = evaluateHand(hand)
+    expect(ev.trulaPotential).toBe(3)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('two')
+  })
+
+  it('easy mode: 6 trumps + all trula still bids two (no trula bump)', () => {
+    const hand: Card[] = [
+      trump(22), trump(21), trump(1),
+      trump(2), trump(3), trump(4),
+      suit('clubs', 7), suit('hearts', 7), suit('spades', 7), suit('diamonds', 7),
+      suit('clubs', 8), suit('hearts', 8),
+    ]
+    const ev = evaluateHand(hand)
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'easy')
+    expect(rec).toBe('two')
+  })
+
+  it('hard mode: trulaPotential=2 does NOT trigger bump', () => {
+    // Škis+Mond but no Pagat — trulaPotential=2, no bump.
+    // 2 Jacks → HCP=2: avoids hcpPenalty (<=1) AND hcpBoost (>=8).
+    const hand: Card[] = [
+      trump(22), trump(21),
+      trump(2), trump(3), trump(4), trump(5),
+      suit('clubs', 'J'), suit('hearts', 'J'),  // HCP=2 (no penalty, no boost)
+      suit('clubs', 7), suit('hearts', 1), suit('spades', 7), suit('diamonds', 1),
+    ]
+    const ev = evaluateHand(hand)
+    expect(ev.trulaPotential).toBe(2)
+    expect(ev.highCardPoints).toBe(2)  // between 1 and 8 — no modifier fires
+    const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one']
+    const rec = recommendBid(ev, legal, false, hand, 'hard')
+    expect(rec).toBe('two')  // ceiling stays at two — trulaPotential=2, not 3
+  })
+})

@@ -2007,3 +2007,87 @@ describe('hard mode declarer leading — calls suit when partner known', () => {
     expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })  // no hearts → highest pts
   })
 })
+
+// ── Hard mode: unannounced pagat-ultimo opportunism ───────────────────────────
+// In the last trick (completedTricks.length===11), if Pagat is the highest remaining
+// trump (all T2-T22 are played or in our own hand), play it for unannounced pagat-
+// ultimo (+25). Only when the win is CERTAIN — playing Pagat and losing is -25.
+
+describe('hard mode — unannounced pagat-ultimo opportunism (last trick)', () => {
+  function allTrumpsPlayedExceptPagat(): Trick[] {
+    // 11 completed tricks; each contains one trump (T2-T22 = 21 cards,
+    // but we only need T2-T22 played somewhere; use 11 tricks with 2 trumps each
+    // for simplicity — completedTricks can have multiple cards per trick).
+    // Simpler: 11 tricks of one card each covering T2-T12, then add T13-T22
+    // in a second set. Actually, makeState only needs completedTricks.length===11
+    // and the ordinals 2-22 all in played set.
+    // Use 11 tricks, each with 2 trump cards to cover T2-T22.
+    const tricks: Trick[] = []
+    let o = 2
+    for (let i = 0; i < 11; i++) {
+      const cards: { seat: Seat; card: TrumpCard }[] = []
+      if (o <= 22) { cards.push({ seat: 2 as Seat, card: trump(o++) }) }
+      if (o <= 22) { cards.push({ seat: 3 as Seat, card: trump(o++) }) }
+      tricks.push({ cards, winner: cards[0].seat })
+    }
+    return tricks
+  }
+
+  it('HARD: leads Pagat in last trick when all T2-T22 are played (declarer side)', () => {
+    // completedTricks covers T2-T22 in 11 tricks. Hand=[Pagat, Q♣]. Leading → Pagat.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: null,
+      hand1: [pagat, suit('clubs', 'Q', 4)],
+      completedTricks: allTrumpsPlayedExceptPagat(),
+      trickCards: [],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 1 })  // Pagat to win last trick
+  })
+
+  it('HARD: plays Pagat when following a suit-led last trick (Pagat beats suit card)', () => {
+    // Seat0 led K♥ in last trick. All T2-T22 played. Seat1 holds [Pagat, J♣].
+    // Pagat (trump) beats K♥ (suit card) → play Pagat for unannounced ultimo.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: null,
+      hand1: [pagat, suit('clubs', 'J', 2)],
+      completedTricks: allTrumpsPlayedExceptPagat(),
+      trickCards: [{ seat: 0 as Seat, card: suit('hearts', 'K', 5) }],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 1 })  // Pagat beats K♥
+  })
+
+  it('HARD: does NOT play Pagat when T5 is still unseen — leads T10 instead', () => {
+    // Hand=[pagat, T10, Q♣]. All T2-T4, T6-T22 played across 11 tricks; T5 still unseen.
+    // allHigherTrumpsOut=false (T5 not played, not in hand) → opportunism skipped.
+    // Normal declarer leading: usable=[T10] (Pagat filtered), leads T10 (only usable trump).
+    const playedOrdinals = [2,3,4,6,7,8,9,11,12,13,14,15,16,17,18,19,20,21,22]  // 19, not T5
+    const tricks11: Trick[] = playedOrdinals.slice(0, 11).map(o => ({
+      cards: [{ seat: 2 as Seat, card: trump(o) }], winner: 2 as Seat,
+    }))
+    // T5 is NOT in completedTricks and NOT in hand → allHigherTrumpsOut=false
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: null,
+      hand1: [pagat, trump(10), suit('clubs', 'J', 2)],
+      completedTricks: tricks11,
+      trickCards: [],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })  // T10 (normal lead), not Pagat
+  })
+
+  it('EASY: opponent with Pagat leads suit (no opportunism in easy mode)', () => {
+    // Opponent (seat0) holds [pagat, Q♣]. All T2-T22 played (11 tricks).
+    // Hard mode would attempt unannounced pagat-ultimo; easy mode leads suit (Q♣).
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: null,
+      hand0: [pagat, suit('clubs', 'Q', 4)],
+      completedTricks: allTrumpsPlayedExceptPagat(),
+      trickCards: [],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy', knownPartner: null })
+    // Easy mode opponent leads suit (no opportunism check); hard mode would lead Pagat.
+    expect(card).toMatchObject({ kind: 'suit' })  // Q♣ not Pagat
+  })
+})

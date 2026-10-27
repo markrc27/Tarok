@@ -92,15 +92,20 @@ function handCeiling(ev: HandEvaluation, hand: Card[], difficulty: BotDifficulty
   const hasVoid    = difficulty === 'hard' &&
     SUITS.some(s => !hand.some(c => c.kind === 'suit' && (c as SuitCard).suit === s))
   const ptTrumps   = Math.min(trumpCount + (hasVoid ? 1 : 0), 7)
+  // Hard mode: holding all three trula cards (Škis + Mond + Pagat) adds ~1 effective
+  // trump for partner-range contracts — Mond/Škis are the two strongest non-Pagat
+  // trumps, and the trula bonus (+10 unannounced, +20 announced) significantly
+  // raises the expected value of the hand.
+  const trulaBump  = difficulty === 'hard' && trulaPotential === 3
 
   if (ptTrumps >= 7)  return 'one'
   if (ptTrumps >= 6)  {
-    if (hcpBoost)    return 'one'
+    if (hcpBoost || trulaBump) return 'one'
     if (hcpPenalty)  return 'three'
     return 'two'
   }
-  if (ptTrumps >= 5)  return hcpBoost ? 'two' : 'three'  // forehand-only; non-forehand bots will pass
-  if (ptTrumps >= 4 && hcpBoost) return 'three'  // borderline trump count rescued by strong courts
+  if (ptTrumps >= 5)  return (hcpBoost || trulaBump) ? 'two' : 'three'
+  if (ptTrumps >= 4 && (hcpBoost || trulaBump)) return 'three'
 
   return null  // weak hand — pass
 }
