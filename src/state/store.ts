@@ -119,6 +119,20 @@ export const useGameStore = create<Store>()(persist((set, get) => {
         s => s !== HUMAN && s !== declarer && (partner === null || s !== partner),
       )
 
+      // Opponent bots announce trula/kings when they hold all the relevant cards.
+      // Only trula and kings are eligible — pagat-ultimo and king-ultimo are
+      // declarer-side only. Trula/kings scoring is symmetric: one side must capture
+      // all of those cards, so scoreNormalContract handles both cases correctly.
+      if (!FLAT_CONTRACTS.has(contract)) {
+        for (const oppBot of opponentBots) {
+          for (const bonus of recommendAnnouncements(dealResult.hands[oppBot])) {
+            if (bonus === 'trula' || bonus === 'kings') {
+              ann = applyAnnouncement(ann, { kind: 'announce', seat: oppBot, bonus }, declarer, partner)
+            }
+          }
+        }
+      }
+
       // Opponent bots kontra when holding a dominant defensive hand.
       // Beggar/open-beggar: trump count isn't a defensive advantage (opponents want
       // to give tricks to the declarer, not win them), so skip kontra for those.
@@ -250,11 +264,17 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     if (!seat || seat === HUMAN) return
     const pagatUltimoAnnounced = !!(get().announcementState?.announcements.some(a => a.bonus === 'pagat-ultimo'))
     const kingUltimoAnnounced  = !!(get().announcementState?.announcements.some(a => a.bonus === 'king-ultimo'))
+    // Trula announced by this bot's own side: protect the Pagat.
+    const trulaAnn = get().announcementState?.announcements.find(a => a.bonus === 'trula') ?? null
+    const { declarer, partner } = playState
+    const botOnDeclarerSide = seat === declarer || seat === partner
+    const trulaByDeclarerSide = trulaAnn !== null && (trulaAnn.by === declarer || trulaAnn.by === partner)
+    const trulaAnnouncedBySide = trulaAnn !== null && trulaByDeclarerSide === botOnDeclarerSide
     // Secret partner: the bot privately knows it IS the partner (holds the called king)
     // even before the king is publicly played — enables quiet cooperation in hard mode.
     const selfIsPartner = options.botDifficulty === 'hard' &&
       playState.partner !== null && playState.partner !== HUMAN && seat === playState.partner
-    const card = chooseCard(playState, seat, { difficultyBias: 0.5, difficulty: options.botDifficulty, knownPartner: computeKnownPartner(playState), pagatUltimoAnnounced, kingUltimoAnnounced, selfIsPartner })
+    const card = chooseCard(playState, seat, { difficultyBias: 0.5, difficulty: options.botDifficulty, knownPartner: computeKnownPartner(playState), pagatUltimoAnnounced, kingUltimoAnnounced, trulaAnnouncedBySide, selfIsPartner })
     const { newState, trickComplete, trickWinner, handComplete, outcomeDecided } = playCard(playState, seat, card)
     set({ playState: newState })
     if (trickComplete && trickWinner !== null) {
@@ -444,6 +464,17 @@ export const useGameStore = create<Store>()(persist((set, get) => {
           for (const bot of declarerSideBots) {
             if (shouldBotRekontra(dealResult.hands[bot], options.botDifficulty)) {
               ann = applyAnnouncement(ann, { kind: 'kontra', seat: bot, target: 'game' }, declarer, partner)
+              break
+            }
+          }
+          // Opponent bots subkontra after a declarer rekontra — a dominant-trump hand
+          // that warranted initial kontra is equally dominant after the rekontra.
+          const opponentSubBots = ([0, 1, 2, 3] as Seat[]).filter(
+            s => s !== HUMAN && s !== declarer && (partner === null || s !== partner),
+          )
+          for (const oppBot of opponentSubBots) {
+            if (shouldBotKontra(dealResult.hands[oppBot], options.botDifficulty)) {
+              ann = applyAnnouncement(ann, { kind: 'kontra', seat: oppBot, target: 'game' }, declarer, partner)
               break
             }
           }

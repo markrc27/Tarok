@@ -2250,3 +2250,64 @@ describe('hard mode following — dump-high-for-ally when can\'t beat', () => {
     expect(card).toMatchObject({ kind: 'suit', rank: 'J' })  // trump winner → dump lowest
   })
 })
+
+// ── BOT-007: Trula announced by this side — protect Pagat ────────────────────
+// When trula is announced by the bot's own side (declarer side for declarer/partner,
+// opponent side for opponent bots), the Pagat must be protected. Pagat (T1) is the
+// lowest trump and will lose to any other trump in play. The constraint removes Pagat
+// from the candidate pool when other cards are available.
+
+describe('trula announced by this side — Pagat protected (BOT-007)', () => {
+  it('trulaAnnouncedBySide=true → plays T5 instead of Pagat as lowestBeater', () => {
+    // Seat1 (opponent, declarer=0 solo) follows K♦ (5pt), void in diamonds → must trump.
+    // Candidates: [Pagat(T1,5pt), T5(1pt)]. Without protection lowestBeater=Pagat(1001 strength).
+    // With trulaAnnouncedBySide=true: Pagat removed → plays T5 instead.
+    const state = makeState({
+      contract: 'one', declarer: 0, partner: null,
+      hand1: [pagat, trump(5)],
+      trickCards: [{ seat: 0 as Seat, card: suit('diamonds', 'K', 5) }],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'easy', trulaAnnouncedBySide: true })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 5 })  // T5, not Pagat
+  })
+
+  it('trulaAnnouncedBySide=false → Pagat played as lowestBeater (no protection)', () => {
+    // Same setup: without the flag, normal logic picks Pagat (lowest beater by strength).
+    const state = makeState({
+      contract: 'one', declarer: 0, partner: null,
+      hand1: [pagat, trump(5)],
+      trickCards: [{ seat: 0 as Seat, card: suit('diamonds', 'K', 5) }],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'easy', trulaAnnouncedBySide: false })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 1 })  // Pagat chosen (unprotected)
+  })
+
+  it('Pagat is the ONLY candidate → plays Pagat even with trulaAnnouncedBySide=true', () => {
+    // Seat1 has only Pagat, void in diamonds. No alternatives → Pagat must be played.
+    const state = makeState({
+      contract: 'one', declarer: 0, partner: null,
+      hand1: [pagat],
+      trickCards: [{ seat: 0 as Seat, card: suit('diamonds', 'K', 5) }],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'easy', trulaAnnouncedBySide: true })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 1 })  // forced to play Pagat
+  })
+
+  it('beggar contract: Pagat NOT protected even with trulaAnnouncedBySide — removing it could force Škis (wins unwanted trick)', () => {
+    // Beggar declarer (seat0) has [Pagat, Škis] leading. trulaAnnouncedBySide=true.
+    // WITHOUT beggar guard: Pagat removed → forced to lead Škis → wins trick (BAD for beggar).
+    // WITH beggar guard: Pagat stays in candidates → leads cheapest (Pagat, 5pt) or
+    // beggar-specific leading logic picks lowest.
+    const state = makeState({
+      contract: 'beggar', declarer: 0, partner: null,
+      hand0: [pagat, skis],
+      trickCards: [],  // leading
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy', trulaAnnouncedBySide: true })
+    // Beggar declarer leads lowest by points. Both pagat and skis are 5pt.
+    // Pagat must still be in candidates (not removed by BOT-007 beggar guard).
+    // Beggar logic: returns candidates.sort(pts asc)[0]. Pagat and Škis both 5pt —
+    // cardPoints tiebreak is ordinal: ordinal 1 < 22, so pagat chosen.
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 1 })  // Pagat led (lowest value, not Škis)
+  })
+})

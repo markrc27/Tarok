@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.6.28 — 2026-10-27
+
+### AI / Bot Strategy — Bugfix
+- **BOT-007 beggar guard** — BOT-007 (trula announced → protect Pagat) was incorrectly active in beggar and open-beggar contracts. In a beggar, the declarer needs 0 tricks; removing the low Pagat (T1) from candidates can force a higher trump (e.g., Škis = T22) which wins an unwanted trick and causes the beggar to fail. Added `contract !== 'beggar' && contract !== 'open-beggar'` to the BOT-007 guard. Negative contracts' own specific logic already returns before most of the heuristic — the guard prevents early candidate narrowing from corrupting their candidate pool.
+- **1 new test** (446 → 447): beggar contract with [Pagat, Škis] + `trulaAnnouncedBySide=true` → Pagat stays in candidates (leads Pagat, not Škis).
+
+## v1.6.27 — 2026-10-27
+
+### AI / Bot Strategy
+- **Opponent bot subkontra after declarer rekontra** — when the human kontras and a bot declarer/partner rekontras (×4), any opponent bot with a dominant hand (≥8 trumps in hard mode) now subkontras (×8). Previously the kontra chain stopped at rekontra because there was no opponent subkontra dispatch. The same `shouldBotKontra` threshold that justified the initial kontra holds after the rekontra. Added to `finishAnnouncements` in the store after the existing rekontra block.
+- **3 new tests** (443 → 446): dominant hand subkontras to ×8 after rekontra; easy mode never subkontras; weak hand (7 trumps) below threshold doesn't subkontra.
+
+## v1.6.26 — 2026-10-27
+
+### AI / Bot Strategy
+- **BOT-007: Trula announced by this side → protect the Pagat** — when trula is announced by this bot's side, Pagat (T1) is removed from the candidate pool unless it's the only option. Since Pagat is the lowest trump it loses to any other trump in play; saving it until no alternatives exist maximises the chance it wins the trick it eventually plays in. This prevents the bot from wasting Pagat as `lowestBeater` on a suit trick where a later player could overtrump it. Works for both declarer-side (declared trula) and opponent-side (opponent announced trula) — `trulaAnnouncedBySide` is computed in the store from the announcement's `by` field vs the bot's team.
+- **3 new tests** (440 → 443): trula announced → T5 played instead of Pagat; no annotation → Pagat played normally; Pagat is only option → still plays Pagat (forced).
+
+## v1.6.25 — 2026-10-27
+
+### AI / Bot Strategy
+- **Opponent bots announce trula/kings in hard mode** — when an opponent bot holds all 3 trula cards (Pagat + Mond + Škis) or all 4 kings, it now announces those bonuses (doubling the value from 10 to 20). Previously opponents only achieved these bonuses unannounced (+10) even when they held all the cards at deal time. Pagat-ultimo and king-ultimo are still filtered out (those are declarer-side only). Trula/kings scoring is symmetric — one side must capture all relevant cards — so the existing `scoreNormalContract` handles opponent-announced bonuses correctly without engine changes.
+- **3 new tests** (437 → 440): opponent with all 3 trula cards → trula announced; opponent with all 4 kings → kings announced; opponent with pagat + 9 trumps → pagat-ultimo still NOT announced (filtered).
+
 ## v1.6.24 — 2026-10-27
 
 ### AI / Bot Strategy

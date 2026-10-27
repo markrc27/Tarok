@@ -3,6 +3,7 @@ import {
   initBidding, applyBid, resolveBidding, legalBids,
   biddingOrder, contractStrength, availableContracts, forehandChoiceContracts,
 } from '../src/engine/bidding'
+import { initAnnouncements, applyAnnouncement, getKontraMultiplier } from '../src/engine/announce'
 import { evaluateHand, recommendBid, recommendAnnouncements, shouldBotKontra, shouldBotRekontra, recommendTalonGroup } from '../src/ai/bidding-heuristic'
 import type { Seat, BidAction, Card, SuitCard, TrumpCard } from '../src/engine/types'
 
@@ -875,5 +876,117 @@ describe('recommendTalonGroup — hard mode void bonus', () => {
     const group1: Card[] = [suit('clubs', 'K'), suit('clubs', 7)]          // 5+1 = 6pt, clubs has king → no void
     // hard mode: group 0 gets diamonds void (no diamonds in hand, no king) → 6+12=18; group 1 = 6. Group 0 wins.
     expect(recommendTalonGroup([group0, group1], hand, 2, 'hard')).toBe(0)
+  })
+})
+
+// ── Opponent bot trula/kings announcements ────────────────────────────────────
+// In hard mode, opponent bots announce trula/kings when they hold all relevant
+// cards — this doubles the bonus value compared to unannounced. The store
+// filters out pagat-ultimo and king-ultimo (declarer-side only).
+
+describe('opponent bot — trula/kings announcement logic (hard mode)', () => {
+  it('opponent holding all 3 trula cards → trula announced in state', () => {
+    // Simulate the store's per-opponent loop: recommendAnnouncements → filter → applyAnnouncement
+    const hand: Card[] = [
+      trump(22), trump(21), trump(1),  // Škis, Mond, Pagat (all trula)
+      trump(5), trump(6), trump(7), trump(8),
+      suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7),
+      suit('clubs', 8),
+    ]
+    let ann = initAnnouncements()
+    for (const bonus of recommendAnnouncements(hand)) {
+      if (bonus === 'trula' || bonus === 'kings') {
+        ann = applyAnnouncement(ann, { kind: 'announce', seat: 2 as Seat, bonus }, 0 as Seat, null)
+      }
+    }
+    expect(ann.announcements.find(a => a.bonus === 'trula')).toBeDefined()
+    expect(ann.announcements.find(a => a.bonus === 'trula')?.by).toBe(2)
+  })
+
+  it('opponent holding all 4 kings → kings announced in state', () => {
+    const hand: Card[] = [
+      suit('clubs', 'K'), suit('spades', 'K'), suit('hearts', 'K'), suit('diamonds', 'K'),
+      trump(5), trump(6), trump(7), trump(8),
+      suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7),
+    ]
+    let ann = initAnnouncements()
+    for (const bonus of recommendAnnouncements(hand)) {
+      if (bonus === 'trula' || bonus === 'kings') {
+        ann = applyAnnouncement(ann, { kind: 'announce', seat: 3 as Seat, bonus }, 0 as Seat, null)
+      }
+    }
+    expect(ann.announcements.find(a => a.bonus === 'kings')).toBeDefined()
+    expect(ann.announcements.find(a => a.bonus === 'kings')?.by).toBe(3)
+  })
+
+  it('opponent with pagat + 9 trumps → pagat-ultimo filtered out (opponents only announce trula/kings)', () => {
+    // recommendAnnouncements returns pagat-ultimo for 9 trumps + pagat, but the
+    // opponent bot loop only passes trula/kings — pagat-ultimo must not appear.
+    const hand: Card[] = [
+      trump(1), trump(2), trump(3), trump(4), trump(5), trump(6), trump(7), trump(8), trump(9),
+      suit('clubs', 7), suit('spades', 7), suit('hearts', 7),
+    ]
+    let ann = initAnnouncements()
+    for (const bonus of recommendAnnouncements(hand)) {
+      if (bonus === 'trula' || bonus === 'kings') {
+        ann = applyAnnouncement(ann, { kind: 'announce', seat: 1 as Seat, bonus }, 0 as Seat, null)
+      }
+    }
+    expect(ann.announcements.find(a => a.bonus === 'pagat-ultimo')).toBeUndefined()
+  })
+})
+
+// ── Opponent bot subkontra after declarer rekontra ────────────────────────────
+// The kontra chain: kontra(×2) → rekontra(×4) → subkontra(×8) → mordkontra(×16).
+// When the declarer rekontras, a dominant-trump opponent bot should subkontra —
+// the same hand strength that justified the initial kontra holds after the rekontra.
+
+describe('opponent bot subkontra after declarer rekontra', () => {
+  function strongHand(): Card[] {
+    // 8 trumps — meets the hard-mode kontra threshold (≥8 trumps)
+    return [
+      trump(2), trump(3), trump(4), trump(5), trump(6), trump(7), trump(8), trump(9),
+      suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7),
+    ]
+  }
+
+  it('HARD: dominant-trump hand subkontras after declarer rekontra (×8)', () => {
+    // Simulate the full kontra chain: opponent kontras (×2), declarer rekontras (×4),
+    // then the same opponent subkontras (×8) using shouldBotKontra check.
+    let ann = initAnnouncements()
+    // Step 1: opponent (seat 2) initial kontra
+    ann = applyAnnouncement(ann, { kind: 'kontra', seat: 2 as Seat, target: 'game' }, 0 as Seat, null)
+    expect(getKontraMultiplier(ann, 'game')).toBe(2)
+    // Step 2: declarer (seat 0) rekontra
+    ann = applyAnnouncement(ann, { kind: 'kontra', seat: 0 as Seat, target: 'game' }, 0 as Seat, null)
+    expect(getKontraMultiplier(ann, 'game')).toBe(4)
+    // Step 3: opponent subkontra — store uses shouldBotKontra for the same threshold
+    if (shouldBotKontra(strongHand(), 'hard')) {
+      ann = applyAnnouncement(ann, { kind: 'kontra', seat: 2 as Seat, target: 'game' }, 0 as Seat, null)
+    }
+    expect(getKontraMultiplier(ann, 'game')).toBe(8)  // subkontra achieved
+  })
+
+  it('EASY: no subkontra even with strong hand (easy mode never kontras)', () => {
+    expect(shouldBotKontra(strongHand(), 'easy')).toBe(false)
+    // → subkontra never applied in easy mode
+    let ann = initAnnouncements()
+    ann = applyAnnouncement(ann, { kind: 'kontra', seat: 2 as Seat, target: 'game' }, 0 as Seat, null)
+    ann = applyAnnouncement(ann, { kind: 'kontra', seat: 0 as Seat, target: 'game' }, 0 as Seat, null)
+    // easy mode: shouldBotKontra returns false → no subkontra applied
+    if (shouldBotKontra(strongHand(), 'easy')) {
+      ann = applyAnnouncement(ann, { kind: 'kontra', seat: 2 as Seat, target: 'game' }, 0 as Seat, null)
+    }
+    expect(getKontraMultiplier(ann, 'game')).toBe(4)  // stays at rekontra, no subkontra
+  })
+
+  it('HARD: weak hand (7 trumps) does NOT subkontra after rekontra', () => {
+    // 7 trumps — below the 8-trump hard-mode kontra threshold
+    const weakHand: Card[] = [
+      trump(2), trump(3), trump(4), trump(5), trump(6), trump(7), trump(8),
+      suit('clubs', 7), suit('spades', 7), suit('hearts', 7), suit('diamonds', 7), suit('clubs', 8),
+    ]
+    expect(shouldBotKontra(weakHand, 'hard')).toBe(false)
+    // → no subkontra for a hand below threshold
   })
 })

@@ -12,6 +12,9 @@ export interface BotConfig {
   pagatUltimoAnnounced?: boolean
   // True when king-ultimo is announced (the called king must win the last trick).
   kingUltimoAnnounced?: boolean
+  // True when trula is announced by THIS bot's side (declarer side for declarer/partner,
+  // opponent side for opponent bots). Protects the Pagat until it can safely win.
+  trulaAnnouncedBySide?: boolean
   // Hard mode: true when this specific bot privately knows it IS the called partner
   // (it holds the called king). Enables secret cooperation before the king is played.
   selfIsPartner?: boolean
@@ -250,6 +253,21 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
       if (withoutKing.length > 0) candidates = withoutKing
     }
   }
+
+  // BOT-007: Trula announced by this side — protect the Pagat (the most vulnerable
+  // trula card) from being wasted. Since Pagat (T1) is the lowest trump it cannot
+  // beat any other trump; removing it from the candidate pool until it's the only
+  // choice maximises the chance of winning the trick it's played in.
+  // Excluded for negative contracts: in klop/beggar the declarer needs 0 tricks;
+  // removing Pagat could force a higher trump that wins an unwanted trick.
+  if ((_config.trulaAnnouncedBySide ?? false) && contract !== 'klop' && contract !== 'beggar' && contract !== 'open-beggar') {
+    const pagatEntry = candidates.find(isPagat)
+    if (pagatEntry) {
+      const withoutPagat = candidates.filter(c => !isPagat(c))
+      if (withoutPagat.length > 0) candidates = withoutPagat
+    }
+  }
+
   const difficulty = _config.difficulty ?? 'easy'
   const isLeading = currentTrick.cards.length === 0
   const knownPartner = _config.knownPartner ?? null
