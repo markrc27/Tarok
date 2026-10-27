@@ -1,4 +1,4 @@
-import type { Card, Seat, PlayState, TrumpCard, SuitCard, Suit } from '../engine/types'
+import type { Card, Seat, PlayState, TrumpCard, TrumpOrdinal, SuitCard, Suit } from '../engine/types'
 import { legalCards } from '../engine/play'
 import { cardPoints, isTrump, isPagat, trumpStrength, suitStrength } from '../engine/deck'
 import type { BotDifficulty } from './bidding-heuristic'
@@ -611,6 +611,26 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
         )
         if (hasAllyAfterMe) {
           return beaters.sort((a, b) => cardStrength(a) - cardStrength(b))[0]
+        }
+      }
+      // Not last to play, no ally after: opponents still to play may have higher trumps.
+      // Hard mode: if a "safe" trump exists (i.e., one that beats the highest unseen
+      // opponent trump), use the cheapest such trump rather than wasting Škis/Mond.
+      // Only applies when safe.length > 0 — if no safe trump exists (threat ceiling too
+      // high), fall through to strongest beater to maximise the chance of winning.
+      if (difficulty === 'hard' && !isColourValat && beaters.every(c => c.kind === 'trump')) {
+        const trumpBeaters = beaters as TrumpCard[]
+        const played = playedTrumpOrdinals(state)
+        const myOrdinals = new Set(trumpBeaters.map(c => c.ordinal))
+        let highestThreat = 0
+        for (let o = 22; o >= 1; o--) {
+          if (!myOrdinals.has(o as TrumpOrdinal) && !played.has(o)) { highestThreat = o; break }
+        }
+        const safe = highestThreat > 0
+          ? trumpBeaters.filter(c => c.ordinal > highestThreat)
+          : trumpBeaters
+        if (safe.length > 0) {
+          return safe.sort((a, b) => a.ordinal - b.ordinal)[0]
         }
       }
       return beaters.sort((a, b) => cardStrength(b) - cardStrength(a))[0]

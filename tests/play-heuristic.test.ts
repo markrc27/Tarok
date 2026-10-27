@@ -1712,6 +1712,59 @@ describe('hard mode declarer side following — cheapest beater when ally still 
   })
 })
 
+// ── Hard mode declarer-side following — cheapest safe trump (no ally after) ───
+// When the declarer side is following and has no ally after them, playing Škis/Mond
+// immediately wastes resources. If there IS a trump that beats the highest possible
+// unseen opponent trump ("safe"), hard mode plays the cheapest such trump. Only
+// applied when safe.length > 0; if no safe trump exists (threat ceiling too high),
+// falls back to strongest beater to maximise the win chance.
+
+describe('hard mode declarer-side following — cheapest safe trump when no ally after', () => {
+  it('HARD: T10 preferred over T11 when highest unseen threat is T9 (T12-T22 played)', () => {
+    // played: T7(current trick) + T12-T22. Unseen outside my hand: T1-T9. highestThreat=T9.
+    // safe={c>9}=[T10,T11]. cheapest safe = T10 (not T11).
+    const played12to22 = [12,13,14,15,16,17,18,19,20,21,22].map(o => ({
+      cards: [{ seat: 2 as Seat, card: trump(o) }], winner: 2 as Seat,
+    }))
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: null,
+      hand1: [trump(10), trump(11)],
+      completedTricks: played12to22,
+      trickCards: [{ seat: 0 as Seat, card: trump(7) }],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })  // T10, not T11
+  })
+
+  it('HARD: safe=[] (Škis unseen, many unknowns) → strongest beater, not cheapest', () => {
+    // Only T8 played. Škis(T22) unseen → highestThreat=T22. safe={c>22}=[].
+    // Fall through to strongest beater (T18) to maximise win chance. Not T10.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: null,
+      hand1: [trump(10), trump(18)],
+      completedTricks: [],
+      trickCards: [{ seat: 0 as Seat, card: trump(8) }],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 18 })  // T18, not T10
+  })
+
+  it('EASY: still plays strongest beater (T11) ignoring safe-hold logic', () => {
+    // Same late-game setup as test 1 but easy mode — cheapest-safe skipped → T11 (strongest).
+    const played12to22 = [12,13,14,15,16,17,18,19,20,21,22].map(o => ({
+      cards: [{ seat: 2 as Seat, card: trump(o) }], winner: 2 as Seat,
+    }))
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: null,
+      hand1: [trump(10), trump(11)],
+      completedTricks: played12to22,
+      trickCards: [{ seat: 0 as Seat, card: trump(7) }],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'easy', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 11 })  // T11 (strongest) in easy mode
+  })
+})
+
 // ── Hard mode opponent leading: endgame trump squeeze ────────────────────────
 // When all regular trumps (T2-T20) are gone, the opponent leads a trump to force
 // the declarer side to spend any remaining trula cards (Pagat, Mond, Škis).

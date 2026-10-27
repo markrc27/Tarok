@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.19 — 2026-10-27
+
+### AI / Bot Strategy
+- **Hard mode: declarer-side uses cheapest safe trump instead of strongest beater (when no ally after)** — when following a trump trick with no team-mate left to play, using Škis/Mond unnecessarily wastes the game's most powerful cards. Hard mode now picks the cheapest trump that still beats the highest possible unseen opponent trump (`cheapestSafeHoldingTrump`). If Škis is unseen, falls back to cheapest trump overall, which incidentally protects Mond from being played into a potential Škis capture. Easy mode still plays the strongest beater.
+- **3 new tests** (414 → 417): T10 preferred when T9 is highest unseen threat (T12-T22 played); safe=[] (Škis unseen, many unknowns) → strongest beater not cheapest; easy mode retains strongest-beater behaviour.
+
 ## v1.6.18 — 2026-10-27
 
 ### AI / Bot Strategy
