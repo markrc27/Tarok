@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.30 — 2026-10-27
+
+### AI / Bot Strategy
+- **BOT-009: Beggar declarer — guaranteed-winner suit avoidance** — extends the klop guaranteed-winner heuristic (BOT-008) to the beggar declarer. When leading, the bot now prefers escapable suits (where opponents can still beat the lowest card we'd lead) over guaranteed-winner suits (where our lowest card is unbeatable because all higher cards in that suit are already in our hand or played). Extracted shared helper `isGuaranteedWinnerSuit()` used by both the klop and beggar leading paths.
+- **Refactor**: extracted `isGuaranteedWinnerSuit()` helper at module level; simplified the klop guaranteed-winner block to use it.
+- **3 new tests** (451 → 454): K+Q in clubs → bot leads hearts instead; easy mode no avoidance; all-guaranteed fallback picks longest suit.
+
 ## v1.6.29 — 2026-10-27
 
 ### AI / Bot Strategy

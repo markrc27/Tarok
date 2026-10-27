@@ -1184,6 +1184,50 @@ describe('hard mode beggar declarer leading — longest suit (give away tricks)'
   })
 })
 
+// ── BOT-009: Beggar declarer leading — guaranteed-winner suit avoidance ───────
+
+describe('BOT-009 beggar declarer: avoids guaranteed-winner suits when leading', () => {
+  it('HARD: K+Q in clubs (guaranteed winners) → skips clubs, leads from hearts', () => {
+    // Clubs: K♣(str8)+Q♣(str7). Q♣ wins because K♣ is ours → both guaranteed winners.
+    // Hearts: J♥(str5)+2♥(str2). 2♥ is NOT a guaranteed winner (Kn♥/Q♥/K♥ still at large).
+    // Hard: avoids clubs (guaranteed winners), leads from hearts (escapable).
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand0: [suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('hearts', 'J', 2), suit('hearts', 2)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts' })
+  })
+
+  it('EASY: does not apply guaranteed-winner check — leads from longest suit regardless', () => {
+    // Same hand. Easy: longest escapable check disabled → leads from longest = clubs(2) vs hearts(2) tie.
+    // Both have 2 cards. Clubs appears first in the suit set. Easy mode: candidates.sort(pts asc)
+    // → picks lowest-points card overall = 2♥(1pt) or J♥(2pt) < Q♣(4pt) < K♣(5pt).
+    // Easy falls back to line 405: `candidates.sort(pts asc)[0]` → 2♥(1pt).
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand0: [suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('hearts', 'J', 2), suit('hearts', 2)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy' })
+    // Easy picks globally cheapest (2♥ = 1pt), not the longest-escapable-suit logic.
+    expect(card).toMatchObject({ kind: 'suit', points: 1 })  // 1pt card (pip card)
+  })
+
+  it('HARD: all suits guaranteed winners → fallback picks longest', () => {
+    // K♣ alone (guaranteed winner: K is highest, nothing to beat it).
+    // Hearts: K♥+Q♥+Kn♥ (all guaranteed winners: K♥ highest; Q♥ beaten only by K♥ in hand;
+    //   Kn♥ beaten only by Q♥/K♥ both in hand). escapableSuits=[]; fallback=all suits.
+    // Longest = hearts(3). Leads lowest in hearts = Kn♥(str6).
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand0: [suit('clubs', 'K', 5), suit('hearts', 'K', 5), suit('hearts', 'Q', 4), suit('hearts', 'Kn', 3)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    // Fallback: hearts(3) > clubs(1) → longest. Lowest in hearts = Kn♥(str6).
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts', rank: 'Kn' })
+  })
+})
+
 // ── 17. Beggar opponent following: yield when fellow opponent is winning ──────
 
 describe('hard mode beggar opponent following — yield when fellow opponent winning', () => {

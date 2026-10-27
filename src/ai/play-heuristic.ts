@@ -17,6 +17,26 @@ function suitCardId(suit: Suit, strength: number): string {
   return `suit-${suit}-${rank}`
 }
 
+// Returns true when even the lowest card the player holds in `suit` is a guaranteed trick winner:
+// all higher-ranked cards in that suit are either in the player's own hand or already played.
+// Used in negative contracts (klop, beggar) to avoid leading from suits that will take tricks.
+function isGuaranteedWinnerSuit(
+  suit: Suit,
+  suitPool: SuitCard[],
+  myIds: Set<string>,
+  seenIds: Set<string>,
+): boolean {
+  const inSuit = suitPool.filter(c => c.suit === suit)
+  if (inSuit.length === 0) return false
+  const lowest = inSuit.reduce((min, c) => suitStrength(c) < suitStrength(min) ? c : min)
+  const lowestStr = suitStrength(lowest)
+  for (let str = lowestStr + 1; str <= 8; str++) {
+    const id = suitCardId(suit, str)
+    if (!myIds.has(id) && !seenIds.has(id)) return false
+  }
+  return true
+}
+
 export interface BotConfig {
   difficultyBias: number // 0.0–1.0 (legacy; kept for test compat)
   difficulty?: BotDifficulty
@@ -313,33 +333,18 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
 
         // Hard mode: avoid leading from suits where every card we hold is a guaranteed winner.
         // Case A — lone king: a K singleton is always unbeatable; leading it wins the trick.
-        // Case B — guaranteed winner: ALL cards with higher suitStrength are in our own hand
-        //          or already played (e.g. holding K+Q means Q also wins because K is ours).
+        // Case B — e.g. holding K+Q means Q also wins because K is ours.
         // Both cases are bad for klop: they force us to take a trick.
-        const guaranteedWinnerSuits = new Set<Suit>()
+        let leadCandidateSuits = suits
         if (difficulty === 'hard') {
           const seenIds = new Set<string>()
           for (const trick of state.completedTricks) {
             for (const e of trick.cards) seenIds.add(cardId(e.card))
           }
           const myIds = new Set(state.hands[seat].map(cardId))
-          for (const s of suits) {
-            const inSuit = suitPool.filter(c => c.suit === s)
-            if (inSuit.length === 0) continue
-            const lowest = inSuit.reduce((min, c) => suitStrength(c) < suitStrength(min) ? c : min)
-            const lowestStr = suitStrength(lowest)
-            // If every card with higher strength in this suit is already accounted for
-            // (in our hand or seen), then even our lowest card wins — avoid this suit.
-            let allHigherAccountedFor = true
-            for (let str = lowestStr + 1; str <= 8; str++) {
-              const id = suitCardId(s, str)
-              if (!myIds.has(id) && !seenIds.has(id)) { allHigherAccountedFor = false; break }
-            }
-            if (allHigherAccountedFor) guaranteedWinnerSuits.add(s)
-          }
+          const safeLeadSuits = suits.filter(s => !isGuaranteedWinnerSuit(s, suitPool, myIds, seenIds))
+          leadCandidateSuits = safeLeadSuits.length > 0 ? safeLeadSuits : suits
         }
-        const safeLeadSuits = suits.filter(s => !guaranteedWinnerSuits.has(s))
-        const leadCandidateSuits = safeLeadSuits.length > 0 ? safeLeadSuits : suits
 
         const shortestSuit = leadCandidateSuits.reduce((best, s) =>
           (suitCounts[s] ?? Infinity) < (suitCounts[best] ?? Infinity) ? s : best,
@@ -383,8 +388,10 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
   if (contract === 'beggar' || contract === 'open-beggar') {
     if (seat === declarer) {
       if (isLeading && difficulty === 'hard') {
-        // Lead lowest card from the longest suit: more opponents likely hold that
-        // suit and the must-beat rule forces the highest-holding opponent to take the trick.
+        // Lead lowest card from the longest ESCAPABLE suit: more opponents likely hold
+        // that suit and the must-beat rule forces the highest-holding opponent to take it.
+        // Escapable = not a guaranteed-winner suit (our lowest card could be beaten).
+        // If all suits are guaranteed winners, fall back to the full suit pool.
         const suitCandidates = candidates.filter((c): c is SuitCard => c.kind === 'suit')
         if (suitCandidates.length > 0) {
           const suitCounts: Partial<Record<Suit, number>> = {}
@@ -395,7 +402,14 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
             }
           }
           const suits = [...new Set(suitCandidates.map(c => c.suit))]
-          const longestSuit = suits.reduce((best, s) =>
+          const seenIds = new Set<string>()
+          for (const trick of state.completedTricks) {
+            for (const e of trick.cards) seenIds.add(cardId(e.card))
+          }
+          const myIds = new Set(state.hands[seat].map(cardId))
+          const escapableSuits = suits.filter(s => !isGuaranteedWinnerSuit(s, suitCandidates, myIds, seenIds))
+          const candidateSuits = escapableSuits.length > 0 ? escapableSuits : suits
+          const longestSuit = candidateSuits.reduce((best, s) =>
             (suitCounts[s] ?? 0) > (suitCounts[best] ?? 0) ? s : best,
           )
           const inSuit = suitCandidates.filter(c => c.suit === longestSuit)
