@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.18 — 2026-10-27
+
+### AI / Bot Strategy
+- **Hard mode beggar: opponents lead their lowest card** — previously opponents in beggar led their highest-value card, which usually meant they won the trick themselves (K♥ can't be beaten in its suit). Now hard mode leads the lowest card instead, starting a must-beat chain: any player with a higher card in that suit must play it, giving the declarer (who must also beat if able) the best chance of being forced into taking a trick. Easy mode retains the old "lead high" behaviour. Open-beggar smart-lead (which uses the revealed hand) still takes priority over this heuristic.
+- **3 new tests** (411 → 414): HARD leads lowest (not king); EASY leads highest; open-beggar smart-lead fires first.
+
 ## v1.6.17 — 2026-10-27
 
 ### AI / Bot Strategy

@@ -1225,6 +1225,48 @@ describe('hard mode beggar opponent following — yield when fellow opponent win
   })
 })
 
+// ── Hard mode beggar opponent leading — lead LOW to force declarer to beat ──────
+// Leading K♥ means the opponent wins the trick themselves (unbeatable).
+// Leading 7♥ starts a must-beat chain: anyone with 8♥+ must play it, including
+// the declarer — giving the best chance of forcing the declarer to take a trick.
+
+describe('hard mode beggar opponent leading — lead lowest to force must-beat chain', () => {
+  it('HARD: opponent leads 7♣ (lowest), not K♣ (highest) — starts must-beat chain', () => {
+    // Beggar: seat0 is declarer. Seat1 (opponent) leads.
+    // Hand: [K♣(5pt), 7♣(1pt)]. Hard mode: lead 7♣ to force declarer to beat.
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand1: [suit('clubs', 'K', 5), suit('clubs', 7)],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 7 })  // lowest, not K
+  })
+
+  it('EASY: opponent leads K♣ (highest) — original behaviour unchanged in easy mode', () => {
+    const state = makeState({
+      contract: 'beggar', declarer: 0,
+      hand1: [suit('clubs', 'K', 5), suit('clubs', 7)],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'easy' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })  // easy: highest
+  })
+
+  it('HARD open-beggar: uses smart open-beggar lead, not the beggar-low heuristic', () => {
+    // open-beggar with revealed hand takes priority over the hard-mode low-lead path.
+    // openBeggarOpponentLead looks for a suit the declarer has no card in — leads K♣
+    // when declarer's revealed hand has no clubs (K♣ forces declarer to play a trump).
+    const state = makeState({
+      contract: 'open-beggar', declarer: 0,
+      openBeggarRevealed: true,
+      hand1: [suit('clubs', 'K', 5), suit('clubs', 7)],
+      hand0: [suit('hearts', 7), suit('diamonds', 7)],  // no clubs → K♣ works well
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard' })
+    // openBeggarOpponentLead fires first; declarer has no clubs → K♣ is a forced-win lead
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs' })
+  })
+})
+
 // ── 18. Declarer side following last: use cheapest beater ─────────────────────
 
 describe('hard mode declarer side following last — cheapest beater preserves high cards', () => {

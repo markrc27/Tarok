@@ -343,6 +343,11 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
       if (smartLead) return smartLead
     }
     if (isLeading) {
+      // Hard mode: lead LOW to start a must-beat chain — leading K♥ means the opponent
+      // wins the trick themselves (nobody can beat a king in its suit). Leading 7♥ forces
+      // anyone with 8♥+ (including the declarer) to beat it, giving the declarer the
+      // best chance of being forced into taking a trick.
+      if (difficulty === 'hard') return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
       return candidates.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
     }
     const winner = currentWinner(state)
