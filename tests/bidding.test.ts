@@ -879,6 +879,53 @@ describe('recommendTalonGroup — hard mode void bonus', () => {
   })
 })
 
+// ── recommendTalonGroup — trula/kings set bonus ───────────────────────────────
+// Hard mode: taking a group that COMPLETES Pagat+Mond+Škis (trula) or all 4 kings
+// enables announcing that bonus (+20 each). Add +20 to such groups' score.
+
+describe('recommendTalonGroup — trula and kings set bonus (hard mode)', () => {
+  it('HARD: group with Pagat completes trula (hand has Mond+Škis) → +20 bonus, beats raw-point rival', () => {
+    // hand has Mond(21) + Škis(22) — one trula card away.
+    // group0: Pagat(5pt) → completes trula (+20) → score = 5+20 = 25
+    // group1: K♣(5pt) + Q♣(4pt) → score = 9
+    // Hard: group0 wins (25 > 9).
+    const hand: Card[] = [trump(21), trump(22), trump(5), suit('hearts', 7)]
+    const group0: Card[] = [trump(1)]                           // Pagat = 5pt + trula +20
+    const group1: Card[] = [suit('clubs', 'K'), suit('clubs', 'Q')]  // K+Q = 9pt
+    expect(recommendTalonGroup([group0, group1], hand, 1, 'hard')).toBe(0)
+  })
+
+  it('EASY: no trula set bonus — raw points win (group1 with 9pt beats Pagat group at 5pt)', () => {
+    const hand: Card[] = [trump(21), trump(22), trump(5), suit('hearts', 7)]
+    const group0: Card[] = [trump(1)]
+    const group1: Card[] = [suit('clubs', 'K'), suit('clubs', 'Q')]
+    expect(recommendTalonGroup([group0, group1], hand, 1, 'easy')).toBe(1)
+  })
+
+  it('HARD: no trula bonus when hand already has all three trula cards', () => {
+    // hand already has Pagat+Mond+Škis — completing trula from group is irrelevant.
+    // group0: Pagat again (impossible in real game, but tests the guard).
+    // group1: K♣(5) + Q♣(4) = 9pt → higher raw score → group1 wins.
+    const hand: Card[] = [trump(1), trump(21), trump(22), suit('hearts', 7)]
+    const group0: Card[] = [trump(2)]                                       // T2 = 1pt, no set bonus
+    const group1: Card[] = [suit('clubs', 'K'), suit('clubs', 'Q')]         // 9pt
+    expect(recommendTalonGroup([group0, group1], hand, 1, 'hard')).toBe(1)
+  })
+
+  it('HARD: group completing all 4 kings → +20 kings bonus beats rival', () => {
+    // hand has K♠, K♥, K♦ — one king away.
+    // group0: K♣(5pt) → completes all kings (+20) → score = 5+20 = 25
+    // group1: Q♣(4pt) + J♣(2pt) → score = 6
+    const hand: Card[] = [
+      suit('spades', 'K'), suit('hearts', 'K'), suit('diamonds', 'K'),
+      trump(5),
+    ]
+    const group0: Card[] = [suit('clubs', 'K')]                          // K♣ = 5pt + kings +20
+    const group1: Card[] = [suit('clubs', 'Q'), suit('clubs', 'J')]     // 4+2 = 6pt
+    expect(recommendTalonGroup([group0, group1], hand, 1, 'hard')).toBe(0)
+  })
+})
+
 // ── Opponent bot trula/kings announcements ────────────────────────────────────
 // In hard mode, opponent bots announce trula/kings when they hold all relevant
 // cards — this doubles the bonus value compared to unannounced. The store

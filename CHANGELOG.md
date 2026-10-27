@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.31 — 2026-10-27
+
+### AI / Bot Strategy
+- **BOT-010: Talon group selection — trula/kings set bonus** — in hard mode, taking a group that completes the Pagat+Mond+Škis trula set (or all 4 kings) enables announcing that bonus (+20 announced value). These bonuses are now added to the group's score in `recommendTalonGroup`, so completing trula/kings from the talon is treated as +20 more valuable than its raw card points alone. The bonus only fires when the group PROVIDES the missing card — if the hand already has all three, no marginal value is added.
+- **4 new tests** (454 → 458): Pagat completes trula → +20 wins vs higher raw group; easy mode no bonus; no bonus when hand already has all trula; K♣ completes kings set → +20 wins.
+
 ## v1.6.30 — 2026-10-27
 
 ### AI / Bot Strategy

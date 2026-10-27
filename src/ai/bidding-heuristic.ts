@@ -154,18 +154,42 @@ export function recommendTalonGroup(
     const mondLeftPenalty = groups[i].some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 21) ? 20 : 0
     let score = groups[i].reduce((sum, c) => sum + cardPoints(c), 0) + mondLeftPenalty
 
-    // Hard mode: void bonus — if taking this group (then discarding groupSize cards)
-    // could leave the declarer completely void in a suit, that ruffing potential is
-    // worth ~12 pts. Applies only to non-king suits: kings cannot be discarded.
-    if (difficulty === 'hard' && hand && groupSize !== undefined) {
+    if (difficulty === 'hard' && hand) {
       const combined = [...hand, ...groups[i]]
-      for (const s of SUITS) {
-        const inSuit = combined.filter(c => c.kind === 'suit' && (c as SuitCard).suit === s)
-        const hasKing = inSuit.some(c => (c as SuitCard).rank === 'K')
-        if (!hasKing && inSuit.length > 0 && inSuit.length <= groupSize) {
-          score += 12
+
+      // Void bonus — if taking this group (then discarding groupSize cards) could leave
+      // the declarer completely void in a suit, that ruffing potential is worth ~12 pts.
+      // Applies only to non-king suits: kings cannot be discarded.
+      if (groupSize !== undefined) {
+        for (const s of SUITS) {
+          const inSuit = combined.filter(c => c.kind === 'suit' && (c as SuitCard).suit === s)
+          const hasKing = inSuit.some(c => (c as SuitCard).rank === 'K')
+          if (!hasKing && inSuit.length > 0 && inSuit.length <= groupSize) {
+            score += 12
+          }
         }
       }
+
+      // Trula set bonus (+20): taking this group completes the Pagat+Mond+Škis set,
+      // enabling a trula announcement worth +20. Only fires when the group itself provides
+      // the missing trula card — if the hand already had all three, it's already scored.
+      const combinedPagat = combined.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 1)
+      const combinedMond  = combined.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 21)
+      const combinedSkis  = combined.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 22)
+      const handAllTrula = hand.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 1) &&
+                           hand.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 21) &&
+                           hand.some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 22)
+      if (combinedPagat && combinedMond && combinedSkis && !handAllTrula) score += 20
+
+      // Kings set bonus (+20): taking this group completes all four kings, enabling a
+      // kings announcement worth +20. Only fires when the group provides the missing king.
+      const combinedAllKings = SUITS.every(s => combined.some(
+        c => c.kind === 'suit' && (c as SuitCard).suit === s && (c as SuitCard).rank === 'K',
+      ))
+      const handAllKings = SUITS.every(s => hand.some(
+        c => c.kind === 'suit' && (c as SuitCard).suit === s && (c as SuitCard).rank === 'K',
+      ))
+      if (combinedAllKings && !handAllKings) score += 20
     }
 
     if (score > bestScore) { bestScore = score; bestIdx = i }
