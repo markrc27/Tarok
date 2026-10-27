@@ -448,6 +448,19 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
         }
       }
 
+      // Hard mode: in valat-without the opponent MUST win at least one trick to break
+      // the declaration. Suit leads can be ruffed by the trump-heavy declarer; leading
+      // the highest trump guarantees the best chance — only a higher-ordinal trump beats
+      // it. Not applied in colour-valat-without where taroks are a plain suit: there a
+      // king-singleton is an unconditional winner (no card ruff rules apply), so the
+      // king-singleton heuristic below is already the strongest play.
+      if (difficulty === 'hard' && isValatContract && !isColourValat) {
+        const valTrumps = candidates.filter(c => c.kind === 'trump') as TrumpCard[]
+        if (valTrumps.length > 0) {
+          return valTrumps.sort((a, b) => cardStrength(b) - cardStrength(a))[0]
+        }
+      }
+
       const nonTrumps = candidates.filter(c => !effectiveIsTrump(c, isColourValat))
       if (nonTrumps.length > 0) {
         // Hard mode with hidden partnership: avoid the ENTIRE called suit — leading

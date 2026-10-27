@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.17 — 2026-10-27
+
+### AI / Bot Strategy
+- **Hard mode valat-without: opponent leads highest trump first** — in `valat-without` the declarer needs all 12 tricks; any suit lead can be ruffed with a trump. Opponent bots now lead their highest trump immediately to maximise the chance of winning a trick before the declarer takes control. Falls back to normal suit-lead heuristics if the opponent holds no trumps. Not applied in `colour-valat-without` where taroks are a plain suit and a king-singleton is an unconditional winner.
+- **3 new tests** (408 → 411): HARD valat leads Mond over K♣ (easy leads K♣); only suit cards fall back to suit; colour-valat skips override and uses king-singleton.
+
 ## v1.6.16 — 2026-10-27
 
 ### AI / Bot Strategy

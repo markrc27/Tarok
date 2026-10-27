@@ -1443,6 +1443,52 @@ describe('hard mode valat contracts — opponent uses highest beater', () => {
   })
 })
 
+// ── Hard mode valat-without: opponent leads highest trump ─────────────────────
+// In valat-without the declarer needs ALL 12 tricks. Opponents must win ≥1 to
+// break the valat. Suit leads can be ruffed; leading the highest trump guarantees
+// the best chance of winning a trick (only a higher trump can beat it).
+// colour-valat-without is excluded — there K-singleton is an unconditional winner.
+
+describe('hard mode valat-without — opponent leads highest trump', () => {
+  it('HARD valat: opponent has trump + suit, leads highest trump not a suit card', () => {
+    // seat1 is declarer; seat0 (opponent) is leading with [Mond(T21), K♣(5pt)].
+    // Easy: leads K♣ (highest non-trump, normal leading logic).
+    // Hard valat: leads Mond — declarer can ruff any suit lead with trump.
+    const state = makeState({
+      contract: 'valat-without', declarer: 1, partner: null,
+      hand0: [mond, suit('clubs', 'K', 5)],
+    })
+    const cardEasy = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy', knownPartner: null })
+    expect(cardEasy).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })  // easy: suit first
+
+    const cardHard = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(cardHard).toMatchObject({ kind: 'trump', ordinal: 21 })  // hard: lead Mond
+  })
+
+  it('HARD valat: only suit cards — falls back to normal suit lead', () => {
+    // No trumps in hand → valTrumps=[]; falls through to suit heuristics.
+    const state = makeState({
+      contract: 'valat-without', declarer: 1, partner: null,
+      hand0: [suit('clubs', 'K', 5), suit('hearts', 'Q', 4)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'suit' })  // no trumps → falls back to suit
+  })
+
+  it('HARD color-valat: king-singleton preferred (trump-lead override skipped)', () => {
+    // In colour-valat-without, taroks are a plain suit. K♣ is an unconditional winner
+    // (no card ruff applies); the valat-trump-lead override is NOT applied here.
+    // Hard colour-valat falls through to king-singleton logic → leads K♣.
+    const state = makeState({
+      contract: 'color-valat-without', declarer: 1, partner: null,
+      isColourValat: true,
+      hand0: [mond, suit('clubs', 'K', 5)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })  // king-singleton wins
+  })
+})
+
 // ── Hard mode klop: avoid leading a lone king ─────────────────────────────────
 
 describe('hard mode klop — skip lone king singleton lead', () => {
