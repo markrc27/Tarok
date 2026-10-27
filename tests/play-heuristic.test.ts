@@ -2062,6 +2062,63 @@ describe('hard mode declarer solo — king-singleton suit lead preference', () =
   })
 })
 
+// ── King Ultimo constraint (BOT-006) ─────────────────────────────────────────
+// When king-ultimo is announced and this bot IS the called partner (selfIsPartner),
+// it holds the called king out of play until trick 12, then plays it.
+
+describe('king-ultimo constraint — partner holds king for trick 12', () => {
+  it('partner holds called king (K♣) when king-ultimo announced — not-trick-12', () => {
+    // Partner (seat2) has [K♣(5), J♣(2)]. K♣ is the called king.
+    // king-ultimo announced → hold K♣, play J♣ instead.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 2 as Seat,
+      hand2: [suit('clubs', 'K', 5), suit('clubs', 'J', 2)],
+      trickCards: [],  // leading
+      kingCall: { calledSuit: 'clubs', calledKing: suit('clubs', 'K', 5), partner: 2 as Seat, kingInTalon: false, kingInDeclarerHand: false },
+    })
+    const card = chooseCard(state, 2, {
+      difficultyBias: 0.5, difficulty: 'hard',
+      knownPartner: 2 as Seat, selfIsPartner: true, kingUltimoAnnounced: true,
+    })
+    expect(card).toMatchObject({ kind: 'suit', rank: 'J' })  // K♣ held back
+  })
+
+  it('partner plays called king (K♣) in trick 12 when king-ultimo announced', () => {
+    // trick 12 (completedTricks.length===11). King-ultimo: now play the king.
+    const completedTricks: Trick[] = Array.from({ length: 11 }, (_, i) => ({
+      cards: [{ seat: 0 as Seat, card: trump(i + 2) }], winner: 0 as Seat,
+    }))
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 2 as Seat,
+      hand2: [suit('clubs', 'K', 5), suit('clubs', 'J', 2)],
+      completedTricks,
+      trickCards: [],  // leading trick 12
+      kingCall: { calledSuit: 'clubs', calledKing: suit('clubs', 'K', 5), partner: 2 as Seat, kingInTalon: false, kingInDeclarerHand: false },
+    })
+    const card = chooseCard(state, 2, {
+      difficultyBias: 0.5, difficulty: 'hard',
+      knownPartner: 2 as Seat, selfIsPartner: true, kingUltimoAnnounced: true,
+    })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })  // plays K♣
+  })
+
+  it('no king-ultimo announced → called king played normally', () => {
+    // No kingUltimoAnnounced → normal logic leads best card (K♣ is highest pt)
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 2 as Seat,
+      hand2: [suit('clubs', 'K', 5), suit('clubs', 'J', 2)],
+      trickCards: [],
+      kingCall: { calledSuit: 'clubs', calledKing: suit('clubs', 'K', 5), partner: 2 as Seat, kingInTalon: false, kingInDeclarerHand: false },
+    })
+    const card = chooseCard(state, 2, {
+      difficultyBias: 0.5, difficulty: 'hard',
+      knownPartner: 2 as Seat, selfIsPartner: true, kingUltimoAnnounced: false,
+    })
+    // No constraint → normal play. Partner leading without trumps defaults to highest-pts suit card.
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs', rank: 'K' })  // K♣ led (not held)
+  })
+})
+
 // ── Hard mode: unannounced pagat-ultimo opportunism ───────────────────────────
 // In the last trick (completedTricks.length===11), if Pagat is the highest remaining
 // trump (all T2-T22 are played or in our own hand), play it for unannounced pagat-

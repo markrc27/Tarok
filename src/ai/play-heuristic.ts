@@ -1,6 +1,6 @@
 import type { Card, Seat, PlayState, TrumpCard, TrumpOrdinal, SuitCard, Suit } from '../engine/types'
 import { legalCards } from '../engine/play'
-import { cardPoints, isTrump, isPagat, trumpStrength, suitStrength } from '../engine/deck'
+import { cardPoints, isTrump, isPagat, trumpStrength, suitStrength, cardsEqual } from '../engine/deck'
 import type { BotDifficulty } from './bidding-heuristic'
 
 export interface BotConfig {
@@ -10,6 +10,8 @@ export interface BotConfig {
   knownPartner?: Seat | null
   // True when pagat-ultimo is announced in the current hand (any side).
   pagatUltimoAnnounced?: boolean
+  // True when king-ultimo is announced (the called king must win the last trick).
+  kingUltimoAnnounced?: boolean
   // Hard mode: true when this specific bot privately knows it IS the called partner
   // (it holds the called king). Enables secret cooperation before the king is played.
   selfIsPartner?: boolean
@@ -232,6 +234,20 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
       }
       const withoutPagat = candidates.filter(c => !isPagat(c))
       if (withoutPagat.length > 0) candidates = withoutPagat
+    }
+  }
+
+  // BOT-006: King Ultimo constraint — when king-ultimo is announced and this bot
+  // IS the partner (holds the called king), hold the called king until trick 12.
+  if ((_config.kingUltimoAnnounced ?? false) && (_config.selfIsPartner ?? false) && contract !== 'klop') {
+    const calledKingCard = state.kingCall?.calledKing ?? null
+    const kingEntry = calledKingCard ? candidates.find(c => cardsEqual(c, calledKingCard)) : null
+    if (kingEntry) {
+      if (state.completedTricks.length === 11) {
+        return kingEntry  // trick 12: play the called king to attempt the ultimo
+      }
+      const withoutKing = candidates.filter(c => !cardsEqual(c, calledKingCard!))
+      if (withoutKing.length > 0) candidates = withoutKing
     }
   }
   const difficulty = _config.difficulty ?? 'easy'

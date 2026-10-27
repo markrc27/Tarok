@@ -249,11 +249,12 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     const seat = order.find(s => !playedSeats.has(s))
     if (!seat || seat === HUMAN) return
     const pagatUltimoAnnounced = !!(get().announcementState?.announcements.some(a => a.bonus === 'pagat-ultimo'))
+    const kingUltimoAnnounced  = !!(get().announcementState?.announcements.some(a => a.bonus === 'king-ultimo'))
     // Secret partner: the bot privately knows it IS the partner (holds the called king)
     // even before the king is publicly played — enables quiet cooperation in hard mode.
     const selfIsPartner = options.botDifficulty === 'hard' &&
       playState.partner !== null && playState.partner !== HUMAN && seat === playState.partner
-    const card = chooseCard(playState, seat, { difficultyBias: 0.5, difficulty: options.botDifficulty, knownPartner: computeKnownPartner(playState), pagatUltimoAnnounced, selfIsPartner })
+    const card = chooseCard(playState, seat, { difficultyBias: 0.5, difficulty: options.botDifficulty, knownPartner: computeKnownPartner(playState), pagatUltimoAnnounced, kingUltimoAnnounced, selfIsPartner })
     const { newState, trickComplete, trickWinner, handComplete, outcomeDecided } = playCard(playState, seat, card)
     set({ playState: newState })
     if (trickComplete && trickWinner !== null) {

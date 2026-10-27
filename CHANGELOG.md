@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.24 — 2026-10-27
+
+### AI / Bot Strategy
+- **King Ultimo play constraint (BOT-006)** — when king-ultimo is announced and a bot IS the called partner (holds the called king), it now withholds the called king from play until trick 12, then plays it to attempt the ultimo. Previously the bot would play the called king whenever normal strategy dictated, often missing the ultimo. Mirrors the existing pagat-ultimo constraint (BOT-005). `kingUltimoAnnounced` is computed from the announcement state and passed alongside `pagatUltimoAnnounced` in the bot config.
+- **3 new tests** (434 → 437): partner holds K♣ in tricks 1-11 when king-ultimo announced; partner plays K♣ in trick 12; no annotation → K♣ played normally.
+
 ## v1.6.23 — 2026-10-27
 
 ### AI / Bot Strategy
