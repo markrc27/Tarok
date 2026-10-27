@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.23 — 2026-10-27
+
+### AI / Bot Strategy
+- **Hard mode: dump high when ally follows and current winner has a suit card** — when following a trick we can't win and an ally (same-side player) is still to play, and the current trick-winner holds a suit card (not a trump), we dump our highest-value suit card. Any trump beats a suit card, so the ally is very likely to save the trick and those points go into our side's pile. If the winner holds a trump, the ally would need a higher trump (uncertain probability), so we conserve our high cards instead.
+- **3 new tests** (431 → 434): hard mode dumps highest suit card when ally after and suit-card winner; easy mode dumps lowest; trump-card winner skips ally-dump and dumps lowest.
+
 ## v1.6.22 — 2026-10-27
 
 ### AI / Bot Strategy

@@ -737,5 +737,28 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
     }
   }
 
+  // Hard mode: if a same-side ally is still to play and the current winner holds
+  // a SUIT card (any trump beats it — the ally is very likely to save the trick),
+  // dump our highest suit card so those points land in our side's pile.
+  // Only applies to suit-card winners: when the winner holds a trump, the ally
+  // would need a HIGHER trump (uncertain), so we save our high cards instead.
+  if (difficulty === 'hard' && winner !== null) {
+    const currentBest = currentTrick.cards.find(e => e.seat === winner)?.card ?? null
+    if (currentBest !== null && !effectiveIsTrump(currentBest, isColourValat)) {
+      const playOrder: Seat[] = [0, 1, 2, 3].map(i => ((currentTrick.ledSeat + i) % 4) as Seat)
+      const myIndex = playOrder.indexOf(seat)
+      const seatOnDeclarerSide = isDeclarerSide(seat, declarer, effectivePartner)
+      const hasAllyAfterMe = playOrder.slice(myIndex + 1).some(
+        s => isDeclarerSide(s, declarer, effectivePartner) === seatOnDeclarerSide,
+      )
+      if (hasAllyAfterMe) {
+        const suitCards = candidates.filter(c => !effectiveIsTrump(c, isColourValat))
+        if (suitCards.length > 0) {
+          return suitCards.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
+        }
+      }
+    }
+  }
+
   return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
 }

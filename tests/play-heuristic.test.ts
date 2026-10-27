@@ -2145,3 +2145,51 @@ describe('hard mode — unannounced pagat-ultimo opportunism (last trick)', () =
     expect(card).toMatchObject({ kind: 'suit' })  // Q♣ not Pagat
   })
 })
+
+// ── Hard mode: dump-high when ally is still to play (can't-beat fallback) ────
+// When we can't beat the current trick winner but a same-side ally is still to
+// play, dumping our highest-value suit card pays off if the ally saves the
+// trick: those points land in our side's pile rather than being lost to a dump.
+
+describe('hard mode following — dump-high-for-ally when can\'t beat', () => {
+  it('HARD: dumps highest suit card (Q♦) when ally still to play and winner not Škis', () => {
+    // Contract 'one': declarer=0, partner=2. Seat 0 leads K♦.
+    // Play order: [0,1,2,3]. Seat 1 (opponent) at index 1. Remaining: seat 2 (declarerSide),
+    // seat 3 (opponent = ally of seat 1). Seat 3 is an ally of seat 1.
+    // K♦ is not Škis (not unbeatable) → dump Q♦ (4pt) rather than J♦ (2pt).
+    const state = makeState({
+      contract: 'one', declarer: 0, partner: 2 as Seat,
+      hand1: [suit('diamonds', 'Q', 4), suit('diamonds', 'J', 2)],
+      trickCards: [{ seat: 0 as Seat, card: suit('diamonds', 'K', 5) }],
+      kingCall: { calledSuit: 'clubs', calledKing: suit('clubs', 'K', 5), partner: 2 as Seat, kingInTalon: false, kingInDeclarerHand: false },
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: 2 as Seat })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'diamonds', rank: 'Q' })  // highest dumped
+  })
+
+  it('EASY: dumps lowest suit card regardless of ally position', () => {
+    // Same setup but easy mode → J♦ (lowest), not Q♦.
+    const state = makeState({
+      contract: 'one', declarer: 0, partner: 2 as Seat,
+      hand1: [suit('diamonds', 'Q', 4), suit('diamonds', 'J', 2)],
+      trickCards: [{ seat: 0 as Seat, card: suit('diamonds', 'K', 5) }],
+      kingCall: { calledSuit: 'clubs', calledKing: suit('clubs', 'K', 5), partner: 2 as Seat, kingInTalon: false, kingInDeclarerHand: false },
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'easy', knownPartner: 2 as Seat })
+    expect(card).toMatchObject({ kind: 'suit', rank: 'J' })  // lowest, not Q♦
+  })
+
+  it('HARD: winner holds a trump (T22 Škis) → ally-dump skipped, dumps lowest', () => {
+    // Seat 0 leads T22 (Škis, trump). Seat 1 has no trumps (void), plays any card.
+    // Winner holds a TRUMP — ally-dump only fires for suit-card winners (trump winners
+    // require a higher trump from the ally, which is uncertain). Dumps J♦ (lowest).
+    const state = makeState({
+      contract: 'one', declarer: 0, partner: 2 as Seat,
+      hand1: [suit('diamonds', 'Q', 4), suit('diamonds', 'J', 2)],
+      trickCards: [{ seat: 0 as Seat, card: trump(22) }],
+      kingCall: { calledSuit: 'clubs', calledKing: suit('clubs', 'K', 5), partner: 2 as Seat, kingInTalon: false, kingInDeclarerHand: false },
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: 2 as Seat })
+    expect(card).toMatchObject({ kind: 'suit', rank: 'J' })  // trump winner → dump lowest
+  })
+})
