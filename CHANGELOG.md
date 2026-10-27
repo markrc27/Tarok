@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.16 — 2026-10-27
+
+### AI / Bot Strategy
+- **Hard mode klop: avoid dumping Mond when Škis is winning the trick** — in klop, if a player can't beat the current trick winner and is about to dump their highest-value card (Mond, 5pt), but that winner is the Škis, dumping Mond would trigger the −20 Mond penalty to the Mond holder. Hard mode now filters Mond out of the dump candidates and plays the next-best card instead. Falls through to Mond only if it's the player's sole legal card.
+- **5 new tests** (403 → 408): Škis winning (trump led) → T10 not Mond; Škis winning (void in led suit) → T10; only Mond in hand → must play Mond; easy mode no protection; non-Škis winner → Mond dumped freely.
+
 ## v1.6.15 — 2026-10-26
 
 ### AI / Bot Strategy

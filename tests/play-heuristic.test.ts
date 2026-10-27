@@ -826,6 +826,89 @@ describe('klop following — cheapest beater when forced to win', () => {
   })
 })
 
+// ── Hard mode klop following — Mond protection against Škis ──────────────────
+// Dumping Mond onto a trick won by Škis triggers a –20 Mond penalty to the
+// Mond holder. Hard mode avoids this by dumping the next highest-value card.
+
+describe('hard mode klop following — avoid dumping Mond onto Škis', () => {
+  // The key constraint: candidates must include Mond AND at least one non-Mond alternative.
+  // Setup: seat0 leads trump, seat1 plays Škis (wins), seat2 follows.
+  // seat2 holds [Mond, T10] — both are trumps, must-follow-trump applies, no Pagat to strip.
+
+  it('HARD: Škis winning (trump led) — plays T10 instead of Mond to avoid –20 penalty', () => {
+    // seat0 led T5. seat1 played Škis (wins). seat2 has [Mond, T10], both follow trump.
+    // Škis can't be beaten. Hard mode: filter out Mond → dumps T10(1pt) instead of Mond(5pt).
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand2: [mond, trump(10)],
+      trickCards: [
+        { seat: 0 as Seat, card: trump(5) },
+        { seat: 1 as Seat, card: skis },
+      ],
+    })
+    const card = chooseCard(state, 2, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })  // T10, not Mond
+  })
+
+  it('HARD: Škis winning (void in led suit) — avoids Mond, dumps T10', () => {
+    // seat0 led K♣. seat1 played Škis (overtrumped). seat2 has no clubs + [Mond, T10].
+    // Void in clubs → must trump. Can't beat Škis. Hard mode: noMond = [T10] → returns T10.
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand2: [mond, trump(10)],  // no clubs
+      trickCards: [
+        { seat: 0 as Seat, card: suit('clubs', 'K', 5) },
+        { seat: 1 as Seat, card: skis },
+      ],
+    })
+    const card = chooseCard(state, 2, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })
+  })
+
+  it('HARD: Škis winning, only Mond in hand — no alternative, must play Mond', () => {
+    // seat0 led T5. seat1 played Škis. seat2 has only Mond → noMond is empty → plays Mond.
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand2: [mond],
+      trickCards: [
+        { seat: 0 as Seat, card: trump(5) },
+        { seat: 1 as Seat, card: skis },
+      ],
+    })
+    const card = chooseCard(state, 2, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })
+  })
+
+  it('EASY: Škis winning — no protection, dumps Mond (highest value)', () => {
+    // Easy mode has no Mond-protection logic → dumps highest-value candidate = Mond.
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand2: [mond, trump(10)],
+      trickCards: [
+        { seat: 0 as Seat, card: trump(5) },
+        { seat: 1 as Seat, card: skis },
+      ],
+    })
+    const card = chooseCard(state, 2, { difficultyBias: 0.5, difficulty: 'easy' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })  // no protection in easy mode
+  })
+
+  it('HARD: non-Škis winning (T20) — dumps Mond freely (no –20 penalty risk)', () => {
+    // T20 is current winner, not Škis. Dumping Mond is fine — no Mond penalty applies.
+    // Hard mode: no protection triggered → dumps highest value = Mond(5pt).
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand2: [mond, trump(10)],
+      trickCards: [
+        { seat: 0 as Seat, card: trump(5) },
+        { seat: 1 as Seat, card: trump(20) },
+      ],
+    })
+    const card = chooseCard(state, 2, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 21 })  // Mond safe to dump here
+  })
+})
+
 // ── 12. Klop leading: shortest suit first ─────────────────────────────────────
 
 describe('klop leading — lead from shortest suit to create voids', () => {

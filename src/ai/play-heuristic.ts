@@ -300,6 +300,14 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
         // All candidates are beaters — we'll take this trick regardless; minimise cost.
         return candidates.sort((a, b) => cardPoints(a) - cardPoints(b))[0]
       }
+      // Can't win — dump highest value card to shed it.
+      // Hard mode: Škis is unbeatable; dumping Mond onto a Škis-winning trick triggers
+      // the −20 Mond penalty to the Mond holder. Avoid it by dumping any other card first.
+      if (difficulty === 'hard' && currentBestCard !== null &&
+          currentBestCard.kind === 'trump' && (currentBestCard as TrumpCard).ordinal === 22) {
+        const noMond = candidates.filter(c => !(c.kind === 'trump' && (c as TrumpCard).ordinal === 21))
+        if (noMond.length > 0) return noMond.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
+      }
     }
     // Can't win (or leading) — dump highest-value card to shed it from the hand.
     return candidates.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
