@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.14 — 2026-10-26
+
+### AI / Bot Strategy
+- **Hard mode: declarer uses strongest beater when last to play in losing endgame** — normally the declarer side uses its cheapest beater when last to play, preserving Škis and Mond for future tricks. In a near-loss endgame (≤3 tricks left, ≤20 declarer points), there is no "future" to conserve for, so the strongest beater is used instead to maximise this trick's value.
+- **3 new tests** (397 → 400): near-loss triggers strongest beater, enough tricks left keeps cheapest beater, enough points keeps cheapest beater.
+
 ## v1.6.13 — 2026-10-26
 
 ### AI / Bot Strategy

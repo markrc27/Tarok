@@ -1193,6 +1193,74 @@ describe('hard mode declarer side following last — cheapest beater preserves h
   })
 })
 
+// ── Hard mode: declarer side near-loss endgame — use strongest beater ────────
+// When the declarer is losing near the end (≤3 tricks left, ≤20 pts), there's
+// no future to save strong cards for — use the strongest beater even when last
+// to play (which normally uses the cheapest beater to preserve Škis/Mond).
+
+describe('hard mode declarer near-loss endgame — strongest beater when last to play', () => {
+  function fakeTricks(n: number): Trick[] {
+    return Array.from({ length: n }, () => ({
+      cards: [{ seat: 0 as Seat, card: suit('clubs', 7) }],
+      winner: 0 as Seat,
+    }))
+  }
+
+  it('HARD: near-loss (9 tricks done, ≤20pts) — uses strongest beater when last to play', () => {
+    // declarerPts = 2, tricksLeft = 3 → near-loss → use Škis (strongest) not T10.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand1: [trump(10), skis],
+      capturedCards: { 1: [suit('clubs', 7), suit('clubs', 8)] },  // 2 pts ≤ 20
+      completedTricks: fakeTricks(9),
+      trickCards: [
+        { seat: 2 as Seat, card: trump(8) },
+        { seat: 3 as Seat, card: trump(9) },
+        { seat: 0 as Seat, card: suit('clubs', 9) },
+      ],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 22 })  // Škis (near-loss: max value)
+  })
+
+  it('HARD: enough tricks left (5 done, ≤20pts) — cheapest beater preserved', () => {
+    // tricksLeft = 7 > 3 → not near-loss → cheapest beater T10 (save Škis).
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand1: [trump(10), skis],
+      capturedCards: { 1: [suit('clubs', 7), suit('clubs', 8)] },  // 2 pts ≤ 20
+      completedTricks: fakeTricks(5),  // tricksLeft = 7
+      trickCards: [
+        { seat: 2 as Seat, card: trump(8) },
+        { seat: 3 as Seat, card: trump(9) },
+        { seat: 0 as Seat, card: suit('clubs', 9) },
+      ],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })  // T10 (cheapest, not near-loss)
+  })
+
+  it('HARD: declarer has enough pts (9 done, >20pts) — cheapest beater preserved', () => {
+    // declarerPts = 21 > 20 → not near-loss → cheapest beater T10.
+    const state = makeState({
+      contract: 'one', declarer: 1,
+      hand1: [trump(10), skis],
+      capturedCards: { 1: [
+        suit('clubs', 'K', 5), suit('spades', 'K', 5), suit('hearts', 'K', 5),
+        suit('diamonds', 'K', 5), suit('clubs', 7),  // 4×5+1 = 21pts > 20
+      ]},
+      completedTricks: fakeTricks(9),
+      trickCards: [
+        { seat: 2 as Seat, card: trump(8) },
+        { seat: 3 as Seat, card: trump(9) },
+        { seat: 0 as Seat, card: suit('clubs', 9) },
+      ],
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'trump', ordinal: 10 })  // T10 (not near-loss: pts sufficient)
+  })
+})
+
 // ── Hard mode: secret partner cooperation ────────────────────────────────────
 // The bot that holds the called king knows it is the partner even before the
 // king has been publicly played. With selfIsPartner=true and difficulty=hard,

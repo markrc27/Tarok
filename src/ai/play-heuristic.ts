@@ -556,8 +556,14 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
     if (effectiveOnDeclarerSide) {
       // Last to play: cheapest beater is sufficient — nobody can overtrump. Preserve
       // high cards (Škis, Mond) for future tricks where they must beat earlier players.
+      // Exception: near-loss endgame (≤3 tricks left, ≤20 pts) — no future to save for,
+      // so use strongest beater to maximise this trick's value.
       if (difficulty === 'hard' && isLastToPlay) {
-        return beaters.sort((a, b) => cardStrength(a) - cardStrength(b))[0]
+        const tricksLeft = 12 - state.completedTricks.length
+        const declarerNearLoss = !isValatContract && declarerPts <= 20 && tricksLeft <= 3
+        if (!declarerNearLoss) {
+          return beaters.sort((a, b) => cardStrength(a) - cardStrength(b))[0]
+        }
       }
       // Hard mode: a declarer-side ally is still to play after us — use cheapest beater
       // so they can overbear if needed, keeping our Škis/Mond for future lead tricks.
