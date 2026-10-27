@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.22 — 2026-10-27
+
+### AI / Bot Strategy
+- **Hard mode: talon group selection prefers void-enabling groups** — `recommendTalonGroup` now accepts the declarer's hand, group size, and difficulty. In hard mode, each suit that can be completely cleared by discarding (all suit cards in hand+group fit within the discard quota, and no king is present) earns a +12 bonus. A void in a suit means the bot can ruff every future lead in that suit instead of being forced to follow with a losing card. King-suit voids are excluded since kings can't be legally discarded.
+- **3 new tests** (428 → 431): hard mode selects void-enabling group over higher raw points; easy mode selects raw-points group (no void bonus); king-in-suit correctly blocks the void bonus.
+
 ## v1.6.21 — 2026-10-27
 
 ### AI / Bot Strategy

@@ -3,7 +3,7 @@ import {
   initBidding, applyBid, resolveBidding, legalBids,
   biddingOrder, contractStrength, availableContracts, forehandChoiceContracts,
 } from '../src/engine/bidding'
-import { evaluateHand, recommendBid, recommendAnnouncements, shouldBotKontra, shouldBotRekontra } from '../src/ai/bidding-heuristic'
+import { evaluateHand, recommendBid, recommendAnnouncements, shouldBotKontra, shouldBotRekontra, recommendTalonGroup } from '../src/ai/bidding-heuristic'
 import type { Seat, BidAction, Card, SuitCard, TrumpCard } from '../src/engine/types'
 
 function trump(ordinal: number): TrumpCard {
@@ -839,5 +839,41 @@ describe('recommendBid — trula bump (hard mode)', () => {
     const legal: import('../src/engine/types').Contract[] = ['three', 'two', 'one']
     const rec = recommendBid(ev, legal, false, hand, 'hard')
     expect(rec).toBe('two')  // ceiling stays at two — trulaPotential=2, not 3
+  })
+})
+
+// ── recommendTalonGroup — hard mode void bonus ────────────────────────────────
+// Hard mode adds a +12 void bonus per suit that can be fully cleared by
+// discarding after taking a group. A void enables ruffing all future leads
+// in that suit instead of being forced to follow.
+
+describe('recommendTalonGroup — hard mode void bonus', () => {
+  it('HARD: group enabling a void preferred over group with more raw points', () => {
+    // hand has no clubs (0 club cards); group 1 has only [7♣, 8♣] — taking it and
+    // discarding both creates a clubs void (inSuit=2 ≤ groupSize=2, no king).
+    // group 0 has 6pt raw; group 1 has 2pt + 12 void = 14pt → group 1 wins.
+    const hand: Card[] = [trump(5), suit('hearts', 'K'), suit('spades', 'Q')]
+    const group0: Card[] = [suit('hearts', 'Q'), suit('spades', 'J')]  // 4+2 = 6pt
+    const group1: Card[] = [suit('clubs', 7), suit('clubs', 8)]        // 1+1 = 2pt, clubs void
+    expect(recommendTalonGroup([group0, group1], hand, 2, 'hard')).toBe(1)
+  })
+
+  it('EASY: raw points win — no void bonus applied', () => {
+    // same groups as above; easy mode ignores void bonus → group 0 (6pt) wins
+    const hand: Card[] = [trump(5), suit('hearts', 'K'), suit('spades', 'Q')]
+    const group0: Card[] = [suit('hearts', 'Q'), suit('spades', 'J')]  // 6pt
+    const group1: Card[] = [suit('clubs', 7), suit('clubs', 8)]        // 2pt
+    expect(recommendTalonGroup([group0, group1], hand, 2, 'easy')).toBe(0)
+  })
+
+  it('HARD: king-in-suit blocks void bonus even when suit count ≤ groupSize', () => {
+    // group 1 has [K♣, 7♣] (1 non-king suit card) with no clubs in hand.
+    // combined clubs = 2 ≤ groupSize=2 BUT hasKing=true → no void bonus.
+    // group 0 has 7pt raw, group 1 has 6pt raw. group 0 wins.
+    const hand: Card[] = [trump(5), suit('hearts', 7)]  // 0 clubs, 0 diamonds
+    const group0: Card[] = [suit('diamonds', 'Q'), suit('diamonds', 'J')]  // 4+2 = 6pt, diamonds void → +12 → 18pt
+    const group1: Card[] = [suit('clubs', 'K'), suit('clubs', 7)]          // 5+1 = 6pt, clubs has king → no void
+    // hard mode: group 0 gets diamonds void (no diamonds in hand, no king) → 6+12=18; group 1 = 6. Group 0 wins.
+    expect(recommendTalonGroup([group0, group1], hand, 2, 'hard')).toBe(0)
   })
 })

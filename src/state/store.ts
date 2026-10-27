@@ -196,9 +196,9 @@ export const useGameStore = create<Store>()(persist((set, get) => {
     const { dealResult, biddingState, options } = get()
     if (!dealResult || !biddingState) return
     const exchange = initTalonExchange(dealResult.talon, contract)
-    const groupIdx = recommendTalonGroup(exchange.groups)
-    const { updatedHand, exchange: updated } = selectGroup(exchange, groupIdx, dealResult.hands[declarer])
     const groupSize = talonGroupSize(contract)
+    const groupIdx = recommendTalonGroup(exchange.groups, dealResult.hands[declarer], groupSize, options.botDifficulty)
+    const { updatedHand, exchange: updated } = selectGroup(exchange, groupIdx, dealResult.hands[declarer])
     const toDiscard = recommendDiscard(updatedHand, groupSize, options.botDifficulty)
     const newHand = discardHand(updatedHand, toDiscard)
     const newHands = { ...dealResult.hands, [declarer]: newHand }

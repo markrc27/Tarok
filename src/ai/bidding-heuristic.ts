@@ -138,14 +138,36 @@ export function recommendBid(
   )
 }
 
-// Pick the talon group index that adds the most raw card points.
-export function recommendTalonGroup(groups: Card[][]): number {
+// Pick the talon group index that maximises the declarer's expected value.
+// Hard mode adds a void bonus (12 pts) per suit that can be fully cleared by
+// discarding: a void lets the declarer ruff every future lead in that suit.
+export function recommendTalonGroup(
+  groups: Card[][],
+  hand?: Card[],
+  groupSize?: number,
+  difficulty?: BotDifficulty,
+): number {
   let bestIdx = 0
   let bestScore = -1
   for (let i = 0; i < groups.length; i++) {
     // ENG-008: leaving the Mond in the unchosen talon costs the declarer 20.
     const mondLeftPenalty = groups[i].some(c => c.kind === 'trump' && (c as TrumpCard).ordinal === 21) ? 20 : 0
-    const score = groups[i].reduce((sum, c) => sum + cardPoints(c), 0) + mondLeftPenalty
+    let score = groups[i].reduce((sum, c) => sum + cardPoints(c), 0) + mondLeftPenalty
+
+    // Hard mode: void bonus — if taking this group (then discarding groupSize cards)
+    // could leave the declarer completely void in a suit, that ruffing potential is
+    // worth ~12 pts. Applies only to non-king suits: kings cannot be discarded.
+    if (difficulty === 'hard' && hand && groupSize !== undefined) {
+      const combined = [...hand, ...groups[i]]
+      for (const s of SUITS) {
+        const inSuit = combined.filter(c => c.kind === 'suit' && (c as SuitCard).suit === s)
+        const hasKing = inSuit.some(c => (c as SuitCard).rank === 'K')
+        if (!hasKing && inSuit.length > 0 && inSuit.length <= groupSize) {
+          score += 12
+        }
+      }
+    }
+
     if (score > bestScore) { bestScore = score; bestIdx = i }
   }
   return bestIdx
