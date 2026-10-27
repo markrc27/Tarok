@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.21 — 2026-10-27
+
+### AI / Bot Strategy
+- **Hard mode solo: king-singleton suit lead preference** — after trump exhaustion, when the solo declarer switches to leading suits, hard mode now prefers a king-singleton suit (a King as the only card in that suit in hand) over just leading the highest-point suit card. K is an unconditional trick-winner (opponents can't beat it) AND creates a void in one play, letting the declarer ruff future leads in that suit with any remaining trumps. Only applies in solo contracts with no partner (effectivePartner === null); partner contracts use the existing called-suit preference instead.
+- **3 new tests** (425 → 428): K♥-singleton preferred over K♣ non-singleton (equal points, disambiguation); non-singleton K falls back to highest-points; partner contract uses called-suit path (king-singleton skipped).
+
 ## v1.6.20 — 2026-10-27
 
 ### AI / Bot Strategy

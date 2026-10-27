@@ -430,6 +430,27 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
                 }
               }
             }
+            // Hard mode solo (no partner): prefer a king-singleton suit — K is an
+            // unconditional trick-winner AND creates a void in the same play.
+            // Opponents can't beat K in its suit; immediately becoming void lets the
+            // declarer ruff future leads in that suit with any remaining trumps.
+            if (effectivePartner === null) {
+              const suitPool = suitWinners.filter((c): c is SuitCard => c.kind === 'suit')
+              const suitCounts: Partial<Record<Suit, number>> = {}
+              for (const c of state.hands[seat]) {
+                if (c.kind === 'suit') {
+                  const s = (c as SuitCard).suit
+                  suitCounts[s] = (suitCounts[s] ?? 0) + 1
+                }
+              }
+              const suits = [...new Set(suitPool.map(c => c.suit))]
+              const kingSingletonSuit = suits.find(
+                s => (suitCounts[s] ?? 0) === 1 && suitPool.some(c => c.suit === s && c.rank === 'K'),
+              )
+              if (kingSingletonSuit) {
+                return suitPool.filter(c => c.suit === kingSingletonSuit)[0]
+              }
+            }
             return suitWinners.sort((a, b) => cardPoints(b) - cardPoints(a))[0]
           }
         }

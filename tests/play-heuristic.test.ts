@@ -2008,6 +2008,60 @@ describe('hard mode declarer leading — calls suit when partner known', () => {
   })
 })
 
+// ── Hard mode declarer solo: king-singleton suit lead preference ──────────────
+// After trump exhaustion, the solo declarer prefers to lead a king-singleton —
+// K is an unconditional winner AND creates a void in one shot, letting the
+// declarer ruff that suit for the rest of the hand.
+
+describe('hard mode declarer solo — king-singleton suit lead preference', () => {
+  function manyPlayedTrumps(): Trick[] {
+    // T2-T20 played. Combined with T5 in declarer's hand: unseen=3 → suit-lead path fires.
+    const ordinals = [2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    return ordinals.map(o => ({
+      cards: [{ seat: 0 as Seat, card: trump(o) }], winner: 0 as Seat,
+    }))
+  }
+
+  it('HARD: K♥ (singleton) led over K♣ (non-singleton, also holds J♣)', () => {
+    // Both kings are 5pt, but K♥ is the only heart → king-singleton → chosen first.
+    // K♣+J♣ in clubs → clubs is NOT a singleton suit.
+    const state = makeState({
+      contract: 'solo-one', declarer: 1, partner: null,
+      hand1: [trump(5), suit('hearts', 'K', 5), suit('clubs', 'K', 5), suit('clubs', 'J', 2)],
+      completedTricks: manyPlayedTrumps(),
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts', rank: 'K' })
+  })
+
+  it('HARD: no king-singleton → falls back to highest-points (K♣)', () => {
+    // K♣+Q♣ both in clubs — not a singleton. K♥+J♥ in hearts — not a singleton.
+    // kingSingletonSuit = none → highest-points = K♣ (or K♥, both 5pt).
+    // The test verifies king-singleton guard: expects a K (not a J/Q).
+    const state = makeState({
+      contract: 'solo-one', declarer: 1, partner: null,
+      hand1: [trump(5), suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('hearts', 'K', 5), suit('hearts', 'J', 2)],
+      completedTricks: manyPlayedTrumps(),
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: null })
+    // No king-singleton → highest-pts → some king (K♣ or K♥, both 5pt).
+    expect(card).toMatchObject({ kind: 'suit', rank: 'K' })
+    expect(['clubs', 'hearts']).toContain((card as SuitCard).suit)
+  })
+
+  it('HARD: partner contract → king-singleton skipped, calls suit instead', () => {
+    // partner=3 known, called suit = clubs. K♥ is a singleton but called-suit takes priority.
+    const state = makeState({
+      contract: 'one', declarer: 1, partner: 3 as Seat,
+      hand1: [trump(5), suit('hearts', 'K', 5), suit('clubs', 'Q', 4)],
+      completedTricks: manyPlayedTrumps(),
+      kingCall: { calledSuit: 'clubs', calledKing: suit('clubs', 'K', 5), partner: 3 as Seat, kingInTalon: false, kingInDeclarerHand: false },
+    })
+    const card = chooseCard(state, 1, { difficultyBias: 0.5, difficulty: 'hard', knownPartner: 3 as Seat })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs' })  // called suit, not K♥ singleton
+  })
+})
+
 // ── Hard mode: unannounced pagat-ultimo opportunism ───────────────────────────
 // In the last trick (completedTricks.length===11), if Pagat is the highest remaining
 // trump (all T2-T22 are played or in our own hand), play it for unannounced pagat-
