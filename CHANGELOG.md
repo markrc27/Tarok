@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.29 — 2026-10-27
+
+### AI / Bot Strategy
+- **BOT-008: Klop guaranteed-winner avoidance (hard mode)** — extends the existing lone-king singleton guard to the general case: when ALL cards of higher strength in a suit are either in our own hand or already played, even our lowest card in that suit would win the trick. Bots now avoid leading from those suits (e.g. holding K♣+Q♣ means Q♣ is also a guaranteed winner since K♣ is ours). Uses `cardId`-based set lookups against completed tricks for O(1) checks. Falls back to the full suit pool when all available suits are guaranteed winners.
+- **4 new tests** (447 → 451): K+Q → avoids clubs leads hearts; easy mode no avoidance; post-trick J♥ becomes guaranteed winner after K/Q/Kn played; all-guaranteed fallback.
+
 ## v1.6.28 — 2026-10-27
 
 ### AI / Bot Strategy — Bugfix

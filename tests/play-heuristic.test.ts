@@ -2311,3 +2311,66 @@ describe('trula announced by this side — Pagat protected (BOT-007)', () => {
     expect(card).toMatchObject({ kind: 'trump', ordinal: 1 })  // Pagat led (lowest value, not Škis)
   })
 })
+
+// ── BOT-008: klop guaranteed-winner avoidance (hard mode) ─────────────────
+
+describe('BOT-008 klop: hard mode avoids leading guaranteed-winner suits', () => {
+  it('HARD: K+Q in clubs → Q is guaranteed winner (K is ours) → leads hearts instead', () => {
+    // Clubs: K♣ (str8) + Q♣ (str7). Q♣ would win because K♣ is in our hand.
+    // Hearts: J♥ (str5). J♥ is NOT a guaranteed winner (Kn♥/Q♥/K♥ could be with opponents).
+    // Hard mode: avoids clubs (both cards guaranteed winners), leads from hearts.
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [suit('clubs', 'K', 5), suit('clubs', 'Q', 4), suit('hearts', 'J', 2), trump(5)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'hearts' })
+  })
+
+  it('EASY: K+Q in clubs → no guaranteed-winner check → leads clubs (shortest suit)', () => {
+    // Easy mode: no guaranteed-winner avoidance; leads from shortest suit = clubs (2 cards)
+    // vs hearts (3 cards) → leads Q♣ (lowest in clubs).
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [
+        suit('clubs', 'K', 5), suit('clubs', 'Q', 4),
+        suit('hearts', 'J', 2), suit('hearts', 'Kn', 3), suit('hearts', 7),
+        trump(5),
+      ],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'easy' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'clubs' })  // shortest, no avoidance
+  })
+
+  it('HARD: after K♥ and Q♥ and Kn♥ are played, J♥ becomes guaranteed winner → avoids hearts', () => {
+    // Hearts: J♥ (str5) only. Higher: Kn♥(str6), Q♥(str7), K♥(str8) — all in completedTricks.
+    // J♥ is now the highest remaining in hearts → guaranteed winner → avoid hearts.
+    // Spades: 7♠ (str1) — not a guaranteed winner (8♠,9♠,...,K♠ still out there).
+    const completedTricks: Trick[] = [
+      { cards: [
+        { seat: 1 as Seat, card: suit('hearts', 'K', 5) },
+        { seat: 2 as Seat, card: suit('hearts', 'Q', 4) },
+        { seat: 3 as Seat, card: suit('hearts', 'Kn', 3) },
+        { seat: 0 as Seat, card: trump(2) },
+      ], winner: 3 },
+    ]
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [suit('hearts', 'J', 2), suit('spades', 7), trump(5)],
+      completedTricks,
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit', suit: 'spades' })  // leads 7♠, avoids J♥
+  })
+
+  it('HARD: all suits are guaranteed winners → falls back to shortest suit', () => {
+    // K♣ (str8) alone + K♥ (str8) alone → both guaranteed winners (no higher card exists).
+    // No safe suit → fallback to full suit pool; picks from shortest (both length 1).
+    const state = makeState({
+      contract: 'klop', declarer: 1,
+      hand0: [suit('clubs', 'K', 5), suit('hearts', 'K', 5)],
+    })
+    const card = chooseCard(state, 0, { difficultyBias: 0.5, difficulty: 'hard' })
+    expect(card).toMatchObject({ kind: 'suit' })  // some suit card; fallback always runs
+  })
+})

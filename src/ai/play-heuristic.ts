@@ -1,7 +1,21 @@
 import type { Card, Seat, PlayState, TrumpCard, TrumpOrdinal, SuitCard, Suit } from '../engine/types'
 import { legalCards } from '../engine/play'
-import { cardPoints, isTrump, isPagat, trumpStrength, suitStrength, cardsEqual } from '../engine/deck'
+import { cardPoints, isTrump, isPagat, trumpStrength, suitStrength, cardsEqual, cardId } from '../engine/deck'
 import type { BotDifficulty } from './bidding-heuristic'
+
+// Reverse maps: suitStrength (1–8) → rank string, used to build card IDs from strength levels.
+const BLACK_STRENGTH_TO_RANK: Record<number, string> = {
+  1: '7', 2: '8', 3: '9', 4: '10', 5: 'J', 6: 'Kn', 7: 'Q', 8: 'K',
+}
+const RED_STRENGTH_TO_RANK: Record<number, string> = {
+  1: '1', 2: '2', 3: '3', 4: '4', 5: 'J', 6: 'Kn', 7: 'Q', 8: 'K',
+}
+
+function suitCardId(suit: Suit, strength: number): string {
+  const isBlack = suit === 'clubs' || suit === 'spades'
+  const rank = isBlack ? BLACK_STRENGTH_TO_RANK[strength] : RED_STRENGTH_TO_RANK[strength]
+  return `suit-${suit}-${rank}`
+}
 
 export interface BotConfig {
   difficultyBias: number // 0.0–1.0 (legacy; kept for test compat)
@@ -297,16 +311,34 @@ export function chooseCard(state: PlayState, seat: Seat, _config: BotConfig): Ca
         }
         const suits = [...new Set(suitPool.map(c => c.suit))]
 
-        // Hard mode: avoid leading a lone king — it wins the trick (kings cannot be beaten
-        // by any other card in the same suit) and klop players want to AVOID winning tricks.
-        const dangerousSingletons = new Set(
-          suits.filter(s =>
-            difficulty === 'hard' &&
-            (suitCounts[s] ?? 0) === 1 &&
-            suitPool.some(c => c.suit === s && c.rank === 'K'),
-          ),
-        )
-        const safeLeadSuits = suits.filter(s => !dangerousSingletons.has(s))
+        // Hard mode: avoid leading from suits where every card we hold is a guaranteed winner.
+        // Case A — lone king: a K singleton is always unbeatable; leading it wins the trick.
+        // Case B — guaranteed winner: ALL cards with higher suitStrength are in our own hand
+        //          or already played (e.g. holding K+Q means Q also wins because K is ours).
+        // Both cases are bad for klop: they force us to take a trick.
+        const guaranteedWinnerSuits = new Set<Suit>()
+        if (difficulty === 'hard') {
+          const seenIds = new Set<string>()
+          for (const trick of state.completedTricks) {
+            for (const e of trick.cards) seenIds.add(cardId(e.card))
+          }
+          const myIds = new Set(state.hands[seat].map(cardId))
+          for (const s of suits) {
+            const inSuit = suitPool.filter(c => c.suit === s)
+            if (inSuit.length === 0) continue
+            const lowest = inSuit.reduce((min, c) => suitStrength(c) < suitStrength(min) ? c : min)
+            const lowestStr = suitStrength(lowest)
+            // If every card with higher strength in this suit is already accounted for
+            // (in our hand or seen), then even our lowest card wins — avoid this suit.
+            let allHigherAccountedFor = true
+            for (let str = lowestStr + 1; str <= 8; str++) {
+              const id = suitCardId(s, str)
+              if (!myIds.has(id) && !seenIds.has(id)) { allHigherAccountedFor = false; break }
+            }
+            if (allHigherAccountedFor) guaranteedWinnerSuits.add(s)
+          }
+        }
+        const safeLeadSuits = suits.filter(s => !guaranteedWinnerSuits.has(s))
         const leadCandidateSuits = safeLeadSuits.length > 0 ? safeLeadSuits : suits
 
         const shortestSuit = leadCandidateSuits.reduce((best, s) =>
